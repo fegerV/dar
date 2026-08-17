@@ -52,6 +52,8 @@ class TemplateVersion(Base, UUIDPrimaryKeyMixin):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     qa_checklist: Mapped[dict | None] = mapped_column(JSONB)
+    variant_group: Mapped[str | None] = mapped_column(String(100))
+    variant_name: Mapped[str | None] = mapped_column(String(100))
 
     template = relationship("Template", back_populates="versions")
     variables = relationship("TemplateVariable", back_populates="template_version", cascade="all, delete-orphan")

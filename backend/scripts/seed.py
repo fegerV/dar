@@ -128,6 +128,8 @@ async def seed():
                     "duration_ok": True,
                     "cost_known": True,
                 },
+                variant_group="birthday_warm_v1",
+                variant_name="control",
                 published_at=datetime.now(timezone.utc),
             )
             db.add(version)
