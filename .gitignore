@@ -1,0 +1,12 @@
+# Documentation files that might be generated
+docs/*.html
+docs/_build/
+docs/build/
+docs/doctrees/
+docs/.doctrees/
+
+# Common documentation tool outputs
+.sphinx/
+_pytest_cache/
+.sphinx/
+docs/.sass-cache/
