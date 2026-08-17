@@ -8,6 +8,11 @@ from app.schemas.recommendation import (
     RecommendationListResponse,
     RecommendationSelectResponse,
 )
+from app.schemas.recommendation_v2 import (
+    RecommendationItem,
+    RecommendationListResponseV2,
+    RecommendationRequest,
+)
 from app.services.recommendations.service import RecommendationService
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
@@ -31,6 +36,20 @@ async def list_recommendations(
 ):
     service = RecommendationService(db)
     return await service.list(project_id)
+
+
+@router.post("/projects/{project_id}/generate-v2", response_model=RecommendationListResponseV2)
+async def generate_recommendations_v2(
+    project_id: UUID,
+    body: RecommendationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = RecommendationService(db)
+    return await service.generate_v2(
+        project_id,
+        top_k=body.top_k,
+    )
 
 
 @router.post(

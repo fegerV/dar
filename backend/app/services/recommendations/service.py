@@ -15,6 +15,11 @@ from app.schemas.recommendation import (
     RecommendationResponse,
     RecommendationSelectResponse,
 )
+from app.schemas.recommendation_v2 import (
+    RecommendationItem,
+    RecommendationListResponseV2,
+)
+from app.services.recommendations.reranker import AIReranker, DiversityFilter
 
 
 class RecommendationService:
@@ -24,6 +29,8 @@ class RecommendationService:
         self.template_repo = TemplateRepository(db)
         self.project_repo = ProjectRepository(db)
         self.recipient_repo = RecipientRepository(db)
+        self.ai_reranker = AIReranker(db)
+        self.diversity_filter = DiversityFilter()
 
     async def generate(self, project_id: UUID) -> RecommendationListResponse:
         project = await self.project_repo.get_by_id(project_id, project_id)
@@ -34,9 +41,9 @@ class RecommendationService:
         if brief is None:
             raise NotFoundException("Бриф не найден")
 
-        recipient = await self.recipient_repo.get_by_id(project.recipient_id, project.owner_user_id)
-        if recipient is None:
-            raise NotFoundException("Получатель не найден")
+        recipient = None
+        if project.recipient_id:
+            recipient = await self.recipient_repo.get_by_id(project.recipient_id, project.owner_user_id)
 
         templates, _ = await self.template_repo.list_active(
             occasion_codes=[project.occasion_code] if project.occasion_code else None,
@@ -71,6 +78,29 @@ class RecommendationService:
         await self.db.commit()
         return RecommendationListResponse(items=recommendations)
 
+    async def generate_v2(self, project_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
+        existing = await self.repo.list_by_project(project_id)
+        if not existing:
+            await self.generate(project_id)
+
+        reranked = await self.ai_reranker.rerank(project_id, top_k=top_k)
+        diversified = self.diversity_filter.apply(reranked.items, limit=top_k)
+
+        for idx, item in enumerate(diversified, start=1):
+            rec = await self.repo.get_by_id(item.template_version_id, project_id)
+            if rec:
+                rec.rank = idx
+                rec.score = item.score
+                rec.explanation = item.explanation
+                rec.generated_by_model = "ai_rerank_v1"
+
+        await self.db.commit()
+        return RecommendationListResponseV2(
+            items=diversified,
+            generated_at=datetime.now(timezone.utc),
+            model_version="ai_rerank_v1",
+        )
+
     async def list(self, project_id: UUID) -> RecommendationListResponse:
         items = await self.repo.list_by_project(project_id)
         return RecommendationListResponse(items=items)
@@ -86,7 +116,7 @@ class RecommendationService:
         if rec is None:
             raise NotFoundException("Рекомендация не найдена")
 
-        project = await self.project_repo.get_by_id(project_id, project.owner_user_id)
+        project = await self.project_repo.get_by_id(project_id, project_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 
@@ -122,7 +152,7 @@ class RecommendationService:
             score += 0.20
             reasons.append("Подходит по настроению")
 
-        if recipient.interests and template.metadata.get("interests"):
+        if recipient and recipient.interests and template.metadata.get("interests"):
             intersection = set(recipient.interests) & set(template.metadata.get("interests", []))
             if intersection:
                 score += 0.15
@@ -145,3 +175,4 @@ class RecommendationService:
             reasons.append("Поддерживает истории")
 
         return min(score, 1.0), reasons
+
