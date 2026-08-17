@@ -30,6 +30,7 @@ from app.models.holiday import Holiday  # noqa: F401
 from app.models.audit import AuditLog  # noqa: F401
 from app.models.relationship import RelationshipType  # noqa: F401
 from app.models.referral import Referral, ReferralCode  # noqa: F401
+from app.models.feedback import Feedback  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

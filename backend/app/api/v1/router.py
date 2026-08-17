@@ -7,6 +7,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.account import router as account_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.delivery import router as delivery_router
+from app.api.v1.feedback import router as feedback_router
 from app.api.v1.generations import router as generations_router
 from app.api.v1.generations_stream import router as generations_stream_router
 from app.api.v1.holidays import router as holidays_router
@@ -36,6 +37,7 @@ v1_router.include_router(referrals_router)
 v1_router.include_router(quality_router)
 v1_router.include_router(payments_router)
 v1_router.include_router(delivery_router)
+v1_router.include_router(feedback_router)
 v1_router.include_router(share_router)
 v1_router.include_router(prompt_compiler_router)
 v1_router.include_router(pipeline_router)

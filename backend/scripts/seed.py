@@ -120,6 +120,14 @@ async def seed():
                 personalization_config={"max_variables": 10},
                 validation_config={"min_length_sec": 15, "max_length_sec": 120},
                 max_duration_sec=120,
+                qa_checklist={
+                    "script_checked": True,
+                    "face_ok": True,
+                    "voice_ok": True,
+                    "text_ok": True,
+                    "duration_ok": True,
+                    "cost_known": True,
+                },
                 published_at=datetime.now(timezone.utc),
             )
             db.add(version)
