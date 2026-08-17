@@ -1,0 +1,80 @@
+import asyncio
+import logging
+from datetime import datetime, timezone
+from uuid import UUID
+
+from celery import shared_task
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+from app.core.config import settings
+from app.models.generation import Generation, GenerationJob, GenerationStep
+
+logger = logging.getLogger(__name__)
+
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_generation_job(self, job_id: str):
+    asyncio.run(_process_generation_job(job_id))
+
+
+async def _process_generation_job(job_id: str):
+    job_uuid = UUID(job_id)
+    async with async_session() as db:
+        result = await db.execute(
+            __import__("sqlalchemy").select(GenerationJob).where(GenerationJob.id == job_uuid)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            logger.error("Job not found: %s", job_id)
+            return
+
+        result = await db.execute(
+            __import__("sqlalchemy").select(Generation).where(Generation.id == job.generation_id)
+        )
+        generation = result.scalar_one_or_none()
+        if generation is None:
+            logger.error("Generation not found for job: %s", job_id)
+            return
+
+        generation.status = "processing"
+        generation.started_at = datetime.now(timezone.utc)
+        await db.flush()
+
+        steps = await _get_steps(db, generation.id)
+        total_steps = len(steps)
+
+        for idx, step in enumerate(steps):
+            step.status = "processing"
+            step.started_at = datetime.now(timezone.utc)
+            await db.flush()
+
+            await asyncio.sleep(2)
+
+            step.status = "completed"
+            step.output_json = {"result": "ok"}
+            step.completed_at = datetime.now(timezone.utc)
+            await db.flush()
+
+            generation.progress = int((idx + 1) / total_steps * 100)
+            generation.current_step = step.step_code
+            await db.flush()
+
+        generation.status = "completed"
+        generation.progress = 100
+        generation.completed_at = datetime.now(timezone.utc)
+        job.status = "finished"
+        job.finished_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.info("Generation %s completed", generation.id)
+
+
+async def _get_steps(db, generation_id: UUID) -> list[GenerationStep]:
+    result = await db.execute(
+        __import__("sqlalchemy").select(GenerationStep)
+        .where(GenerationStep.generation_id == generation_id)
+        .order_by(GenerationStep.step_no.asc())
+    )
+    return list(result.scalars().all())
