@@ -4,7 +4,14 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.schemas.recommendation import TemplateResponse, TemplateListResponse
+from app.schemas.template_render import (
+    RenderSceneRequest,
+    RenderSceneResponse,
+    RenderTemplateRequest,
+    RenderTemplateResponse,
+)
 from app.services.recommendations.service import TemplateRepository
+from app.services.templates.renderer import TemplateRenderer
 
 router = APIRouter(prefix="/templates", tags=["Templates"])
 
@@ -33,3 +40,11 @@ async def get_template(template_id: UUID, db: AsyncSession = Depends(get_db)):
         from app.core.exceptions import NotFoundException
         raise NotFoundException("Шаблон не найден")
     return TemplateResponse.model_validate(template)
+
+
+@router.post("/render", response_model=RenderTemplateResponse)
+async def render_template(body: RenderTemplateRequest, db: AsyncSession = Depends(get_db)):
+    renderer = TemplateRenderer(db)
+    result = await renderer.render_template(body)
+    renderer.validate_render(result)
+    return result

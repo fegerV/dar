@@ -110,3 +110,7 @@ class TemplateRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def get_version_by_id(self, version_id: UUID) -> TemplateVersion | None:
+        result = await self.db.execute(select(TemplateVersion).where(TemplateVersion.id == version_id))
+        return result.scalar_one_or_none()
