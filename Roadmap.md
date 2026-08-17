@@ -9,7 +9,7 @@
 
 DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
 
-**Текущий статус:** Фаза 1 выполнена. Переход к Фазе 2 и Фазе 3.
+**Текущий статус:** Фаза 0–1 выполнена, Фаза 2 выполнена частично, Фаза 3 выполняется. Переход к Фазе 3.3.
 
 ---
 
@@ -38,23 +38,23 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 1.1 Управление Получателями (Recipients)
 
-- [ ] CRUD API для получателей (`/api/v1/recipients`)
-  - [ ] `POST /recipients` — создание
-  - [ ] `GET /recipients` — список с фильтрацией и пагинацией
-  - [ ] `GET /recipients/{id}` — детали
-  - [ ] `PATCH /recipients/{id}` — обновление
-  - [ ] `DELETE /recipients/{id}` — мягкое удаление (archive)
-- [ ] Валидация данных (имя обязательно, дата рождения опциональна)
+- [x] CRUD API для получателей (`/api/v1/recipients`)
+  - [x] `POST /recipients` — создание
+  - [x] `GET /recipients` — список с фильтрацией и пагинацией
+  - [x] `GET /recipients/{id}` — детали
+  - [x] `PATCH /recipients/{id}` — обновление
+  - [x] `DELETE /recipients/{id}` — мягкое удаление (archive)
+- [x] Валидация данных (имя обязательно, дата рождения опциональна)
 - [ ] Загрузка фото получателя (связь с Assets через `recipient_assets`)
-- [ ] Поиск и фильтрация по имени, дате рождения, тегам
+- [x] Поиск и фильтрация по имени, дате рождения, тегам
 - [ ] Импорт контактов (CSV/JSON) — *опционально для MVP*
 
 ### 1.2 Creative Brief Wizard
 
-- [ ] API создания/обновления брифа (`/api/v1/projects/{id}/brief`)
-  - [ ] `PUT /projects/{id}/brief` — создание/обновление
-  - [ ] `GET /projects/{id}/brief` — получение текущего состояния
-  - [ ] `POST /projects/{id}/brief/complete` — завершение заполнения
+- [x] API создания/обновления брифа (`/api/v1/projects/{id}/brief`)
+  - [x] `PUT /projects/{id}/brief` — создание/обновление
+  - [x] `GET /projects/{id}/brief` — получение текущего состояния
+  - [x] `POST /projects/{id}/brief/complete` — завершение заполнения
 - [ ] Пошаговая валидация (state machine: `draft → in_progress → completed`)
 - [ ] Динамические вопросы на основе `relationship_type` и `occasion`
 - [ ] Сохранение черновиков (autosave каждые 30 сек)
@@ -62,33 +62,33 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 1.3 AI Script Generation (Grok Integration)
 
-- [ ] Доработка `GrokClient`: промпт-инжиниринг для сценариев
-  - [ ] System prompt для разных типов поздравлений
-  - [ ] Structured output (JSON schema enforcement)
-  - [ ] Temperature tuning для креативности vs консистентности
-- [ ] Сервис `ScriptGenerationService`:
-  - [ ] Вход: brief + recipient + template config
-  - [ ] Генерация 3 вариантов сценария
-  - [ ] Парсинг ответа Grok в структурированный JSON
-  - [ ] Валидация длины и содержания
-- [ ] Celery task `generate_script_task`
-  - [ ] Retry logic (max 3 attempts, exponential backoff)
-  - [ ] Timeout handling (60s max per request)
-  - [ ] Result storage в `generations.output_json`
-- [ ] API получения результатов (`/api/v1/generations/{id}`)
+- [x] Доработка `GrokClient`: промпт-инжиниринг для сценариев
+  - [x] System prompt для разных типов поздравлений
+  - [x] Structured output (JSON schema enforcement)
+  - [x] Temperature tuning для креативности vs консистентности
+- [x] Сервис `ScriptGenerationService`:
+  - [x] Вход: brief + recipient + template config
+  - [x] Генерация 3 вариантов сценария
+  - [x] Парсинг ответа Grok в структурированный JSON
+  - [x] Валидация длины и содержания
+- [x] Celery task `generate_script_task`
+  - [x] Retry logic (max 3 attempts, exponential backoff)
+  - [x] Timeout handling (60s max per request)
+  - [x] Result storage в `generations.output_json`
+- [x] API получения результатов (`/api/v1/generations/{id}`)
 - [ ] Механизм fallback при ошибке AI (кэшированные шаблоны)
 
 ### 1.4 Recommendations Engine (v1)
 
-- [ ] Простой scoring algorithm:
-  - [ ] Match по `occasion_code`
-  - [ ] Match по `relationship_type`
-  - [ ] Match по `desired_mood`
-  - [ ] Weighted score → rank
-- [ ] API `/api/v1/projects/{id}/recommendations`
-  - [ ] `GET` — список рекомендаций с объяснениями
-  - [ ] `POST /select` — выбор шаблона пользователем
-- [ ] Сохранение выбора в `projects.selected_template_version_id`
+- [x] Простой scoring algorithm:
+  - [x] Match по `occasion_code`
+  - [x] Match по `relationship_type`
+  - [x] Match по `desired_mood`
+  - [x] Weighted score → rank
+- [x] API `/api/v1/projects/{id}/recommendations`
+  - [x] `GET` — список рекомендаций с объяснениями
+  - [x] `POST /select` — выбор шаблона пользователем
+- [x] Сохранение выбора в `projects.selected_template_version_id`
 
 ### 🎯 Критерий приёмки Фазы 1
 
@@ -148,27 +148,27 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 2.3 Template Rendering Engine
 
-- [ ] Парсинг `template_versions.render_config`
-- [ ] Подстановка переменных в сцены (`scene_variables`)
-  - [ ] Text replacement
+- [x] Парсинг `template_versions.render_config`
+- [x] Подстановка переменных в сцены (`scene_variables`)
+  - [x] Text replacement
   - [ ] Image/video insertion
   - [ ] Audio overlay
-- [ ] Валидация длительности и контента
+- [x] Валидация длительности и контента
 - [ ] Preview generation (low-res для быстрого просмотра)
   - [ ] 360p preview within 30 seconds
   - [ ] Watermarked
 
 ### 2.4 Quality Gate
 
-- [ ] Автоматическая проверка:
-  - [ ] Длина видео (min 15s, max 120s)
-  - [ ] Разрешение (min 720p)
-  - [ ] Аудио уровень (no silence, no clipping)
-  - [ ] FPS consistency
-- [ ] Ручная модерация финального видео
-  - [ ] Admin panel для ревью
-  - [ ] Approve / Reject с комментарием
-- [ ] Статусы: `rendering → reviewing → approved → rejected`
+- [x] Автоматическая проверка:
+  - [x] Длина видео (min 15s, max 120s)
+  - [x] Разрешение (min 720p)
+  - [x] Аудио уровень (no silence, no clipping)
+  - [x] FPS consistency
+- [x] Ручная модерация финального видео
+  - [x] Admin panel для ревью
+  - [x] Approve / Reject с комментарием
+- [x] Статусы: `rendering → reviewing → approved → rejected`
 - [ ] Auto-retry при технических ошибках (не при контентных)
 
 ### 🎯 Критерий приёмки Фазы 2
@@ -183,28 +183,28 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 3.1 Payment System (YooKassa)
 
-- [ ] Создание платежа
-  - [ ] `POST /api/v1/payments/create`
-  - [ ] Idempotency key генерация и проверка
-  - [ ] Расчёт итоговой суммы (price - bonus - promo)
-- [ ] Webhook обработка
-  - [ ] `POST /api/v1/payments/webhook/yookassa`
-  - [ ] Signature verification
-  - [ ] Idempotent processing
-  - [ ] Status update + entitlement grant
-- [ ] Бонусная система
-  - [ ] Начисление бонусов за покупки (5% cashback)
-  - [ ] Списывание бонусов (max 30% от суммы)
+- [x] Создание платежа
+  - [x] `POST /api/v1/payments/create`
+  - [x] Idempotency key генерация и проверка
+  - [x] Расчёт итоговой суммы (price - bonus - promo)
+- [x] Webhook обработка
+  - [x] `POST /api/v1/payments/webhook/yookassa`
+  - [x] Signature verification
+  - [x] Idempotent processing
+  - [x] Status update + entitlement grant
+- [x] Бонусная система
+  - [x] Начисление бонусов за покупки (5% cashback)
+  - [x] Списывание бонусов (max 30% от суммы)
   - [ ] История транзакций
-- [ ] История платежей
-  - [ ] `GET /api/v1/payments` — список
-  - [ ] `GET /api/v1/payments/{id}` — детали
+- [x] История платежей
+  - [x] `GET /api/v1/payments` — список
+  - [x] `GET /api/v1/payments/{id}` — детали
 
 ### 3.2 Delivery System
 
-- [ ] Генерация защищённых ссылок
-  - [ ] Cryptographically secure token
-  - [ ] Expiration (default 7 days)
+- [x] Генерация защищённых ссылок
+  - [x] Cryptographically secure token
+  - [x] Expiration (default 7 days)
   - [ ] Max views limit
   - [ ] Optional password protection
 - [ ] Email delivery
@@ -222,9 +222,9 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 3.3 Sharing & Virality
 
-- [ ] Share links с аналитикой просмотров
-  - [ ] Unique link per share
-  - [ ] View count tracking
+- [x] Share links с аналитикой просмотров
+  - [x] Unique link per share
+  - [x] View count tracking
   - [ ] Referral attribution
 - [ ] Referral program
   - [ ] Unique referral code per user
