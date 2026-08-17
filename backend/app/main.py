@@ -32,3 +32,28 @@ app.include_router(v1_router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/health/detailed")
+async def health_detailed():
+    import shutil
+    from app.core.database import engine
+
+    db_ok = False
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+
+    disk = shutil.disk_usage("/")
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "database": db_ok,
+        "disk": {
+            "total": disk.total,
+            "used": disk.used,
+            "free": disk.free,
+        },
+    }
