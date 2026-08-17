@@ -76,6 +76,22 @@ services:
       - ./backend:/app
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
 
+  backup:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: daragent
+      POSTGRES_PASSWORD: daragent
+      POSTGRES_DB: daragent
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+      - backups:/backups
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  miniodata:
+  backups:
   miniodata:
