@@ -6,6 +6,7 @@ from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.generations import router as generations_router
+from app.api.v1.generations_stream import router as generations_stream_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.pricing import router as pricing_router
@@ -25,6 +26,7 @@ v1_router.include_router(recommendations_router)
 v1_router.include_router(templates_router)
 v1_router.include_router(assets_router)
 v1_router.include_router(generations_router)
+v1_router.include_router(generations_stream_router)
 v1_router.include_router(quality_router)
 v1_router.include_router(payments_router)
 v1_router.include_router(delivery_router)
