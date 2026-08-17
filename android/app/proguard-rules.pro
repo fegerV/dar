@@ -1,0 +1,2 @@
+-keep class com.daragent.** { *; }
+-dontwarn com.daragent.**
