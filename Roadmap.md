@@ -9,7 +9,7 @@
 
 DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
 
-**Текущий статус:** Фаза 0–1 выполнена, Фаза 2 выполнена частично, Фаза 3 выполняется. Переход к Фазе 3.3.
+**Текущий статус:** Фаза 0–1, 2.1–2.4, 3.1–3.3 и 5 выполнены. Переход к Фазе 6 и оставшимся пунктам 3.4 / 2.2 / 2.3.
 
 ---
 
@@ -239,19 +239,19 @@ DarAgent — платформа, которая позволяет пользо�
   - [ ] Moderation before publish
   - [ ] Attribution to creator
 
-### 3.4 Pricing Engine
+### 3.3 Pricing Engine
 
-- [ ] Расчёт цены
-  - [ ] Base price from template
-  - [ ] Duration multiplier
-  - [ ] Personalization premium
-  - [ ] HD/4K surcharge
-- [ ] Промокоды
-  - [ ] Fixed amount / percentage discount
-  - [ ] Usage limits (per user, total)
-  - [ ] Expiration date
-- [ ] Пакетные предложения
-  - [ ] Bundle: 3 greetings = 15% off
+- [x] Расчёт цены
+  - [x] Base price from template
+  - [x] Duration multiplier
+  - [x] Personalization premium
+  - [x] HD/4K surcharge
+- [x] Промокоды
+  - [x] Fixed amount / percentage discount
+  - [x] Usage limits (per user, total)
+  - [x] Expiration date
+- [x] Пакетные предложения
+  - [x] Bundle: 3 greetings = 15% off
   - [ ] Subscription model (future)
 
 ### 🎯 Критерий приёмки Фазы 3
@@ -296,30 +296,32 @@ DarAgent — платформа, которая позволяет пользо�
 
 ---
 
-## Фаза 5: Аналитика и Growth (3–4 недели)
+## Фаза 5: Аналитика и Growth ✅
 
 *Цель: Data-driven развитие продукта.*
 
-- [ ] Analytics pipeline
-  - [ ] Event collection (`analytics_events` table)
-  - [ ] ETL to ClickHouse / PostHog
-  - [ ] Real-time dashboards
-- [ ] Funnel tracking
-  - [ ] Visit → Register → Create Project → Complete Brief → Pay → Deliver
-  - [ ] Drop-off analysis at each step
-  - [ ] Cohort retention
-- [ ] A/B testing framework
-  - [ ] Feature flags
-  - [ ] Template variants testing
-  - [ ] Pricing experiments
-- [ ] Admin dashboard
-  - [ ] Metabase / Grafana setup
-  - [ ] Key metrics: DAU, conversion, ARPU, LTV
-  - [ ] Alerting on anomalies
-- [ ] Feedback collection
-  - [ ] In-app NPS survey
-  - [ ] CSAT after delivery
-  - [ ] Feature request voting
+### Выполнено
+
+- [x] Analytics pipeline
+  - [x] Event collection (`analytics_events` table)
+  - [x] ETL to ClickHouse / PostHog
+  - [x] Real-time dashboards
+- [x] Funnel tracking
+  - [x] Visit → Register → Create Project → Complete Brief → Pay → Deliver
+  - [x] Drop-off analysis at each step
+  - [x] Cohort retention
+- [x] A/B testing framework
+  - [x] Feature flags
+  - [x] Template variants testing
+  - [x] Pricing experiments
+- [x] Admin dashboard
+  - [x] Metabase / Grafana setup
+  - [x] Key metrics: DAU, conversion, ARPU, LTV
+  - [x] Alerting on anomalies
+- [x] Feedback collection
+  - [x] In-app NPS survey
+  - [x] CSAT after delivery
+  - [x] Feature request voting
 
 ---
 

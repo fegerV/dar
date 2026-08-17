@@ -63,6 +63,9 @@ class PricingService:
             if promo_result.valid:
                 discount_rub = promo_result.discount_rub or Decimal("0.00")
 
+        bundle_discount = await self._apply_bundle_discount(project.owner_user_id, price)
+        discount_rub += bundle_discount
+
         entitlement = await self.repo.get_entitlement_by_code(project.owner_user_id, "free_generation")
         if entitlement and entitlement.consumed < entitlement.quantity:
             free_generation_available = True
@@ -113,3 +116,19 @@ class PricingService:
             discount_value=Decimal("100.00"),
             discount_rub=min(Decimal("100.00"), price),
         )
+
+    async def _apply_bundle_discount(self, user_id: UUID, price: Decimal) -> Decimal:
+        from sqlalchemy import select, func
+        from app.models.project import Project
+
+        completed_projects = await self.db.execute(
+            select(func.count()).select_from(Project).where(
+                Project.owner_user_id == user_id,
+                Project.status == "completed",
+            )
+        )
+        count = completed_projects.scalar() or 0
+
+        if count >= 3:
+            return (price * Decimal("0.15")).quantize(Decimal("0.01"))
+        return Decimal("0.00")
