@@ -25,6 +25,17 @@ async def get_upload_url(
     return await service.get_upload_url(body, current_user.id)
 
 
+@router.post("/confirm-upload", response_model=AssetResponse)
+async def confirm_upload(
+    asset_id: UUID,
+    object_key: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = AssetService(db)
+    return await service.confirm_upload(asset_id, current_user.id, object_key)
+
+
 @router.get("", response_model=AssetListResponse)
 async def list_assets(
     page: int = 1,
@@ -43,4 +54,4 @@ async def get_asset(
     current_user=Depends(get_current_user),
 ):
     service = AssetService(db)
-    return await service.confirm_upload(asset_id, current_user.id)
+    return await service.get_asset(asset_id, current_user.id)
