@@ -12,3 +12,8 @@ class FeedbackRepository:
         self.db.add(feedback)
         await self.db.flush()
         return feedback
+
+    async def list_recent(self, limit: int = 100):
+        stmt = select(Feedback).order_by(Feedback.created_at.desc()).limit(limit)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

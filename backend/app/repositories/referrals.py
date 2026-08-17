@@ -29,3 +29,8 @@ class ReferralRepository:
         self.db.add(referral)
         await self.db.flush()
         return referral
+
+    async def list_recent(self, limit: int = 100):
+        stmt = select(Referral).order_by(Referral.created_at.desc()).limit(limit)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
