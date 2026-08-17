@@ -1,0 +1,28 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel
+
+
+class ReferralCodeResponse(BaseModel):
+    id: UUID
+    code: str
+    uses_count: int
+    max_uses: int | None = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReferralResponse(BaseModel):
+    id: UUID
+    referrer_user_id: UUID
+    referred_user_id: UUID | None
+    code: str
+    status: str
+    referrer_bonus_granted: bool
+    referee_bonus_granted: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

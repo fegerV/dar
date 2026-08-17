@@ -14,6 +14,7 @@ from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.pricing import router as pricing_router
 from app.api.v1.prompt_compiler import router as prompt_compiler_router
 from app.api.v1.quality import router as quality_router
+from app.api.v1.referrals import router as referrals_router
 from app.api.v1.recipients import router as recipients_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.recommendations import router as recommendations_router
@@ -30,6 +31,7 @@ v1_router.include_router(assets_router)
 v1_router.include_router(generations_router)
 v1_router.include_router(generations_stream_router)
 v1_router.include_router(holidays_router)
+v1_router.include_router(referrals_router)
 v1_router.include_router(quality_router)
 v1_router.include_router(payments_router)
 v1_router.include_router(delivery_router)
