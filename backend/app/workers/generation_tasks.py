@@ -60,6 +60,7 @@ async def _process_generation_job(job_id: str):
 
             generation.progress = int((idx + 1) / total_steps * 100)
             generation.current_step = step.step_code
+            generation.estimated_seconds = _estimate_eta(steps, idx)
             await db.flush()
 
         generation.status = "completed"
@@ -69,6 +70,16 @@ async def _process_generation_job(job_id: str):
         job.finished_at = datetime.now(timezone.utc)
         await db.commit()
         logger.info("Generation %s completed", generation.id)
+
+
+def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
+    completed = [s for s in steps[: current_idx + 1] if s.started_at and s.completed_at]
+    if not completed:
+        return None
+    durations = [(s.completed_at - s.started_at).total_seconds() for s in completed]
+    avg = sum(durations) / len(durations)
+    remaining = len(steps) - (current_idx + 1)
+    return int(avg * remaining)
 
 
 async def _get_steps(db, generation_id: UUID) -> list[GenerationStep]:

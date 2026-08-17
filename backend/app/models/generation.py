@@ -37,6 +37,7 @@ class Generation(Base, UUIDPrimaryKeyMixin):
     )
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current_step: Mapped[str | None] = mapped_column(String(50))
+    estimated_seconds: Mapped[int | None] = mapped_column(Integer)
 
     steps = relationship("GenerationStep", back_populates="generation", cascade="all, delete-orphan")
 

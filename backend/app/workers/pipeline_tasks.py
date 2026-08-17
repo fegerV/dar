@@ -57,6 +57,7 @@ async def _execute_pipeline(generation_id: str):
 
             generation.progress = int((idx + 1) / total * 100)
             generation.current_step = step.step_code
+            generation.estimated_seconds = _estimate_eta(steps, idx)
             await db.commit()
 
         generation.status = "completed"
@@ -84,3 +85,13 @@ async def _execute_pipeline(generation_id: str):
 
         await db.commit()
         logger.info("Pipeline %s completed", generation_id)
+
+
+def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
+    completed = [s for s in steps[: current_idx + 1] if s.started_at and s.completed_at]
+    if not completed:
+        return None
+    durations = [(s.completed_at - s.started_at).total_seconds() for s in completed]
+    avg = sum(durations) / len(durations)
+    remaining = len(steps) - (current_idx + 1)
+    return int(avg * remaining)

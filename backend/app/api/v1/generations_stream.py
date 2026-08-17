@@ -37,6 +37,7 @@ async def stream_generation_progress(
             progress = generation.progress or 0
             current_step = generation.current_step or "queued"
             status = generation.status or "created"
+            estimated_seconds = generation.estimated_seconds
 
             if progress != last_progress:
                 payload = {
@@ -44,6 +45,19 @@ async def stream_generation_progress(
                     "status": status,
                     "progress": progress,
                     "current_step": current_step,
+                    "estimated_seconds": estimated_seconds,
+                    "steps": [
+                        {
+                            "step_no": s.step_no,
+                            "step_code": s.step_code,
+                            "type": s.type,
+                            "status": s.status,
+                            "created_at": s.created_at.isoformat() if s.created_at else None,
+                            "started_at": s.started_at.isoformat() if s.started_at else None,
+                            "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+                        }
+                        for s in steps
+                    ],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 yield f"data: {__import__('json').dumps(payload)}\n\n"
