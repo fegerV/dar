@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from core.database import init_db, close_db
+from api.router import router as api_router
 
 
 @asynccontextmanager
@@ -44,9 +45,7 @@ def create_app() -> FastAPI:
     async def health_check():
         return {"status": "healthy", "version": settings.APP_VERSION}
 
-    # Include routers
-    # from api import router as api_router
-    # app.include_router(api_router, prefix=settings.API_PREFIX)
+    app.include_router(api_router, prefix="/api")
 
     return app
 
