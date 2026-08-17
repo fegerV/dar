@@ -10,6 +10,7 @@ import com.daragent.presentation.creategreeting.RecommendationsScreen
 import com.daragent.presentation.creategreeting.SelectOccasionScreen
 import com.daragent.presentation.creategreeting.SelectPersonScreen
 import com.daragent.presentation.creategreeting.SelectTemplateScreen
+import com.daragent.presentation.delivery.DeliveryScreen
 import com.daragent.presentation.generationprogress.GenerationProgressScreen
 import com.daragent.presentation.home.HomeScreen
 import com.daragent.presentation.payment.PaymentScreen
@@ -26,7 +27,9 @@ object DarAgentDestinations {
     const val GENERATION_ROUTE = "generation"
     const val GENERATION_PROGRESS_ROUTE = "generation_progress"
     const val PAYMENT_ROUTE = "payment"
+    const val DELIVERY_ROUTE = "delivery"
     const val TEMPLATES_ROUTE = "templates"
+    const val PROFILE_ROUTE = "profile"
     const val PAYMENT_ROUTE = "payment"
     const val PROFILE_ROUTE = "profile"
 }
@@ -49,7 +52,8 @@ fun DarAgentNavGraph(navController: NavHostController) {
         composable("${DarAgentDestinations.PAYMENT_ROUTE}/{projectId}/{amount}") { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
             val amount = backStackEntry.arguments?.getString("amount")?.toDoubleOrNull() ?: 0.0
-            PaymentScreen(projectId = projectId, amount = amount, onBack = { navController.popBackStack() }, onSuccess = { navController.popBackStack() })
+            PaymentScreen(projectId = projectId, amount = amount, onBack = { navController.popBackStack() }, onSuccess = { navController.navigate(DarAgentDestinations.DELIVERY_ROUTE) })
         }
+        composable(DarAgentDestinations.DELIVERY_ROUTE) { DeliveryScreen(projectId = "", onBack = { navController.popBackStack() }) }
     }
 }

@@ -45,9 +45,10 @@ fun SelectTemplateScreen(
                             val project = state.project
                             if (project != null) {
                                 viewModel.selectTemplate(template)
-                                val selected = state.selectedRecommendation
-                                val templateVersionId = selected?.templateVersionId ?: template.id
-                                navController?.navigate("generation_progress/${project.id}?templateVersionId=$templateVersionId")
+                            val selected = state.selectedRecommendation
+                            val templateVersionId = selected?.templateVersionId ?: template.id
+                            val generationId = "gen_${project.id}"
+                            navController?.navigate("generation_progress/$generationId?templateVersionId=$templateVersionId&projectId=${project.id}&amount=${project.priceRub}")
                             }
                         }
                 ) {

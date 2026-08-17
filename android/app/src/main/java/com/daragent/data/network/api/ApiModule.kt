@@ -1,6 +1,21 @@
 package com.daragent.data.network.api
 
 import com.daragent.data.network.NetworkModule
+import com.daragent.data.network.dto.BriefResponseDto
+import com.daragent.data.network.dto.BriefUpdateRequest
+import com.daragent.data.network.dto.ConsumeEntitlementRequest
+import com.daragent.data.network.dto.DeliveryResponseDto
+import com.daragent.data.network.dto.EntitlementResponse
+import com.daragent.data.network.dto.GenerationResponse
+import com.daragent.data.network.dto.HolidayResponseDto
+import com.daragent.data.network.dto.PaymentCreateRequest
+import com.daragent.data.network.dto.PaymentResponse
+import com.daragent.data.network.dto.ProjectCreateRequest
+import com.daragent.data.network.dto.ProjectResponseDto
+import com.daragent.data.network.dto.RecommendationResponseDto
+import com.daragent.data.network.dto.RecommendationSelectRequest
+import com.daragent.data.network.dto.StartGenerationRequest
+import com.daragent.data.network.dto.WalletResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -90,6 +105,11 @@ interface HolidaysApi {
     suspend fun list(@Query("kind") kind: String? = null): Response<List<HolidayResponseDto>>
 }
 
+interface DeliveriesApi {
+    @GET("delivery/projects/{project_id}")
+    suspend fun byProject(@Path("project_id") projectId: String): Response<List<DeliveryResponseDto>>
+}
+
 object ApiModule {
     val authApi: AuthApi by lazy { NetworkModule.provideRetrofit().create(AuthApi::class.java) }
     val peopleApi: PeopleApi by lazy { NetworkModule.provideRetrofit().create(PeopleApi::class.java) }
@@ -100,4 +120,5 @@ object ApiModule {
     val generationsApi: GenerationsApi by lazy { NetworkModule.provideRetrofit().create(GenerationsApi::class.java) }
     val paymentsApi: PaymentsApi by lazy { NetworkModule.provideRetrofit().create(PaymentsApi::class.java) }
     val holidaysApi: HolidaysApi by lazy { NetworkModule.provideRetrofit().create(HolidaysApi::class.java) }
+    val deliveriesApi: DeliveriesApi by lazy { NetworkModule.provideRetrofit().create(DeliveriesApi::class.java) }
 }
