@@ -34,3 +34,13 @@ async def list_deliveries(
 ):
     service = DeliveryService(db)
     return await service.list_deliveries(project_id, current_user.id)
+
+
+@router.get("/{delivery_id}", response_model=DeliveryResponse)
+async def get_delivery(
+    delivery_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = DeliveryService(db)
+    return await service.get_delivery(delivery_id, current_user.id)

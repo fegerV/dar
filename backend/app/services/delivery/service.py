@@ -55,11 +55,26 @@ class DeliveryService:
             generation_id=generation.id,
             user_id=user_id,
             channel=body.channel,
-            status="sent" if body.channel != "link" else "created",
+            status="scheduled" if body.scheduled_at else ("sent" if body.channel != "link" else "created"),
             destination=body.destination,
             delivery_link_id=link.id,
+            scheduled_at=body.scheduled_at,
         )
         delivery = await self.repo.create_delivery(delivery)
+
+        if body.scheduled_at:
+            return DeliveryResponse(
+                id=delivery.id,
+                project_id=project_id,
+                channel=body.channel,
+                status="scheduled",
+                destination=body.destination,
+                public_url=public_url,
+                created_at=delivery.created_at,
+                scheduled_at=delivery.scheduled_at,
+                sent_at=None,
+                opened_at=None,
+            )
 
         if body.channel == "link":
             return DeliveryResponse(
@@ -82,6 +97,7 @@ class DeliveryService:
             destination=body.destination,
             public_url=public_url,
             created_at=delivery.created_at,
+            scheduled_at=delivery.scheduled_at,
             sent_at=delivery.sent_at,
             opened_at=delivery.opened_at,
         )
@@ -95,6 +111,12 @@ class DeliveryService:
         return DeliveryListResponse(
             items=[DeliveryResponse.model_validate(d) for d in deliveries]
         )
+
+    async def get_delivery(self, delivery_id: UUID, user_id: UUID) -> DeliveryResponse:
+        delivery = await self.repo.get_by_id(delivery_id)
+        if delivery is None or delivery.user_id != user_id:
+            raise NotFoundException("Доставка не найдена")
+        return DeliveryResponse.model_validate(delivery)
 
     async def get_public_share(self, token: str) -> PublicShareView:
         token_hash = hashlib.sha256(token.encode()).hexdigest()

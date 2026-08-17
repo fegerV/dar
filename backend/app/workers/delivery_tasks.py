@@ -1,0 +1,39 @@
+import asyncio
+import logging
+from datetime import datetime, timezone
+
+from celery import shared_task
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+from app.core.config import settings
+from app.models.delivery import Delivery
+from app.repositories.delivery import DeliveryRepository
+
+logger = logging.getLogger(__name__)
+
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def process_scheduled_deliveries(self):
+    asyncio.run(_process_scheduled_deliveries())
+
+
+async def _process_scheduled_deliveries():
+    async with async_session() as db:
+        repo = DeliveryRepository(db)
+        now = datetime.now(timezone.utc)
+        result = await db.execute(
+            __import__("sqlalchemy").select(Delivery).where(
+                Delivery.status == "scheduled",
+                Delivery.scheduled_at <= now,
+            )
+        )
+        deliveries = list(result.scalars().all())
+        for delivery in deliveries:
+            delivery.status = "sent"
+            delivery.sent_at = now
+            await db.flush()
+            logger.info("Scheduled delivery sent: %s", delivery.id)
+        await db.commit()

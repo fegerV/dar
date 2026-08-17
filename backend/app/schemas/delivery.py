@@ -9,6 +9,7 @@ class DeliveryCreate(BaseModel):
     destination: str | None = None
     expires_in_days: int = Field(30, ge=1, le=365)
     password: str | None = None
+    scheduled_at: datetime | None = None
 
 
 class DeliveryResponse(BaseModel):
@@ -19,6 +20,7 @@ class DeliveryResponse(BaseModel):
     destination: str | None = None
     public_url: str | None = None
     created_at: datetime
+    scheduled_at: datetime | None = None
     sent_at: datetime | None = None
     opened_at: datetime | None = None
 

@@ -48,6 +48,7 @@ class Delivery(Base, UUIDPrimaryKeyMixin):
     opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_message: Mapped[str | None] = mapped_column(Text)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ShareEvent(Base, UUIDPrimaryKeyMixin):
