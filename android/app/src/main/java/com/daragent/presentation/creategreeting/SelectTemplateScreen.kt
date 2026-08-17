@@ -18,10 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 
 @Composable
 fun SelectTemplateScreen(
     viewModel: CreateGreetingViewModel = viewModel(),
+    navController: NavHostController? = null,
     onNext: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -40,7 +42,13 @@ fun SelectTemplateScreen(
                         .padding(horizontal = 16.dp)
                         .clickable {
                             viewModel.selectTemplate(template)
-                            onNext()
+                            val project = state.project
+                            if (project != null) {
+                                viewModel.selectTemplate(template)
+                                val selected = state.selectedRecommendation
+                                val templateVersionId = selected?.templateVersionId ?: template.id
+                                navController?.navigate("generation_progress/${project.id}?templateVersionId=$templateVersionId")
+                            }
                         }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {

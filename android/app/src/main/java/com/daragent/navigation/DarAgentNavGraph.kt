@@ -10,6 +10,7 @@ import com.daragent.presentation.creategreeting.RecommendationsScreen
 import com.daragent.presentation.creategreeting.SelectOccasionScreen
 import com.daragent.presentation.creategreeting.SelectPersonScreen
 import com.daragent.presentation.creategreeting.SelectTemplateScreen
+import com.daragent.presentation.generationprogress.GenerationProgressScreen
 import com.daragent.presentation.home.HomeScreen
 
 object DarAgentDestinations {
@@ -22,6 +23,7 @@ object DarAgentDestinations {
     const val RECOMMENDATIONS_ROUTE = "recommendations"
     const val SELECT_TEMPLATE_ROUTE = "select_template"
     const val GENERATION_ROUTE = "generation"
+    const val GENERATION_PROGRESS_ROUTE = "generation_progress"
     const val TEMPLATES_ROUTE = "templates"
     const val PAYMENT_ROUTE = "payment"
     const val PROFILE_ROUTE = "profile"
@@ -37,5 +39,10 @@ fun DarAgentNavGraph(navController: NavHostController) {
         composable(DarAgentDestinations.RECOMMENDATIONS_ROUTE) { RecommendationsScreen(onNext = { navController.navigate(DarAgentDestinations.SELECT_TEMPLATE_ROUTE) }, onBack = { navController.popBackStack() }) }
         composable(DarAgentDestinations.SELECT_TEMPLATE_ROUTE) { SelectTemplateScreen(onNext = { navController.navigate(DarAgentDestinations.GENERATION_ROUTE) }, onBack = { navController.popBackStack() }) }
         composable(DarAgentDestinations.GENERATION_ROUTE) { GenerationScreen(onBack = { navController.popBackStack() }) }
+        composable("${DarAgentDestinations.GENERATION_PROGRESS_ROUTE}/{generationId}") { backStackEntry ->
+            val generationId = backStackEntry.arguments?.getString("generationId") ?: return@composable
+            val accessToken = ""
+            GenerationProgressScreen(generationId = generationId, accessToken = accessToken, onBack = { navController.popBackStack() })
+        }
     }
 }

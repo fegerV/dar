@@ -1,6 +1,7 @@
 package com.daragent.domain.repository
 
 import com.daragent.domain.model.Brief
+import com.daragent.domain.model.Generation
 import com.daragent.domain.model.Occasion
 import com.daragent.domain.model.Project
 import com.daragent.domain.model.Recommendation
@@ -13,4 +14,5 @@ interface ProjectRepository {
     suspend fun getRecommendations(projectId: String): Result<List<Recommendation>>
     suspend fun selectRecommendation(projectId: String, recommendationId: String): Result<Recommendation>
     suspend fun listOccasions(): Result<List<Occasion>>
+    suspend fun startGeneration(projectId: String, templateVersionId: String): Result<Generation>
 }

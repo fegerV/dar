@@ -1,15 +1,15 @@
 package com.daragent.data.repository
 
-import com.daragent.data.network.api.BriefsApi
-import com.daragent.data.network.api.ProjectsApi
-import com.daragent.data.network.api.RecommendationsApi
+import com.daragent.data.network.api.GenerationsApi
 import com.daragent.data.network.api.HolidaysApi
 import com.daragent.data.network.dto.BriefResponseDto
 import com.daragent.data.network.dto.BriefUpdateRequest
+import com.daragent.data.network.dto.GenerationResponse
 import com.daragent.data.network.dto.ProjectCreateRequest
 import com.daragent.data.network.dto.ProjectResponseDto
 import com.daragent.data.network.dto.RecommendationResponseDto
 import com.daragent.data.network.dto.RecommendationSelectRequest
+import com.daragent.data.network.dto.StartGenerationRequest
 import com.daragent.domain.model.Brief
 import com.daragent.domain.model.Occasion
 import com.daragent.domain.model.Project
@@ -22,7 +22,8 @@ class ProjectRepositoryImpl(
     private val projectsApi: ProjectsApi,
     private val briefsApi: BriefsApi,
     private val recommendationsApi: RecommendationsApi,
-    private val holidaysApi: HolidaysApi
+    private val holidaysApi: HolidaysApi,
+    private val generationsApi: GenerationsApi
 ) : ProjectRepository {
     override suspend fun create(recipientId: String, occasionCode: String, occasionTitle: String?, title: String?): Result<Project> =
         withContext(Dispatchers.IO) {
@@ -84,6 +85,13 @@ class ProjectRepositoryImpl(
             }
         }
 
+    override suspend fun startGeneration(projectId: String, templateVersionId: String): Result<com.daragent.domain.model.Generation> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                generationsApi.start(StartGenerationRequest(projectId, templateVersionId)).body()!!.toDomain()
+            }
+        }
+
     override suspend fun listOccasions(): Result<List<Occasion>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -133,4 +141,13 @@ private fun RecommendationResponseDto.toDomain() = Recommendation(
     matchReasons = match_reasons,
     explanation = explanation,
     selectedAt = selected_at
+)
+
+private fun GenerationResponse.toDomain() = com.daragent.domain.model.Generation(
+    id = id,
+    projectId = project_id,
+    status = status,
+    progress = progress,
+    currentStep = current_step,
+    estimatedSeconds = estimated_seconds
 )
