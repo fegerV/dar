@@ -4,6 +4,7 @@ from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.generations import router as generations_router
 from app.api.v1.payments import router as payments_router
+from app.api.v1.quality import router as quality_router
 from app.api.v1.recipients import router as recipients_router
 from app.api.v1.projects import router as projects_router
 from app.api.v1.recommendations import router as recommendations_router
@@ -18,3 +19,4 @@ v1_router.include_router(templates_router)
 v1_router.include_router(assets_router)
 v1_router.include_router(generations_router)
 v1_router.include_router(payments_router)
+v1_router.include_router(quality_router)
