@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.repositories.audit import AuditRepository
 from app.schemas.admin import (
     AdminDashboardStats,
     AdminTemplateCreate,
@@ -67,3 +68,27 @@ async def create_template(
         raise ForbiddenException("Admin access required")
     service = AdminService(db)
     return await service.create_template(body)
+
+
+@router.get("/audit-logs")
+async def list_audit_logs(
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user.is_admin:
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Admin access required")
+    repo = AuditRepository(db)
+    logs = await repo.list_by_actor(current_user.id, limit=limit)
+    return [
+        {
+            "id": str(log.id),
+            "action": log.action,
+            "target_type": log.target_type,
+            "target_id": str(log.target_id) if log.target_id else None,
+            "ip_address": log.ip_address,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in logs
+    ]

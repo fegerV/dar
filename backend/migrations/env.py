@@ -26,6 +26,9 @@ from app.models.asset import StorageObject, Asset  # noqa: F401
 from app.models.recommendation import Recommendation  # noqa: F401
 from app.models.delivery import DeliveryLink, Delivery, ShareEvent  # noqa: F401
 from app.models.analytics import AnalyticsEvent  # noqa: F401
+from app.models.holiday import Holiday  # noqa: F401
+from app.models.audit import AuditLog  # noqa: F401
+from app.models.relationship import RelationshipType  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,9 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.payment import Entitlement
 from app.models.user import User, UserAuthIdentity
+from app.repositories.entitlements import EntitlementRepository
 from app.repositories.users import UserRepository
 
 
@@ -40,6 +43,18 @@ class AuthService:
             credentials_json={"password_hash": hash_password(password)},
         )
         await self.repo.create_auth_identity(identity)
+
+        entitlement = Entitlement(
+            user_id=user.id,
+            code="welcome_generation",
+            quantity=1,
+            consumed=0,
+            source="registration",
+            created_at=datetime.now(timezone.utc),
+        )
+        entitlement_repo = EntitlementRepository(db)
+        await entitlement_repo.create(entitlement)
+        await db.commit()
 
         return self._make_tokens(user.id)
 

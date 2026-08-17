@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.lifespan import lifespan
+from app.middleware.audit import AuditMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 
 app = FastAPI(
@@ -13,6 +14,7 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(AuditMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,

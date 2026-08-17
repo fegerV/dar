@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,4 +32,24 @@ async def get_current_user(
     user = await repo.get_by_id(user_id)
     if user is None or user.status != "active":
         raise UnauthorizedException("User not found or inactive")
+    return user
+
+
+async def get_current_user_optional(request: Request) -> object | None:
+    auth = request.headers.get("authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        return None
+    token = auth.split(" ", 1)[1]
+    payload = decode_token(token)
+    if payload is None or payload.get("type") != "access":
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    from app.core.database import get_db
+    db = next(get_db()) if hasattr(get_db, "__call__") else None
+    if db is None:
+        return None
+    repo = UserRepository(db)
+    user = await repo.get_by_id(UUID(user_id))
     return user
