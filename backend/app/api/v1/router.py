@@ -22,6 +22,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.share import router as share_router
 from app.api.v1.templates import router as templates_router
+from app.api.v1.telegram import router as telegram_router
 from app.api.v1.ab_tests import router as ab_tests_router
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -31,6 +32,7 @@ v1_router.include_router(projects_router)
 v1_router.include_router(recommendations_router)
 v1_router.include_router(templates_router)
 v1_router.include_router(ab_tests_router)
+v1_router.include_router(telegram_router)
 v1_router.include_router(assets_router)
 v1_router.include_router(generations_router)
 v1_router.include_router(generations_stream_router)
