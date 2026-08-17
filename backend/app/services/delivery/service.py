@@ -1,0 +1,133 @@
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundException, ValidationException
+from app.models.delivery import Delivery, DeliveryLink, ShareEvent
+from app.models.project import Project
+from app.repositories.delivery import DeliveryRepository
+from app.repositories.projects import ProjectRepository
+from app.schemas.delivery import (
+    DeliveryCreate,
+    DeliveryListResponse,
+    DeliveryResponse,
+    PublicShareView,
+    ShareLinkResponse,
+)
+
+
+class DeliveryService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.repo = DeliveryRepository(db)
+        self.project_repo = ProjectRepository(db)
+
+    async def create_delivery(
+        self, project_id: UUID, user_id: UUID, body: DeliveryCreate
+    ) -> DeliveryResponse:
+        project = await self.project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
+
+        generation = await self.repo.get_latest_generation(project_id)
+        if generation is None or generation.status != "completed":
+            raise ValidationException("Видео ещё не готово к доставке")
+
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_in_days)
+
+        link = DeliveryLink(
+            project_id=project_id,
+            generation_id=generation.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            max_views=None,
+            is_active=True,
+        )
+        link = await self.repo.create_link(link)
+
+        public_url = f"/share/{token}"
+
+        delivery = Delivery(
+            project_id=project_id,
+            generation_id=generation.id,
+            user_id=user_id,
+            channel=body.channel,
+            status="sent" if body.channel != "link" else "created",
+            destination=body.destination,
+            delivery_link_id=link.id,
+        )
+        delivery = await self.repo.create_delivery(delivery)
+
+        if body.channel == "link":
+            return DeliveryResponse(
+                id=delivery.id,
+                project_id=project_id,
+                channel=body.channel,
+                status="created",
+                destination=body.destination,
+                public_url=public_url,
+                created_at=delivery.created_at,
+                sent_at=None,
+                opened_at=None,
+            )
+
+        return DeliveryResponse(
+            id=delivery.id,
+            project_id=project_id,
+            channel=body.channel,
+            status=delivery.status,
+            destination=body.destination,
+            public_url=public_url,
+            created_at=delivery.created_at,
+            sent_at=delivery.sent_at,
+            opened_at=delivery.opened_at,
+        )
+
+    async def list_deliveries(self, project_id: UUID, user_id: UUID) -> DeliveryListResponse:
+        project = await self.project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
+
+        deliveries = await self.repo.list_by_project(project_id)
+        return DeliveryListResponse(
+            items=[DeliveryResponse.model_validate(d) for d in deliveries]
+        )
+
+    async def get_public_share(self, token: str) -> PublicShareView:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        link = await self.repo.get_link_by_token(token_hash)
+        if link is None or not link.is_active:
+            raise NotFoundException("Ссылка не найдена или недоступна")
+
+        if link.expires_at and datetime.now(timezone.utc) > link.expires_at:
+            raise NotFoundException("Ссылка истекла")
+
+        await self.repo.increment_link_views(link.id)
+
+        generation = await self.repo.get_latest_generation(link.project_id)
+        output = generation.output_json if generation else {}
+
+        return PublicShareView(
+            project_id=link.project_id,
+            title=None,
+            status="ready",
+            recipient_name=None,
+            video_url=output.get("video_url"),
+            thumbnail_url=output.get("thumbnail_url"),
+            duration_sec=output.get("duration_sec"),
+        )
+
+    async def track_share_event(
+        self, project_id: UUID, channel: str, user_id: UUID | None = None
+    ) -> None:
+        event = ShareEvent(
+            project_id=project_id,
+            user_id=user_id,
+            channel=channel,
+            metadata={},
+        )
+        await self.repo.create_share_event(event)
+        await self.db.commit()
