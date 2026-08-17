@@ -69,8 +69,20 @@ interface GenerationsApi {
 }
 
 interface PaymentsApi {
-    @POST("payments")
-    suspend fun create(@Body request: CreatePaymentRequest): Response<PaymentResponse>
+    @POST("projects/{project_id}")
+    suspend fun create(@Path("project_id") projectId: String, @Body request: PaymentCreateRequest): Response<PaymentResponse>
+
+    @GET("{payment_id}")
+    suspend fun get(@Path("payment_id") paymentId: String): Response<PaymentResponse>
+
+    @GET("wallet")
+    suspend fun wallet(): Response<WalletResponse>
+
+    @GET("entitlements")
+    suspend fun entitlements(): Response<List<EntitlementResponse>>
+
+    @POST("entitlements/{entitlement_id}/consume")
+    suspend fun consumeEntitlement(@Path("entitlement_id") entitlementId: String, @Body request: ConsumeEntitlementRequest = ConsumeEntitlementRequest()): Response<EntitlementResponse>
 }
 
 interface HolidaysApi {

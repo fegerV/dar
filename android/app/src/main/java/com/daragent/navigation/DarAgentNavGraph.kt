@@ -12,6 +12,7 @@ import com.daragent.presentation.creategreeting.SelectPersonScreen
 import com.daragent.presentation.creategreeting.SelectTemplateScreen
 import com.daragent.presentation.generationprogress.GenerationProgressScreen
 import com.daragent.presentation.home.HomeScreen
+import com.daragent.presentation.payment.PaymentScreen
 
 object DarAgentDestinations {
     const val HOME_ROUTE = "home"
@@ -24,6 +25,7 @@ object DarAgentDestinations {
     const val SELECT_TEMPLATE_ROUTE = "select_template"
     const val GENERATION_ROUTE = "generation"
     const val GENERATION_PROGRESS_ROUTE = "generation_progress"
+    const val PAYMENT_ROUTE = "payment"
     const val TEMPLATES_ROUTE = "templates"
     const val PAYMENT_ROUTE = "payment"
     const val PROFILE_ROUTE = "profile"
@@ -43,6 +45,11 @@ fun DarAgentNavGraph(navController: NavHostController) {
             val generationId = backStackEntry.arguments?.getString("generationId") ?: return@composable
             val accessToken = ""
             GenerationProgressScreen(generationId = generationId, accessToken = accessToken, onBack = { navController.popBackStack() })
+        }
+        composable("${DarAgentDestinations.PAYMENT_ROUTE}/{projectId}/{amount}") { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+            val amount = backStackEntry.arguments?.getString("amount")?.toDoubleOrNull() ?: 0.0
+            PaymentScreen(projectId = projectId, amount = amount, onBack = { navController.popBackStack() }, onSuccess = { navController.popBackStack() })
         }
     }
 }

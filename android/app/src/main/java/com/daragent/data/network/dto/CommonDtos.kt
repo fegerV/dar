@@ -86,9 +86,37 @@ data class CreatePaymentRequest(
 data class PaymentResponse(
     val id: String,
     val user_id: String,
+    val project_id: String?,
     val amount: Double,
     val status: String,
+    val method: String,
     val created_at: String
+)
+
+@JsonClass(generateAdapter = true)
+data class PaymentCreateRequest(
+    val method: String
+)
+
+@JsonClass(generateAdapter = true)
+data class WalletResponse(
+    val user_id: String,
+    val balance_rub: Double,
+    val bonus_balance: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class EntitlementResponse(
+    val id: String,
+    val code: String,
+    val quantity: Int,
+    val consumed: Int,
+    val expires_at: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class ConsumeEntitlementRequest(
+    val quantity: Int = 1
 )
 
 @JsonClass(generateAdapter = true)
