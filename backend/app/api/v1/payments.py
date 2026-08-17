@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -8,11 +8,11 @@ from app.schemas.payment import (
     EntitlementResponse,
     PaymentCreate,
     PaymentResponse,
-    PaymentWebhookRequest,
     PaymentWebhookResponse,
     WalletResponse,
 )
-from app.services.assets.service import PaymentService
+from app.services.entitlements.service import EntitlementService
+from app.services.payments.service import PaymentService
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -34,10 +34,44 @@ async def create_payment(
     current_user=Depends(get_current_user),
 ):
     service = PaymentService(db)
-    return await service.create_payment(current_user.id, project_id, body)
+    return await service.create_payment(
+        current_user.id, project_id, amount=0, method=body.method
+    )
+
+
+@router.get("/{payment_id}", response_model=PaymentResponse)
+async def get_payment(
+    payment_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = PaymentService(db)
+    return await service.get_payment(payment_id)
 
 
 @router.post("/webhook/yookassa", response_model=PaymentWebhookResponse)
-async def yookassa_webhook(body: PaymentWebhookRequest):
-    service = PaymentService(None)
-    return await service.handle_webhook(body)
+async def yookassa_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    body = await request.json()
+    signature = request.headers.get("X-Yookassa-Signature")
+    service = PaymentService(db)
+    result = await service.handle_webhook(body, signature)
+    return PaymentWebhookResponse(**result)
+
+
+@router.get("/entitlements", response_model=list[EntitlementResponse])
+async def list_entitlements(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = EntitlementService(db)
+    return await service.list_entitlements(current_user.id)
+
+
+@router.post("/entitlements/{entitlement_id}/consume", response_model=EntitlementResponse)
+async def consume_entitlement(
+    entitlement_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = EntitlementService(db)
+    return await service.consume_entitlement(current_user.id, entitlement_id)
