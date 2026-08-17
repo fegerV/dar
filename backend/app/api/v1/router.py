@@ -6,6 +6,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.generations import router as generations_router
 from app.api.v1.payments import router as payments_router
+from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.prompt_compiler import router as prompt_compiler_router
 from app.api.v1.quality import router as quality_router
 from app.api.v1.recipients import router as recipients_router
@@ -27,4 +28,5 @@ v1_router.include_router(payments_router)
 v1_router.include_router(delivery_router)
 v1_router.include_router(share_router)
 v1_router.include_router(prompt_compiler_router)
+v1_router.include_router(pipeline_router)
 v1_router.include_router(admin_router)

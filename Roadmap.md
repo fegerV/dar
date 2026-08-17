@@ -102,27 +102,27 @@ DarAgent — платформа, которая позволяет пользо�
 
 ### 2.1 Asset Management System
 
-- [ ] Storage abstraction layer
-  - [ ] `StorageProvider` interface (MinIO, Yandex Disk, S3)
-  - [ ] Factory pattern для выбора провайдера по config
-- [ ] Upload API с presigned URLs
-  - [ ] `POST /assets/upload-url` — получить presigned URL
-  - [ ] `POST /assets/confirm-upload` — подтвердить загрузку
-- [ ] Проверка файлов
-  - [ ] MIME type validation
-  - [ ] Size limits (image: 10MB, video: 500MB)
-  - [ ] Dimensions check (min 720p for video)
-- [ ] Moderation queue
-  - [ ] Автоматическая базовая проверка (NSFW detection)
-  - [ ] Ручная модерация для flagged content
-  - [ ] Статусы: `pending → approved → rejected`
-- [ ] CDN-friendly URL generation
-  - [ ] Signed URLs с expiration
-  - [ ] Thumbnail generation для изображений
+- [x] Storage abstraction layer
+  - [x] `StorageProvider` interface (MinIO, Yandex Disk, S3)
+  - [x] Factory pattern для выбора провайдера по config
+- [x] Upload API с presigned URLs
+  - [x] `POST /assets/upload-url` — получить presigned URL
+  - [x] `POST /assets/confirm-upload` — подтвердить загрузку
+- [x] Проверка файлов
+  - [x] MIME type validation
+  - [x] Size limits (image: 10MB, video: 500MB)
+  - [x] Dimensions check (min 720p for video)
+- [x] Moderation queue
+  - [x] Автоматическая базовая проверка (NSFW detection)
+  - [x] Ручная модерация для flagged content
+  - [x] Статусы: `pending → approved → rejected`
+- [x] CDN-friendly URL generation
+  - [x] Signed URLs с expiration
+  - [x] Thumbnail generation для изображений
 
 ### 2.2 Video Generation Pipeline
 
-- [ ] Оркестратор пайплайна (Celery canvas / chain):
+- [x] Оркестратор пайплайна (Celery canvas / chain):
   ```
   script_approved
     → voice_synthesis
@@ -132,14 +132,14 @@ DarAgent — платформа, которая позволяет пользо�
     → post_processing
     → upload_final
   ```
-- [ ] Интеграция с TTS-провайдером
-  - [ ] Yandex SpeechKit (primary)
-  - [ ] ElevenLabs (fallback/premium)
+- [x] Интеграция с TTS-провайдером
+  - [x] Yandex SpeechKit (primary)
+  - [x] ElevenLabs (fallback/premium)
   - [ ] Voice cloning (optional, Phase 3+)
-- [ ] Интеграция с Video AI
-  - [ ] HeyGen API (primary)
-  - [ ] D-ID API (fallback)
-  - [ ] SadTalker self-hosted (cost optimization)
+- [x] Интеграция с Video AI
+  - [x] HeyGen API (primary)
+  - [x] D-ID API (fallback)
+  - [x] SadTalker self-hosted (cost optimization)
 - [ ] Progress tracking через `generation_steps`
   - [ ] Real-time status updates
   - [ ] ETA calculation
