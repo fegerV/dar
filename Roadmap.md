@@ -9,7 +9,7 @@
 
 DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
 
-**Текущий статус:** Фаза 0–1, 2.1–2.4, 3.1–3.3 и 5 выполнены. Переход к Фазе 6 и оставшимся пунктам 2.2/2.3/3.2.
+**Текущий статус:** Фаза 0–1, 2.1–2.2, 3.1–3.3 и 5 выполнены. Переход к Фазе 6 и оставшимся пунктам 2.3/3.2.
 
 ---
 
@@ -140,11 +140,11 @@ DarAgent — платформа, которая позволяет пользо�
   - [x] HeyGen API (primary)
   - [x] D-ID API (fallback)
   - [x] SadTalker self-hosted (cost optimization)
-- [ ] Progress tracking через `generation_steps`
-  - [ ] Real-time status updates
-  - [ ] ETA calculation
-- [ ] WebSocket/SSE endpoint для real-time прогресса в UI
-  - [ ] `GET /api/v1/generations/{id}/stream`
+- [x] Progress tracking через `generation_steps`
+  - [x] Real-time status updates
+  - [x] ETA calculation
+- [x] WebSocket/SSE endpoint для real-time прогресса в UI
+  - [x] `GET /api/v1/generations/{id}/stream`
 
 ### 2.3 Template Rendering Engine
 
@@ -413,22 +413,22 @@ DarAgent — платформа, которая позволяет пользо�
 ## 🎯 Следующие шаги (Sprint 1)
 
 1. **Завершить Фазу 0** (1 неделя)
-   - [ ] Дописать MinIO storage adapter
-   - [ ] Дописать YooKassa client (stub)
-   - [ ] Запустить `docker compose up`, применить миграцию
-   - [ ] Написать базовые health-check тесты
+   - [x] MinIO storage adapter
+   - [x] YooKassa client
+   - [x] `docker compose up` + миграции
+   - [x] Health-check тесты
 
 2. **Начать Фазу 1.1: Recipients CRUD** (2 недели)
-   - [ ] Repository + Service для Recipients
-   - [ ] API endpoints + Pydantic schemas
-   - [ ] Unit + integration tests
-   - [ ] API documentation (OpenAPI)
+   - [x] Repository + Service для Recipients
+   - [x] API endpoints + Pydantic schemas
+   - [x] Unit + integration tests
+   - [x] API documentation (OpenAPI)
 
 3. **Параллельно: Grok Prompt Engineering** (ongoing)
-   - [ ] Тестировать промпты для разных occasions
-   - [ ] Оценить качество вывода (human eval)
-   - [ ] Определить optimal temperature / max_tokens
-   - [ ] Документировать best practices
+   - [x] Тестировать промпты для разных occasions
+   - [x] Оценить качество вывода (human eval)
+   - [x] Определить optimal temperature / max_tokens
+   - [x] Документировать best practices
 
 4. **Frontend Kickoff** (1 неделя)
    - [ ] Выбрать стек (Next.js 14 App Router recommended)
