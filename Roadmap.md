@@ -9,7 +9,7 @@
 
 DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
 
-**Текущий статус:** Фаза 0 (Фундамент) завершена на 90%. Переход к Фазе 1.
+**Текущий статус:** Фаза 1 выполнена. Переход к Фазе 2 и Фазе 3.
 
 ---
 
@@ -26,9 +26,9 @@ DarAgent — платформа, которая позволяет пользо�
 | Core Config & Exceptions | ✅ | Pydantic Settings, Unified Error Format |
 | Celery Setup | ✅ | Redis broker, autodiscover |
 | Seed Script | ✅ | Templates, Holidays, Relationships |
-| Storage Integration (MinIO) | 🔲 | Presigned URLs, upload/download |
-| Payment Integration (YooKassa) | 🔲 | Создание платежа, webhook |
-| Grok AI Client | 🔲 | Базовая интеграция, промпт-тесты |
+| Storage Integration (MinIO) | ✅ | Presigned URLs, upload/download |
+| Payment Integration (YooKassa) | ✅ | Создание платежа, webhook, wallet, entitlements |
+| Grok AI Client | ✅ | Базовая интеграция, промпт-тесты |
 
 ---
 
