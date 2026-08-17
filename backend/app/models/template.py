@@ -73,6 +73,7 @@ class Scene(Base, UUIDPrimaryKeyMixin):
     source_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     preview_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     scene_config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    condition: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

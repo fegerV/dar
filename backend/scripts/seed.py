@@ -133,6 +133,13 @@ async def seed():
                 rights_status="cleared",
                 duration_sec=tpl_data["estimated_duration_sec"],
                 scene_config={"camera": "medium_shot", "lighting": "warm"},
+                condition={
+                    "field": "recipient.age",
+                    "operator": ">=",
+                    "value": 18,
+                    "then": "main_scene",
+                    "else": "main_scene_soft",
+                },
             )
             db.add(scene)
             print(f"Created template: {tpl_data['code']}")
