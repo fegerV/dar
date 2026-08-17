@@ -9,7 +9,7 @@
 
 DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
 
-**Текущий статус:** Фаза 0–1, 2.1–2.2, 3.1–3.3 и 5 выполнены. Переход к Фазе 6 и оставшимся пунктам 2.3/3.2.
+**Текущий статус:** Фаза 0–1, 2.1–2.2, 3.1–3.3 и 5 выполнены. Переход к закрытию пробелов из ДарАГЕНТ.txt и к Фазе 6.
 
 **Ключевой принцип MVP:** Пользователь не создаёт контент с нуля. Он выбирает повод → человека → настроение → формат, а система сама собирает лучший сценарий поздравления.
 
@@ -322,6 +322,41 @@ DarAgent — платформа, которая позволяет пользо�
   - [x] In-app NPS survey
   - [x] CSAT after delivery
   - [x] Feature request voting
+
+---
+
+## 🕳️ Пробелы из ДарАГЕНТ.txt
+
+*Ниже — расширение Roadmap до полного соответствия технической спецификации.*
+
+### Backend / Domain
+
+- [ ] Calendar Engine — календарь праздников, профессиональных дней, персональных событий + automatic Today Pack
+- [ ] Relationship Context — расширенные типы отношений, subtypes, grupos/circles, inside jokes, shared memories
+- [ ] Prompt Compiler — детерминированный компилятор `Template + Creative Brief + Scene → provider prompt`
+- [ ] Template Conditions — IF/ELSE по `recipient.age`, `relationship`, `occasion` и другим полям
+- [ ] Template Versioning & QA — версии, статусы `draft/testing/published/paused/archived`, обязательный QA-чеклист
+- [ ] 40 начальных шаблонов — каталог по категориям с карточками, себестоимостью и метриками
+- [ ] Gift/Delivery integration — интеграция с доставкой физических подарков / оживающими портретами
+- [ ] First Generation Free — `welcome_generation_credit`, отдельный entitlement type
+- [ ] Bonus System Details — пятничный бонус, бонусы за действия, expiry, конфигурируемые через Admin
+- [ ] Detailed Admin Panel — Users, Projects, Generations, Payments, Templates, Referrals, Audit
+- [ ] Security Events & Audit Log — `audit_logs` + `admin_users` + actions
+- [ ] Backup Strategy — daily full backup, WAL/PITR, offsite, retention
+- [ ] Production Security — Cloudflare, firewall, SSH, non-root Docker, secrets management
+- [ ] Disaster Recovery — RTO/RPO, recovery runbook, tested restore
+- [ ] Health/Disk Monitoring — Prometheus + alerts on disk/CPU/memory/queue depth
+- [ ] Account Deletion — GDPR export, hard delete, anonymization
+
+### Product / Growth
+
+- [ ] Contact Import — локальная обработка контактов, явный выбор, privacy-first
+- [ ] Scheduled Delivery — отложенная отправка к дате/времени, timezone-aware
+- [ ] Referral Program — `referral_codes`, `referrals`, бонусы за invite/registration
+- [ ] Telegram Bot — acquisition/распространение через Telegram, deep links, Mini App-ready backend
+- [ ] Android App — Kotlin/Jetpack Compose, Clean Architecture, основное клиентское приложение
+- [ ] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
+- [ ] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
 
 ---
 
