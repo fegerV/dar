@@ -21,7 +21,11 @@ celery_app.conf.update(
         "process-scheduled-deliveries-every-minute": {
             "task": "app.workers.delivery_tasks.process_scheduled_deliveries",
             "schedule": 60.0,
-        }
+        },
+        "friday-bonus-every-friday": {
+            "task": "app.workers.bonus_tasks.friday_bonus",
+            "schedule": 604800.0,
+        },
     },
 )
 
