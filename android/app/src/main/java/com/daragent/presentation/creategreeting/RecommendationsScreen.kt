@@ -1,5 +1,6 @@
-package com.daragent.presentation.home
+package com.daragent.presentation.creategreeting
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,26 +18,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 
 @Composable
-fun HomeScreen(navController: NavHostController? = null, viewModel: HomeViewModel = viewModel()) {
+fun RecommendationsScreen(
+    viewModel: CreateGreetingViewModel = viewModel(),
+    onNext: () -> Unit = {},
+    onBack: () -> Unit = {}
+) {
     val state by viewModel.state.collectAsState()
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "Кого будем удивлять?", modifier = Modifier.padding(16.dp))
+        Text(text = "Рекомендации для вас", modifier = Modifier.padding(16.dp))
         if (state.isLoading) {
             Text(text = "Загрузка...", modifier = Modifier.padding(16.dp))
         }
         state.error?.let { Text(text = it, modifier = Modifier.padding(16.dp)) }
         LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.people) { person ->
-                Card(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(text = person.name, modifier = Modifier.padding(16.dp))
+            items(state.recommendations) { rec ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clickable {
+                            viewModel.selectRecommendation(rec)
+                            viewModel.loadTemplates()
+                            onNext()
+                        }
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(text = "Рекомендация #${rec.rank}")
+                        rec.explanation?.let { Text(text = it) }
+                        rec.matchReasons.take(2).forEach { Text(text = "• $it") }
+                    }
                 }
             }
         }
-        Button(onClick = { navController?.navigate("select_person") }, modifier = Modifier.padding(16.dp)) {
-            Text("+ Новое поздравление")
+        Button(onClick = onBack, modifier = Modifier.padding(16.dp)) {
+            Text("Назад")
         }
     }
 }
