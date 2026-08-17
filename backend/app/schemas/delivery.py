@@ -21,6 +21,7 @@ class DeliveryResponse(BaseModel):
     public_url: str | None = None
     created_at: datetime
     scheduled_at: datetime | None = None
+    gift_fulfillment_status: str | None = None
     sent_at: datetime | None = None
     opened_at: datetime | None = None
 
