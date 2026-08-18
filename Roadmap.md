@@ -345,34 +345,34 @@ TARGETED REGENERATION
 
 *Цель: Продукт, которым приятно пользоваться.*
 
-- [ ] Responsive Web App (PWA-ready)
-  - [ ] Mobile-first design
-  - [ ] Service worker для offline
-  - [ ] Install prompt
-- [ ] Onboarding flow
-  - [ ] Interactive tutorial (первый визит)
-  - [ ] Demo project (попробовать без регистрации)
-  - [ ] Progressive disclosure
-- [ ] Dashboard
-  - [ ] Мои проекты (active, completed, archived)
-  - [ ] История покупок
-  - [ ] Избранные получатели
-  - [ ] Quick actions
-- [ ] Редактор сценария
-  - [ ] Post-generation text editing
-  - [ ] Regenerate specific sections
-  - [ ] Version history
-- [ ] Push-уведомления
-  - [ ] Web Push API
-  - [ ] Telegram notifications
-  - [ ] Email digest (weekly)
-- [ ] Accessibility (a11y)
-  - [ ] WCAG 2.1 AA compliance
-  - [ ] Screen reader support
-  - [ ] Keyboard navigation
-- [ ] i18n подготовка
-  - [ ] String extraction
-  - [ ] EN/RU translation
+- [x] Responsive Web App (PWA-ready)
+  - [x] Mobile-first design
+  - [x] Service worker для offline
+  - [x] Install prompt
+- [x] Onboarding flow
+  - [x] Interactive tutorial (первый визит)
+  - [x] Demo project (попробовать без регистрации)
+  - [x] Progressive disclosure
+- [x] Dashboard
+  - [x] Мои проекты (active, completed, archived)
+  - [x] История покупок
+  - [x] Избранные получатели
+  - [x] Quick actions
+- [x] Редактор сценария
+  - [x] Post-generation text editing
+  - [x] Regenerate specific sections
+  - [x] Version history
+- [x] Push-уведомления
+  - [x] Web Push API
+  - [x] Telegram notifications
+  - [x] Email digest (weekly)
+- [x] Accessibility (a11y)
+  - [x] WCAG 2.1 AA compliance
+  - [x] Screen reader support
+  - [x] Keyboard navigation
+- [x] i18n подготовка
+  - [x] String extraction
+  - [x] EN/RU translation
   - [ ] RTL support (future)
 
 ---

@@ -78,3 +78,8 @@ target/
 *.lz
 *.lzo
 ```
+# Web app
+web-app/node_modules/
+web-app/.next/
+web-app/out/
+web-app/.vercel/
