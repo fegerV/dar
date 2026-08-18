@@ -26,7 +26,6 @@ import androidx.navigation.NavHostController
 @Composable
 fun GenerationProgressScreen(
     generationId: String,
-    accessToken: String,
     navController: NavHostController? = null,
     viewModel: GenerationProgressViewModel = viewModel(),
     onBack: () -> Unit = {}

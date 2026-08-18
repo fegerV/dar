@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val generationId = intent?.getStringExtra("generation_id")
                 if (generationId != null) {
-                    navController.navigate("generation_progress/$generationId")
+                    navController.navigate("generation_progress/$generationId?templateVersionId=&projectId=&amount=0")
                 }
                 MainScreen(navController = navController)
             }

@@ -141,6 +141,41 @@ export interface SystemSetting {
   updated_at: string
 }
 
+export interface AuditLog {
+  id: string
+  actor_user_id: string | null
+  action: string
+  target_type: string | null
+  target_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+export interface AdminOrder {
+  id: string
+  project_id: string
+  requested_by_user_id: string | null
+  status: string
+  cost_rub: number
+  template_version_id: string | null
+  model_name: string | null
+  error_code: string | null
+  created_at: string
+  completed_at: string | null
+  input_json?: Record<string, unknown> | null
+  output_json?: Record<string, unknown> | null
+}
+
+export interface SystemSetting {
+  id: string
+  key: string
+  value: Record<string, unknown>
+  description: string | null
+  is_public: boolean
+  updated_at: string
+}
+
 export interface UserWallet {
   user_id: string
   balance_rub: number
@@ -166,32 +201,6 @@ export interface Referral {
   referrer_bonus_granted: boolean
   referee_bonus_granted: boolean
   metadata: Record<string, unknown> | null
-  created_at: string
-}
-
-export interface AdminOrder {
-  id: string
-  project_id: string
-  requested_by_user_id: string | null
-  status: string
-  cost_rub: number
-  template_version_id: string | null
-  model_name: string | null
-  error_code: string | null
-  created_at: string
-  completed_at: string | null
-  input_json?: Record<string, unknown> | null
-  output_json?: Record<string, unknown> | null
-}
-
-export interface AuditLog {
-  id: string
-  actor_user_id: string | null
-  action: string
-  target_type: string | null
-  target_id: string | null
-  ip_address: string | null
-  user_agent: string | null
   created_at: string
 }
 

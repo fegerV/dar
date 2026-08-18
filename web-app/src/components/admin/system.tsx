@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Save } from "lucide-react"
 import { apiFetch } from "@/lib/api"
-import type { AdminAuditLog, SystemSetting } from "@/types/admin"
+import type { AuditLog, SystemSetting } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 
@@ -27,7 +27,7 @@ const initialHealth = [
 export function AdminSystem() {
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<SystemSetting[]>([])
-  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
@@ -43,7 +43,7 @@ export function AdminSystem() {
     setLoading(true)
     Promise.all([
       apiFetch<SystemSetting[]>("/admin/system/settings").catch(() => []),
-      apiFetch<AdminAuditLog[]>("/admin/audit-logs").catch(() => []),
+      apiFetch<AuditLog[]>("/admin/audit-logs").catch(() => []),
     ]).then(([s, a]) => {
       setSettings(s)
       setAuditLogs(a)

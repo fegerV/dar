@@ -1,6 +1,5 @@
 package com.daragent.navigation
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -23,8 +22,6 @@ import com.daragent.presentation.profile.ProfileScreen
 
 object DarAgentDestinations {
     const val HOME_ROUTE = "home"
-    const val PEOPLE_ROUTE = "people"
-    const val CREATE_GREETING_ROUTE = "create_greeting"
     const val SELECT_PERSON_ROUTE = "select_person"
     const val SELECT_OCCASION_ROUTE = "select_occasion"
     const val BRIEF_ROUTE = "brief"
@@ -34,7 +31,6 @@ object DarAgentDestinations {
     const val GENERATION_PROGRESS_ROUTE = "generation_progress"
     const val PAYMENT_ROUTE = "payment"
     const val DELIVERY_ROUTE = "delivery"
-    const val TEMPLATES_ROUTE = "templates"
     const val PROFILE_ROUTE = "profile"
     const val HISTORY_ROUTE = "history"
 }
@@ -42,8 +38,7 @@ object DarAgentDestinations {
 @Composable
 fun DarAgentNavHost(
     navController: NavHostController,
-    modifier: Modifier = Modifier,
-    paddingValues: PaddingValues = PaddingValues()
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
@@ -55,10 +50,6 @@ fun DarAgentNavHost(
                 navController = navController,
                 onNewGreeting = { navController.navigate(DarAgentDestinations.SELECT_PERSON_ROUTE) }
             )
-        }
-
-        composable(DarAgentDestinations.PEOPLE_ROUTE) {
-            SelectPersonScreen(onNext = { navController.navigate(DarAgentDestinations.SELECT_OCCASION_ROUTE) })
         }
 
         composable(DarAgentDestinations.SELECT_PERSON_ROUTE) {
@@ -88,7 +79,7 @@ fun DarAgentNavHost(
 
         composable(DarAgentDestinations.SELECT_TEMPLATE_ROUTE) {
             SelectTemplateScreen(
-                onNext = { navController.navigate(DarAgentDestinations.GENERATION_ROUTE) },
+                navController = navController,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -107,10 +98,8 @@ fun DarAgentNavHost(
             )
         ) { backStackEntry ->
             val generationId = backStackEntry.arguments?.getString("generationId") ?: return@composable
-            val accessToken = com.daragent.data.local.AuthTokenManager.getAccessToken() ?: ""
             GenerationProgressScreen(
                 generationId = generationId,
-                accessToken = accessToken,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -127,6 +116,7 @@ fun DarAgentNavHost(
             PaymentScreen(
                 projectId = projectId,
                 amount = amount,
+                navController = navController,
                 onBack = { navController.popBackStack() },
                 onSuccess = {
                     navController.navigate(DarAgentDestinations.DELIVERY_ROUTE) {
