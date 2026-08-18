@@ -50,5 +50,24 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+    def validate_production(self) -> None:
+        if self.APP_ENV == "production":
+            required = [
+                ("APP_SECRET_KEY", self.APP_SECRET_KEY),
+                ("JWT_SECRET_KEY", self.JWT_SECRET_KEY),
+                ("MINIO_ACCESS_KEY", self.MINIO_ACCESS_KEY),
+                ("MINIO_SECRET_KEY", self.MINIO_SECRET_KEY),
+                ("YOOKASSA_WEBHOOK_SECRET", self.YOOKASSA_WEBHOOK_SECRET),
+            ]
+            for name, value in required:
+                if value in ("", "change-me", "change-me-jwt", "minioadmin"):
+                    raise RuntimeError(
+                        f"Missing required secret: {name}. "
+                        f"Set it in the environment or .env file for production."
+                    )
+
 
 settings = Settings()
+
+if settings.APP_ENV == "production":
+    settings.validate_production()

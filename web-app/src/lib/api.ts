@@ -114,6 +114,10 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
     headers.set("Authorization", `Bearer ${tokens.access}`)
   }
 
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(options.method || "GET")) {
+    headers.set("X-Requested-With", "XMLHttpRequest")
+  }
+
   let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
 
   if (res.status === 401 && tokens?.refresh) {

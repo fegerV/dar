@@ -47,7 +47,7 @@ class RecommendationService:
 
         templates, _ = await self.template_repo.list_active(
             occasion_codes=[project.occasion_code] if project.occasion_code else None,
-            relationship_types=[brief.relationship] if brief.relationship else None,
+            relationship_types=[brief.relationship_] if brief.relationship_ else None,
             moods=[brief.desired_mood] if brief.desired_mood else None,
             page_size=100,
         )
@@ -144,7 +144,7 @@ class RecommendationService:
             score += 0.25
             reasons.append("Подходит по поводу")
 
-        if template.relationship_types and brief.relationship in template.relationship_types:
+        if template.relationship_types and brief.relationship_ in template.relationship_types:
             score += 0.20
             reasons.append("Подходит по типу отношений")
 

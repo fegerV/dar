@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AdminDashboardStats(BaseModel):
@@ -218,3 +218,11 @@ class AdminSystemSettingsResponse(BaseModel):
 
 class AdminSystemSettingsUpdate(BaseModel):
     value: dict
+
+
+class WorkerStatusUpdate(BaseModel):
+    status: str = Field(..., pattern="^(idle|offline|active|maintenance)$")
+
+
+class QueueJobAction(BaseModel):
+    action: str = Field(..., pattern="^(cancel|retry|prioritize|deprioritize)$")

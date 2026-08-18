@@ -1,12 +1,13 @@
 import shutil
-from sqlalchemy import text
-from app.core.database import engine
 
-app = FastAPI(
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.database import engine
 from app.core.lifespan import lifespan
+from app.middleware.csrf import CSRFMiddleware
 from app.middleware.audit import AuditMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
@@ -19,6 +20,7 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(
@@ -41,7 +43,7 @@ async def health():
 
 
 @app.get("/health/detailed")
-    async def health_detailed():
+async def health_detailed():
     db_ok = False
     try:
         async with engine.connect() as conn:

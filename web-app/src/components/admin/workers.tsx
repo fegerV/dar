@@ -88,8 +88,18 @@ export function AdminWorkers() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1">Details</Button>
-                <Button size="sm" variant="outline" className="flex-1">Restart</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => apiFetch(`/admin/workers/${worker.id}/status`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "maintenance" }),
+                  }).then(() => setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "maintenance" } : w))).catch(() => {})}
+                >
+                  Restart
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -8,7 +8,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import ValidationException
+from app.core.exceptions import NotFoundException, ValidationException
 from app.models.payment import Payment, Wallet
 from app.repositories.storage import PaymentRepository, WalletRepository
 from app.schemas.payment import PaymentResponse, WalletResponse
@@ -206,7 +206,6 @@ class PaymentService:
     async def get_payment(self, payment_id: UUID, user_id: UUID | None = None) -> PaymentResponse:
         payment = await self.payment_repo.get_by_id(payment_id)
         if payment is None:
-            from app.core.exceptions import NotFoundException
             raise NotFoundException("Платёж не найден")
         if user_id is not None and payment.user_id != user_id:
             raise NotFoundException("Платёж не найден")

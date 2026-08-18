@@ -28,11 +28,14 @@ class PromptCompiler:
         parts = []
         if brief.recipient:
             parts.append(f"{brief.recipient.get('name','')}, {brief.recipient.get('age','')} years old")
-        if brief.relationship:
-            parts.append(f"relationship: {brief.relationship}")
+        if brief.relationship_:
+            parts.append(f"relationship: {brief.relationship_}")
         return ", ".join(parts) if parts else ""
 
     def _resolve(self, value: Any) -> str:
         if value is None:
             return ""
         return str(value)
+
+
+PromptCompilerService = PromptCompiler

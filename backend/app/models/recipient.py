@@ -22,7 +22,7 @@ class Recipient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     birth_date: Mapped[date | None] = mapped_column(Date)
     city: Mapped[str | None] = mapped_column(Text)
     occupation: Mapped[str | None] = mapped_column(Text)
-    relationship: Mapped[str | None] = mapped_column(String(30))
+    relationship_: Mapped[str | None] = mapped_column("relationship", String(30))
     relationship_label: Mapped[str | None] = mapped_column(Text)
     contact_phone: Mapped[str | None] = mapped_column(String(30))
     contact_email: Mapped[str | None] = mapped_column(String(255))
@@ -35,6 +35,14 @@ class Recipient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     recipient_assets = relationship("RecipientAsset", back_populates="recipient", cascade="all, delete-orphan")
+
+    @property
+    def relationship(self) -> str | None:
+        return self.relationship_
+
+    @relationship.setter
+    def relationship(self, value: str | None) -> None:
+        self.relationship_ = value
 
 
 class RecipientAsset(Base, UUIDPrimaryKeyMixin):

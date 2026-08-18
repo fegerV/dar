@@ -22,6 +22,8 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
+    WorkerStatusUpdate,
+    QueueJobAction,
 )
 from app.services.admin.service import AdminService
 
@@ -129,6 +131,28 @@ async def list_workers(
 ):
     service = AdminService(db)
     return await service.list_workers()
+
+
+@router.post("/workers/{worker_id}/status", response_model=AdminWorkerResponse)
+async def update_worker_status(
+    worker_id: UUID,
+    body: WorkerStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_worker_status(worker_id, body.status)
+
+
+@router.post("/queue/{job_id}/action", response_model=AdminQueueJobResponse)
+async def queue_job_action(
+    job_id: UUID,
+    body: QueueJobAction,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.queue_job_action(job_id, body.action)
 
 
 @router.get("/payments", response_model=list[AdminPaymentResponse])

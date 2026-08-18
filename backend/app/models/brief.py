@@ -18,7 +18,7 @@ class CreativeBrief(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     occasion_text: Mapped[str | None] = mapped_column(Text)
     sender_role: Mapped[str | None] = mapped_column(Text)
     recipient_role: Mapped[str | None] = mapped_column(Text)
-    relationship: Mapped[str | None] = mapped_column(String(30))
+    relationship_: Mapped[str | None] = mapped_column("relationship", String(30))
     relationship_text: Mapped[str | None] = mapped_column(Text)
     desired_mood: Mapped[str | None] = mapped_column(String(30))
     desired_length_sec: Mapped[int | None] = mapped_column(Integer)
@@ -38,3 +38,11 @@ class CreativeBrief(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     project = relationship("Project", back_populates="brief")
+
+    @property
+    def relationship(self) -> str | None:
+        return self.relationship_
+
+    @relationship.setter
+    def relationship(self, value: str | None) -> None:
+        self.relationship_ = value

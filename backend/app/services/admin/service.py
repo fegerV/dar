@@ -274,3 +274,27 @@ class AdminService:
         if generation is None:
             raise NotFoundException("Order not found")
         return AdminOrderDetailResponse.model_validate(generation)
+
+    async def update_worker_status(self, worker_id: UUID, status: str) -> AdminWorkerResponse:
+        worker = await self.db.get(Worker, worker_id)
+        if worker is None:
+            raise NotFoundException("Worker not found")
+        worker.status = status
+        await self.db.flush()
+        return AdminWorkerResponse.model_validate(worker)
+
+    async def queue_job_action(self, job_id: UUID, action: str) -> AdminQueueJobResponse:
+        job = await self.db.get(QueueJob, job_id)
+        if job is None:
+            raise NotFoundException("Job not found")
+        if action == "cancel":
+            job.status = "canceled"
+        elif action == "retry":
+            job.status = "pending"
+            job.retry_count = 0
+        elif action == "prioritize":
+            job.priority = max((job.priority or 0) + 10, 0)
+        elif action == "deprioritize":
+            job.priority = min((job.priority or 0) - 10, 0)
+        await self.db.flush()
+        return AdminQueueJobResponse.model_validate(job)

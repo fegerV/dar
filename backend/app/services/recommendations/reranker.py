@@ -47,7 +47,7 @@ class AIReranker:
             },
             "recipient": {
                 "name": recipient.first_name if recipient else None,
-                "relationship": brief.relationship if brief else None,
+                "relationship": brief.relationship_ if brief else None,
                 "interests": recipient.interests if recipient else [],
                 "traits": recipient.traits if recipient else [],
             },

@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { Pause, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react"
+import { X, RotateCcw } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import type { AdminQueueJob } from "@/types/admin"
 import { useRouter } from "next/navigation"
@@ -93,10 +93,16 @@ export function AdminQueue() {
                   <div className="text-xs text-muted-foreground mt-1">Retries: {job.retry_count}</div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" aria-label={`Pause job ${job.id}`}>
-                    <Pause className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button size="sm" variant="outline" aria-label={`Cancel job ${job.id}`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Cancel job ${job.id}`}
+                    onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "cancel" }),
+                    }).then(() => setJobs(jobs.map(j => j.id === job.id ? { ...j, status: "canceled" } : j))).catch(() => {})}
+                  >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
@@ -121,13 +127,16 @@ export function AdminQueue() {
                     <span className="ml-3 text-sm text-muted-foreground">Gen: {job.generation_id?.slice(0, 8)}…</span>
                   </div>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" aria-label={`Move job ${job.id} to front`}>
-                      <ArrowUp className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <Button size="sm" variant="ghost" aria-label={`Move job ${job.id} down`}>
-                      <ArrowDown className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                    <Button size="sm" variant="ghost" aria-label={`Retry job ${job.id}`}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Retry job ${job.id}`}
+                      onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "retry" }),
+                      }).then(() => setJobs(jobs.map(j => j.id === job.id ? { ...j, status: "pending", retry_count: 0 } : j))).catch(() => {})}
+                    >
                       <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>

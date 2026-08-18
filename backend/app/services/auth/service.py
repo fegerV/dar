@@ -52,9 +52,9 @@ class AuthService:
             source="registration",
             created_at=datetime.now(timezone.utc),
         )
-        entitlement_repo = EntitlementRepository(db)
+        entitlement_repo = EntitlementRepository(self.db)
         await entitlement_repo.create(entitlement)
-        await db.commit()
+        await self.db.commit()
 
         return self._make_tokens(user.id)
 

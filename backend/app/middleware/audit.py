@@ -2,7 +2,8 @@ import logging
 from uuid import UUID
 
 from sqlalchemy import insert
-from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.core.database import async_session_factory
 from app.models.audit import AuditLog

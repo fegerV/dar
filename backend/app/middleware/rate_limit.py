@@ -1,7 +1,6 @@
 import time
 from collections import defaultdict
 
-import redis.asyncio as redis
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -13,14 +12,17 @@ RATE_LIMIT_MAX = 120
 RATE_LIMIT_PREFIX = "daragent:ratelimit:"
 
 _rate_store: dict[str, list[float]] = defaultdict(list)
-_redis_client: redis.Redis | None = None
+_redis_client = None
 
 
-def _get_redis() -> redis.Redis | None:
+def _get_redis():
     global _redis_client
-    if _redis_client is None and settings.REDIS_RATE_LIMIT_URL:
+    if _redis_client is None:
         try:
-            _redis_client = redis.from_url(settings.REDIS_RATE_LIMIT_URL, decode_responses=True)
+            import redis.asyncio as redis
+
+            if settings.REDIS_RATE_LIMIT_URL:
+                _redis_client = redis.from_url(settings.REDIS_RATE_LIMIT_URL, decode_responses=True)
         except Exception:
             _redis_client = None
     return _redis_client

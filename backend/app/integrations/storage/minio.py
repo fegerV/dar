@@ -2,8 +2,12 @@ from io import BytesIO
 from pathlib import Path
 from uuid import UUID
 
-from minio import Minio
-from minio.error import S3Error
+try:
+    from minio import Minio
+    from minio.error import S3Error
+except ImportError:
+    Minio = None
+    S3Error = Exception
 
 from app.core.config import settings
 from app.integrations.storage.base import StorageProvider
