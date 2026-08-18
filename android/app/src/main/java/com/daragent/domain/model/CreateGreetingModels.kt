@@ -8,7 +8,8 @@ data class Project(
     val occasionCode: String?,
     val occasionTitle: String?,
     val priceRub: Double,
-    val selectedTemplateVersionId: String? = null
+    val selectedTemplateVersionId: String? = null,
+    val finalGenerationId: String? = null
 )
 
 data class Brief(

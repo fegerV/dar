@@ -84,6 +84,9 @@ interface RecommendationsApi {
     @GET("recommendations/projects/{project_id}")
     suspend fun list(@Path("project_id") projectId: String): Response<RecommendationListResponse>
 
+    @POST("recommendations/projects/{project_id}/generate")
+    suspend fun generate(@Path("project_id") projectId: String): Response<RecommendationListResponse>
+
     @POST("recommendations/projects/{project_id}/select/{recommendation_id}")
     suspend fun select(
         @Path("project_id") projectId: String,

@@ -39,9 +39,11 @@ class ProfileViewModel(
             try {
                 val userResult = authRepository.me()
                 val walletResult = paymentRepository.wallet()
+                val entitlementsResult = paymentRepository.listEntitlements()
                 _state.value = _state.value.copy(
                     user = userResult.getOrNull(),
                     wallet = walletResult.getOrNull(),
+                    entitlements = entitlementsResult.getOrNull().orEmpty(),
                     isLoading = false
                 )
             } catch (e: Exception) {

@@ -21,7 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun HistoryScreen(
-    onProjectClick: (String) -> Unit = {},
+    onProjectClick: (projectId: String, generationId: String?) -> Unit = { _, _ -> },
     onBack: () -> Unit = {}
 ) {
     val viewModel: HistoryViewModel = viewModel()
@@ -49,7 +49,7 @@ fun HistoryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .clickable { onProjectClick(project.id) }
+                        .clickable { onProjectClick(project.id, project.finalGenerationId) }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(text = project.title ?: "Без названия", fontWeight = FontWeight.Bold)

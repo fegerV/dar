@@ -62,8 +62,11 @@ private fun WalletResponse.toDomain() = Wallet(
 
 private fun EntitlementResponse.toDomain() = Entitlement(
     id = id,
+    userId = "",
     code = code,
     quantity = quantity,
     consumed = consumed,
-    expiresAt = expires_at
+    expiresAt = expires_at,
+    source = source,
+    createdAt = created_at
 )

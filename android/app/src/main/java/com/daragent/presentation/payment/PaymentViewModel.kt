@@ -28,9 +28,9 @@ data class PaymentState(
 )
 
 class PaymentViewModel(
-    private val paymentRepository: PaymentRepository? = ServiceLocator.paymentRepository
+    private val paymentRepository: PaymentRepository = ServiceLocator.paymentRepository
 ) : ViewModel() {
-    private val repo = paymentRepository ?: ServiceLocator.paymentRepository
+    private val repo = paymentRepository
     private val cache = ServiceLocator.localCacheRepository
     private val _state = MutableStateFlow(PaymentState())
     val state: StateFlow<PaymentState> = _state
@@ -47,7 +47,12 @@ class PaymentViewModel(
 
     fun pay() {
         val projectId = _state.value.projectId
-        val method = _state.value.selectedMethod
+        val rawMethod = _state.value.selectedMethod
+        val method = when {
+            rawMethod.startsWith("entitlement:") -> "bonus"
+            rawMethod == "card" -> "bank_card"
+            else -> rawMethod
+        }
         _state.value = _state.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             val result = repo.createPayment(projectId, method)

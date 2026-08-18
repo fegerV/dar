@@ -77,7 +77,13 @@ class ProjectRepositoryImpl(
     override suspend fun getRecommendations(projectId: String): Result<List<Recommendation>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                recommendationsApi.list(projectId).body()!!.items.map { it.toDomain() }
+                val recs = recommendationsApi.list(projectId).body()!!
+                val items = if (recs.items.isEmpty()) {
+                    recommendationsApi.generate(projectId).body()!!.items
+                } else {
+                    recs.items
+                }
+                items.map { it.toDomain() }
             }
         }
 
@@ -131,7 +137,8 @@ private fun ProjectResponseDto.toDomain() = Project(
     occasionCode = occasion_code,
     occasionTitle = occasion_title,
     priceRub = price_rub,
-    selectedTemplateVersionId = selected_template_version_id
+    selectedTemplateVersionId = selected_template_version_id,
+    finalGenerationId = final_generation_id
 )
 
 private fun BriefResponseDto.toDomain() = Brief(
