@@ -24,6 +24,43 @@ class AdminUserResponse(BaseModel):
     email: str | None = None
     display_name: str | None = None
     is_admin: bool = False
+    phone: str | None = None
+    locale: str | None = None
+    last_seen_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminUserWalletResponse(BaseModel):
+    user_id: UUID
+    balance_rub: float
+    bonus_balance: float
+    updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminReferralCodeResponse(BaseModel):
+    id: UUID
+    code: str
+    is_active: bool
+    uses_count: int
+    max_uses: int | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminReferralResponse(BaseModel):
+    id: UUID
+    code: str
+    status: str
+    referrer_user_id: UUID
+    referred_user_id: UUID | None = None
+    referrer_bonus_granted: bool
+    referee_bonus_granted: bool
+    metadata: dict | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -147,6 +184,23 @@ class AdminAuditLogResponse(BaseModel):
     ip_address: str | None = None
     user_agent: str | None = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminOrderDetailResponse(BaseModel):
+    id: UUID
+    project_id: UUID
+    requested_by_user_id: UUID | None = None
+    status: str
+    cost_rub: float
+    template_version_id: UUID | None = None
+    model_name: str | None = None
+    error_code: str | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+    input_json: dict | None = None
+    output_json: dict | None = None
 
     model_config = {"from_attributes": True}
 

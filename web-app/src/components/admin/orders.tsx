@@ -115,16 +115,16 @@ export function AdminOrders() {
                       <Badge className={statusColors[order.status] || "bg-gray-100"}>{order.status}</Badge>
                     </td>
                     <td className="py-3 px-4 text-right">{order.cost_rub} ₽</td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" aria-label={`View order ${order.id}`}>
-                          <Eye className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                        <Button size="sm" variant="ghost" aria-label={`Play video for order ${order.id}`}>
-                          <Play className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </td>
+                      <td className="py-3 px-4 text-right">
+                       <div className="flex justify-end gap-2">
+                         <Button size="sm" variant="ghost" aria-label={`View order ${order.id}`} onClick={() => router.push(`/admin/orders/${order.id}`)}>
+                           <Eye className="h-4 w-4" aria-hidden="true" />
+                         </Button>
+                         <Button size="sm" variant="ghost" aria-label={`Play video for order ${order.id}`}>
+                           <Play className="h-4 w-4" aria-hidden="true" />
+                         </Button>
+                       </div>
+                     </td>
                   </tr>
                 ))}
               </tbody>

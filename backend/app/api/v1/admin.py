@@ -1,6 +1,7 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -8,14 +9,18 @@ from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
     AdminGenerationResponse,
+    AdminOrderDetailResponse,
     AdminOrderResponse,
     AdminPaymentResponse,
     AdminQueueJobResponse,
+    AdminReferralCodeResponse,
+    AdminReferralResponse,
     AdminSystemSettingsResponse,
     AdminSystemSettingsUpdate,
     AdminTemplateCreate,
     AdminTemplateResponse,
     AdminUserResponse,
+    AdminUserWalletResponse,
     AdminWorkerResponse,
 )
 from app.services.admin.service import AdminService
@@ -166,3 +171,73 @@ async def update_system_setting(
 ):
     service = AdminService(db)
     return await service.update_system_setting(key, body)
+
+
+@router.get("/users/{user_id}", response_model=AdminUserResponse)
+async def get_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_user(user_id)
+
+
+@router.get("/users/{user_id}/wallet", response_model=AdminUserWalletResponse)
+async def get_user_wallet(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_user_wallet(user_id)
+
+
+@router.post("/users/{user_id}/impersonate")
+async def impersonate_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.core.security import create_access_token, create_refresh_token
+    from app.services.audit.service import AuditService
+
+    service = AdminService(db)
+    user = await service.get_user(user_id)
+    audit = AuditService(db)
+    await audit.log(
+        actor_user_id=current_user.id, action="impersonate_user",
+        target_type="user", target_id=user_id,
+    )
+    await db.commit()
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+    return {"access_token": access_token, "refresh_token": refresh_token}
+
+
+@router.get("/referrals", response_model=list[AdminReferralResponse])
+async def list_referrals(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_referrals()
+
+
+@router.get("/referral-codes", response_model=list[AdminReferralCodeResponse])
+async def list_referral_codes(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_referral_codes()
+
+
+@router.get("/orders/{order_id}", response_model=AdminOrderDetailResponse)
+async def get_order(
+    order_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_order(order_id)

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, CreditCard, Bot, Settings } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, CreditCard, Bot, Settings, ClipboardList, Shield } from "lucide-react"
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +12,8 @@ const navItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/templates", label: "Templates", icon: FileText },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/referrals", label: "Referrals", icon: ClipboardList },
+  { href: "/admin/audit-logs", label: "Audit Logs", icon: Shield },
   { href: "/admin/workers", label: "AI / Workers", icon: Bot },
   { href: "/admin/system", label: "System", icon: Settings },
 ]

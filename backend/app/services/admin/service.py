@@ -5,9 +5,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictException, NotFoundException
-from app.models.admin import AdminUser, QueueJob, Role, SystemSettings, UserRole, Worker
+from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
-from app.models.payment import Payment
+from app.models.payment import Payment, Wallet
+from app.models.referral import Referral, ReferralCode
 from app.models.template import Template, TemplateVersion
 from app.models.user import User
 from app.repositories.recommendations import TemplateRepository
@@ -15,14 +16,18 @@ from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
     AdminGenerationResponse,
+    AdminOrderDetailResponse,
     AdminOrderResponse,
     AdminPaymentResponse,
     AdminQueueJobResponse,
+    AdminReferralCodeResponse,
+    AdminReferralResponse,
     AdminSystemSettingsResponse,
     AdminSystemSettingsUpdate,
     AdminTemplateCreate,
     AdminTemplateResponse,
     AdminUserResponse,
+    AdminUserWalletResponse,
     AdminWorkerResponse,
 )
 
@@ -230,3 +235,41 @@ class AdminService:
         setting.value = body.value
         await self.db.flush()
         return AdminSystemSettingsResponse.model_validate(setting)
+
+    async def get_user(self, user_id: UUID) -> AdminUserResponse:
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise NotFoundException("User not found")
+        return AdminUserResponse.model_validate(user)
+
+    async def get_user_wallet(self, user_id: UUID) -> AdminUserWalletResponse:
+        result = await self.db.execute(
+            select(Wallet).where(Wallet.user_id == user_id)
+        )
+        wallet = result.scalar_one_or_none()
+        if wallet is None:
+            from app.core.exceptions import ConflictException
+            raise ConflictException("User has no wallet")
+        return AdminUserWalletResponse.model_validate(wallet)
+
+    async def list_referrals(self) -> list[AdminReferralResponse]:
+        result = await self.db.execute(
+            select(Referral).order_by(Referral.created_at.desc())
+        )
+        referrals = list(result.scalars().all())
+        return [AdminReferralResponse.model_validate(r) for r in referrals]
+
+    async def list_referral_codes(self) -> list[AdminReferralCodeResponse]:
+        result = await self.db.execute(
+            select(ReferralCode).order_by(ReferralCode.created_at.desc())
+        )
+        codes = list(result.scalars().all())
+        return [AdminReferralCodeResponse.model_validate(c) for c in codes]
+
+    async def get_order(self, order_id: UUID) -> AdminOrderDetailResponse:
+        result = await self.db.execute(select(Generation).where(Generation.id == order_id))
+        generation = result.scalar_one_or_none()
+        if generation is None:
+            raise NotFoundException("Order not found")
+        return AdminOrderDetailResponse.model_validate(generation)

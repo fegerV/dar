@@ -4,6 +4,9 @@ export interface AdminUser {
   email: string | null
   display_name: string | null
   is_admin: boolean
+  phone: string | null
+  locale: string | null
+  last_seen_at: string | null
   created_at: string
 }
 
@@ -136,6 +139,60 @@ export interface SystemSetting {
   description: string | null
   is_public: boolean
   updated_at: string
+}
+
+export interface UserWallet {
+  user_id: string
+  balance_rub: number
+  bonus_balance: number
+  updated_at: string | null
+}
+
+export interface ReferralCode {
+  id: string
+  code: string
+  is_active: boolean
+  uses_count: number
+  max_uses: number | null
+  created_at: string
+}
+
+export interface Referral {
+  id: string
+  code: string
+  status: string
+  referrer_user_id: string
+  referred_user_id: string | null
+  referrer_bonus_granted: boolean
+  referee_bonus_granted: boolean
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface AdminOrder {
+  id: string
+  project_id: string
+  requested_by_user_id: string | null
+  status: string
+  cost_rub: number
+  template_version_id: string | null
+  model_name: string | null
+  error_code: string | null
+  created_at: string
+  completed_at: string | null
+  input_json?: Record<string, unknown> | null
+  output_json?: Record<string, unknown> | null
+}
+
+export interface AuditLog {
+  id: string
+  actor_user_id: string | null
+  action: string
+  target_type: string | null
+  target_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
 }
 
 export interface PaginatedResponse<T> {
