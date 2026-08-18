@@ -1,5 +1,5 @@
-import { OnboardingScreen } from "@/components/onboarding"
+import { redirect } from "next/navigation"
 
 export default function OnboardingPage() {
-  return <OnboardingScreen />
+  redirect("/onboarding/about-me")
 }
