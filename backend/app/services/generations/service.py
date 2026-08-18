@@ -77,10 +77,14 @@ class GenerationService:
         await self.db.commit()
         return GenerationResponse.model_validate(generation)
 
-    async def get_generation(self, generation_id: UUID) -> GenerationResponse:
+    async def get_generation(self, generation_id: UUID, user_id: UUID | None = None) -> GenerationResponse:
         generation = await self.repo.get_by_id(generation_id)
         if generation is None:
             raise NotFoundException("Генерация не найдена")
+        if user_id is not None:
+            project = await self.project_repo.get_by_id(generation.project_id, user_id)
+            if project is None:
+                raise NotFoundException("Генерация не найдена")
         steps = await self.repo.get_steps(generation_id)
         response = GenerationResponse.model_validate(generation)
         response.output_assets = []
@@ -92,9 +96,12 @@ class GenerationService:
         generations, total = await self.repo.list_by_project(project_id, page, page_size)
         return [GenerationResponse.model_validate(g) for g in generations], total
 
-    async def cancel_generation(self, generation_id: UUID) -> GenerationResponse:
+    async def cancel_generation(self, generation_id: UUID, user_id: UUID) -> GenerationResponse:
         generation = await self.repo.get_by_id(generation_id)
         if generation is None:
+            raise NotFoundException("Генерация не найдена")
+        project = await self.project_repo.get_by_id(generation.project_id, user_id)
+        if project is None:
             raise NotFoundException("Генерация не найдена")
         generation.status = "cancelled"
         await self.repo.update(generation)

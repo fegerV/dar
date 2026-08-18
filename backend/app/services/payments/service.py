@@ -71,9 +71,11 @@ class YooKassaClient:
                 raise ValidationException(f"YooKassa error: {data}")
             return data
 
-    def verify_webhook_signature(self, body_bytes: bytes, signature: str) -> bool:
+    def verify_webhook_signature(self, body_bytes: bytes, signature: str | None) -> bool:
         if not self.webhook_secret:
-            return True
+            return False
+        if not signature:
+            return False
         expected = hmac.new(
             self.webhook_secret.encode(),
             body_bytes,
@@ -163,7 +165,7 @@ class PaymentService:
         return response
 
     async def handle_webhook(self, body: dict, signature: str | None = None) -> dict:
-        if signature and not self.yookassa.verify_webhook_signature(
+        if not signature or not self.yookassa.verify_webhook_signature(
             json.dumps(body).encode(), signature
         ):
             raise ValidationException("Invalid webhook signature")
@@ -201,9 +203,11 @@ class PaymentService:
         await self.db.commit()
         return {"received": True, "payment_id": str(payment.id), "status": payment.status}
 
-    async def get_payment(self, payment_id: UUID) -> PaymentResponse:
+    async def get_payment(self, payment_id: UUID, user_id: UUID | None = None) -> PaymentResponse:
         payment = await self.payment_repo.get_by_id(payment_id)
         if payment is None:
             from app.core.exceptions import NotFoundException
+            raise NotFoundException("Платёж не найден")
+        if user_id is not None and payment.user_id != user_id:
             raise NotFoundException("Платёж не найден")
         return PaymentResponse.model_validate(payment)

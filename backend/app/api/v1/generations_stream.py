@@ -8,7 +8,9 @@ from starlette.responses import StreamingResponse
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.generation import Generation, GenerationStep
+from app.models.project import Project
 from app.repositories.generations import GenerationRepository
+from app.repositories.projects import ProjectRepository
 
 router = APIRouter(prefix="/generations", tags=["Generations"])
 
@@ -20,9 +22,14 @@ async def stream_generation_progress(
     current_user=Depends(get_current_user),
 ):
     repo = GenerationRepository(db)
+    project_repo = ProjectRepository(db)
     generation = await repo.get_by_id(generation_id)
     if generation is None:
         from app.core.exceptions import NotFoundException
+        raise NotFoundException("Генерация не найдена")
+
+    project = await project_repo.get_by_id(generation.project_id, current_user.id)
+    if project is None:
         raise NotFoundException("Генерация не найдена")
 
     async def event_stream():

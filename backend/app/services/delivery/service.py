@@ -120,8 +120,7 @@ class DeliveryService:
         )
 
     async def get_delivery(self, delivery_id: UUID, user_id: UUID) -> DeliveryResponse:
-        deliveries = await self.repo.list_by_project(delivery_id)
-        delivery = next((d for d in deliveries if d.id == delivery_id), None)
+        delivery = await self.repo.get_by_id(delivery_id)
         if delivery is None or delivery.user_id != user_id:
             raise NotFoundException("Доставка не найдена")
         return DeliveryResponse.model_validate(delivery)

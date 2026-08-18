@@ -45,7 +45,7 @@ async def get_generation(
     current_user=Depends(get_current_user),
 ):
     service = GenerationService(db)
-    return await service.get_generation(generation_id)
+    return await service.get_generation(generation_id, current_user.id)
 
 
 @router.post("/{generation_id}/cancel", response_model=GenerationResponse)
@@ -55,4 +55,4 @@ async def cancel_generation(
     current_user=Depends(get_current_user),
 ):
     service = GenerationService(db)
-    return await service.cancel_generation(generation_id)
+    return await service.cancel_generation(generation_id, current_user.id)

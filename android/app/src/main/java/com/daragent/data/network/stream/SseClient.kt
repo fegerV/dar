@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 
 object SseClient {
     private const val CONNECT_TIMEOUT_SECONDS = 10L
-    private const val READ_TIMEOUT_SECONDS = 30L
+    private const val READ_TIMEOUT_SECONDS = 300L
 
     fun streamGenerationProgress(
         baseUrl: String,

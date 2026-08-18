@@ -78,17 +78,19 @@ class PaymentViewModel(
     fun pollPaymentStatus() {
         val paymentId = _state.value.payment?.id ?: return
         viewModelScope.launch {
-            while (true) {
+            val maxAttempts = 60
+            var attempts = 0
+            while (attempts < maxAttempts) {
                 val result = repo.getPayment(paymentId)
                 result.onSuccess { payment ->
                     _state.value = _state.value.copy(payment = payment)
                     if (payment.status in setOf("paid", "failed", "canceled")) {
                         cachePaymentLocally(payment)
-                        break
+                        return@launch
                     }
                 }.onFailure {
-                    // ignore polling errors
                 }
+                attempts++
                 delay(3000)
             }
         }

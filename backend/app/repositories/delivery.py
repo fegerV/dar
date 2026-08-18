@@ -37,6 +37,10 @@ class DeliveryRepository:
         await self.db.flush()
         return delivery
 
+    async def get_by_id(self, delivery_id: UUID) -> Delivery | None:
+        result = await self.db.execute(select(Delivery).where(Delivery.id == delivery_id))
+        return result.scalar_one_or_none()
+
     async def list_by_project(self, project_id: UUID) -> list[Delivery]:
         result = await self.db.execute(
             select(Delivery).where(Delivery.project_id == project_id).order_by(Delivery.created_at.desc())

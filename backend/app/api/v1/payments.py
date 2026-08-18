@@ -54,7 +54,7 @@ async def get_payment(
     current_user=Depends(get_current_user),
 ):
     service = PaymentService(db)
-    return await service.get_payment(payment_id)
+    return await service.get_payment(payment_id, current_user.id)
 
 
 @router.post("/webhook/yookassa", response_model=PaymentWebhookResponse)
