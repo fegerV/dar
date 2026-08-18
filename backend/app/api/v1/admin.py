@@ -40,7 +40,7 @@ def require_admin(current_user=Depends(get_current_user)):
 @router.post("/init")
 async def init_admin(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_admin),
 ):
     service = AdminService(db)
     await service.ensure_single_admin(current_user.id)

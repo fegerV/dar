@@ -27,6 +27,12 @@ async def run_quality_checks(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    generation = await QualityRepository(db).get_generation(body.generation_id)
+    if generation is None:
+        raise NotFoundException("Генерация не найдена")
+    project = await ProjectRepository(db).get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Доступ к генерации запрещён")
     service = QualityGateService(db)
     return await service.run_quality_checks(body)
 
@@ -38,6 +44,12 @@ async def submit_manual_review(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    generation = await QualityRepository(db).get_generation(generation_id)
+    if generation is None:
+        raise NotFoundException("Генерация не найдена")
+    project = await ProjectRepository(db).get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Доступ к генерации запрещён")
     service = QualityGateService(db)
     return await service.submit_manual_review(generation_id, body)
 
