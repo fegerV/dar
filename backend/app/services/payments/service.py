@@ -164,9 +164,9 @@ class PaymentService:
             response.confirmation_url = confirmation_url
         return response
 
-    async def handle_webhook(self, body: dict, signature: str | None = None) -> dict:
+    async def handle_webhook(self, raw_body: bytes, body: dict, signature: str | None = None) -> dict:
         if not signature or not self.yookassa.verify_webhook_signature(
-            json.dumps(body).encode(), signature
+            raw_body, signature
         ):
             raise ValidationException("Invalid webhook signature")
 

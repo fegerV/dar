@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
@@ -27,7 +28,7 @@ async def _process_scheduled_deliveries():
         repo = DeliveryRepository(db)
         now = datetime.now(timezone.utc)
         result = await db.execute(
-            __import__("sqlalchemy").select(Delivery).where(
+            select(Delivery).where(
                 Delivery.status == "scheduled",
                 Delivery.scheduled_at <= now,
             )

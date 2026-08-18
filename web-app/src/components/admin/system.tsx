@@ -52,8 +52,23 @@ export function AdminSystem() {
 
   const handleSave = async () => {
     setSaving(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setSaving(false)
+    try {
+      for (const setting of settings) {
+        const input = document.getElementById(setting.key) as HTMLInputElement | null
+        if (input && input.value !== JSON.stringify(setting.value)) {
+          await apiFetch<SystemSetting>(`/admin/system/settings/${setting.key}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ value: JSON.parse(input.value) }),
+          })
+        }
+      }
+      const data = await apiFetch<SystemSetting[]>("/admin/system/settings")
+      setSettings(data || [])
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (authLoading) {

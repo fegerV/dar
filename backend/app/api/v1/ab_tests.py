@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.template import TemplateVersion
-from app.repositories.templates import TemplateRepository
 
 router = APIRouter(prefix="/ab-tests", tags=["A/B Testing"])
 
@@ -15,9 +15,8 @@ async def list_template_variants(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    repo = TemplateRepository(db)
     result = await db.execute(
-        __import__("sqlalchemy").select(TemplateVersion).where(
+        select(TemplateVersion).where(
             TemplateVersion.template_id == template_id,
             TemplateVersion.variant_group.is_not(None),
         )

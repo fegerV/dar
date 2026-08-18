@@ -5,7 +5,8 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.intelligence import GenerationFailure
+from app.core.exceptions import NotFoundException
+from app.models.intelligence import GenerationFailure, UserFeedback
 from app.schemas.intelligence import (
     GenerationFailureResponse,
     ImagePreflightRequest,
@@ -41,7 +42,6 @@ async def get_recipe(
     service = RecipeService(db)
     recipe = await service.get_best_recipe(recipe_code)
     if recipe is None:
-        from app.core.exceptions import NotFoundException
         raise NotFoundException("Recipe not found")
     return VideoRecipeResponse.model_validate(recipe)
 
@@ -68,7 +68,6 @@ async def submit_feedback(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    from app.models.intelligence import UserFeedback
     feedback = UserFeedback(
         generation_id=body.generation_id,
         rating=body.rating,
@@ -77,4 +76,5 @@ async def submit_feedback(
     )
     db.add(feedback)
     await db.flush()
+    await db.commit()
     return UserFeedbackResponse.model_validate(feedback)

@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
 from app.repositories.generations import GenerationRepository
+from app.schemas.quality import QualityCheckRequest
 from app.services.quality.service import QualityGateService
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ async def _process_generation_job(job_id: str):
     job_uuid = UUID(job_id)
     async with async_session() as db:
         result = await db.execute(
-            __import__("sqlalchemy").select(GenerationJob).where(GenerationJob.id == job_uuid)
+            select(GenerationJob).where(GenerationJob.id == job_uuid)
         )
         job = result.scalar_one_or_none()
         if job is None:
@@ -34,7 +36,7 @@ async def _process_generation_job(job_id: str):
             return
 
         result = await db.execute(
-            __import__("sqlalchemy").select(Generation).where(Generation.id == job.generation_id)
+            select(Generation).where(Generation.id == job.generation_id)
         )
         generation = result.scalar_one_or_none()
         if generation is None:
@@ -75,7 +77,7 @@ async def _process_generation_job(job_id: str):
 
         try:
             quality = QualityGateService(db)
-            quality_request = __import__("app.schemas.quality", fromlist=["QualityCheckRequest"]).QualityCheckRequest(
+            quality_request = QualityCheckRequest(
                 generation_id=generation.id,
                 asset_ids=[],
                 prompt=(generation.input_json or {}).get("prompt", "") if isinstance(generation.input_json, dict) else "",
@@ -100,7 +102,7 @@ def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
 
 async def _get_steps(db, generation_id: UUID) -> list[GenerationStep]:
     result = await db.execute(
-        __import__("sqlalchemy").select(GenerationStep)
+        select(GenerationStep)
         .where(GenerationStep.generation_id == generation_id)
         .order_by(GenerationStep.step_no.asc())
     )

@@ -32,8 +32,8 @@ class RecommendationService:
         self.ai_reranker = AIReranker(db)
         self.diversity_filter = DiversityFilter()
 
-    async def generate(self, project_id: UUID) -> RecommendationListResponse:
-        project = await self.project_repo.get_by_id(project_id, project.owner_user_id)
+    async def generate(self, project_id: UUID, user_id: UUID) -> RecommendationListResponse:
+        project = await self.project_repo.get_by_id(project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 
@@ -106,7 +106,7 @@ class RecommendationService:
         return RecommendationListResponse(items=items)
 
     async def select(
-        self, project_id: UUID, recommendation_id: UUID
+        self, project_id: UUID, recommendation_id: UUID, user_id: UUID
     ) -> RecommendationSelectResponse:
         rec = await self.repo.get_by_id(recommendation_id, project_id)
         if rec is None:
@@ -116,7 +116,7 @@ class RecommendationService:
         if rec is None:
             raise NotFoundException("Рекомендация не найдена")
 
-        project = await self.project_repo.get_by_id(project_id, project.owner_user_id)
+        project = await self.project_repo.get_by_id(project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 

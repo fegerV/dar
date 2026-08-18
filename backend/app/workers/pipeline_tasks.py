@@ -4,12 +4,14 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
 from app.models.intelligence import GenerationFailure, VideoRecipe
 from app.repositories.generations import GenerationRepository
+from app.schemas.quality import QualityCheckRequest
 from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeService
 from app.services.intelligence.preflight import ImagePreflightService
 from app.services.intelligence.prompt_repair import PromptRepairService
@@ -30,7 +32,7 @@ async def _execute_pipeline(generation_id: str):
     gen_uuid = UUID(generation_id)
     async with async_session() as db:
         result = await db.execute(
-            __import__("sqlalchemy").select(Generation).where(Generation.id == gen_uuid)
+            select(Generation).where(Generation.id == gen_uuid)
         )
         generation = result.scalar_one_or_none()
         if generation is None:
@@ -54,7 +56,7 @@ async def _execute_pipeline(generation_id: str):
             logger.warning("Image preflight failed for %s: %s", generation_id, e)
 
         result = await db.execute(
-            __import__("sqlalchemy").select(GenerationStep)
+            select(GenerationStep)
             .where(GenerationStep.generation_id == gen_uuid)
             .order_by(GenerationStep.step_no.asc())
         )
@@ -108,7 +110,7 @@ async def _execute_pipeline(generation_id: str):
         }
 
         result = await db.execute(
-            __import__("sqlalchemy").select(GenerationJob)
+            select(GenerationJob)
             .where(GenerationJob.generation_id == gen_uuid)
             .order_by(GenerationJob.created_at.asc())
             .limit(1)
@@ -124,7 +126,7 @@ async def _execute_pipeline(generation_id: str):
         try:
             quality = QualityGateService(db)
             quality_response = await quality.run_quality_checks(
-                __import__("app.schemas.quality", fromlist=["QualityCheckRequest"]).QualityCheckRequest(
+                QualityCheckRequest(
                     generation_id=gen_uuid,
                     asset_ids=[],
                     prompt=generation.prompt,

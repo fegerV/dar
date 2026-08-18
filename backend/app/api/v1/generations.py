@@ -34,7 +34,7 @@ async def list_generations(
     current_user=Depends(get_current_user),
 ):
     service = GenerationService(db)
-    items, total = await service.list_generations(project_id, page, page_size)
+    items, total = await service.list_generations(project_id, current_user.id, page, page_size)
     return GenerationListResponse(items=items, total=total, page=page, page_size=page_size)
 
 

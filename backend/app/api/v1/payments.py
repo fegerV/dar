@@ -59,10 +59,11 @@ async def get_payment(
 
 @router.post("/webhook/yookassa", response_model=PaymentWebhookResponse)
 async def yookassa_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    raw_body = await request.body()
     body = await request.json()
     signature = request.headers.get("X-Yookassa-Signature")
     service = PaymentService(db)
-    result = await service.handle_webhook(body, signature)
+    result = await service.handle_webhook(raw_body, body, signature)
     return PaymentWebhookResponse(**result)
 
 

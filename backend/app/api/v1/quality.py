@@ -4,7 +4,9 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import NotFoundException
 from app.models.quality import VideoCriticResult
+from app.repositories.projects import ProjectRepository
 from app.repositories.quality import QualityRepository
 from app.schemas.quality import (
     ManualReviewRequest,
@@ -49,8 +51,10 @@ async def get_quality_status(
     service = QualityGateService(db)
     generation = await service.repo.get_generation(generation_id)
     if generation is None:
-        from app.core.exceptions import NotFoundException
         raise NotFoundException("Генерация не найдена")
+    project = await ProjectRepository(db).get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Доступ к генерации запрещён")
     output = generation.output_json or {}
     critic = None
     critic_model = await service.repo.get_critic_result(generation_id)
@@ -87,8 +91,10 @@ async def get_critic_result(
     service = QualityGateService(db)
     generation = await service.repo.get_generation(generation_id)
     if generation is None:
-        from app.core.exceptions import NotFoundException
         raise NotFoundException("Генерация не найдена")
+    project = await ProjectRepository(db).get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Доступ к генерации запрещён")
     critic = await service.repo.get_critic_result(generation_id)
     if critic is None:
         raise NotFoundException("Video Critic результат не найден")

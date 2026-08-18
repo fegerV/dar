@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
@@ -24,7 +25,7 @@ async def _friday_bonus():
     async with async_session() as db:
         repo = EntitlementRepository(db)
         stmt = (
-            __import__("sqlalchemy").select(Entitlement.user_id)
+            select(Entitlement.user_id)
             .where(Entitlement.code == "friday_bonus")
             .group_by(Entitlement.user_id)
         )
@@ -40,6 +41,6 @@ async def _friday_bonus():
                 expires_at=datetime.now(timezone.utc) + timedelta(days=7),
                 created_at=datetime.now(timezone.utc),
             )
-            repo.create(entitlement)
+            await repo.create(entitlement)
         await db.commit()
         logger.info("Friday bonus granted to %s users", len(users))

@@ -91,8 +91,11 @@ class GenerationService:
         return response
 
     async def list_generations(
-        self, project_id: UUID, page: int = 1, page_size: int = 20
+        self, project_id: UUID, user_id: UUID, page: int = 1, page_size: int = 20
     ) -> tuple[list[GenerationResponse], int]:
+        project = await self.project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
         generations, total = await self.repo.list_by_project(project_id, page, page_size)
         return [GenerationResponse.model_validate(g) for g in generations], total
 
