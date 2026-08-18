@@ -32,6 +32,28 @@ class AdminService:
         self.db = db
         self.template_repo = TemplateRepository(db)
 
+    async def ensure_single_admin(self, user_id: UUID) -> AdminUser:
+        existing = await self.db.execute(select(AdminUser).where(AdminUser.user_id == user_id))
+        admin = existing.scalar_one_or_none()
+        if admin:
+            if not admin.is_active:
+                admin.is_active = True
+                await self.db.flush()
+            return admin
+
+        count_result = await self.db.execute(select(func.count()).select_from(AdminUser))
+        if (count_result.scalar() or 0) > 0:
+            raise ConflictException("Admin already exists")
+
+        admin_user = AdminUser(
+            user_id=user_id,
+            role="admin",
+            is_active=True,
+        )
+        self.db.add(admin_user)
+        await self.db.flush()
+        return admin_user
+
     async def get_dashboard_stats(self) -> AdminDashboardStats:
         users_count = await self.db.execute(select(func.count()).select_from(User))
         total_users = users_count.scalar() or 0
