@@ -133,6 +133,7 @@ class ProjectResponse(BaseModel):
     occasion_title: str | None
     selected_recommendation_id: uuid.UUID | None
     selected_template_version_id: uuid.UUID | None
+    master_frame_asset_id: uuid.UUID | None
     final_generation_id: uuid.UUID | None
     price_rub: Decimal
     paid_rub: Decimal
@@ -207,6 +208,7 @@ class AssetResponse(BaseModel):
     id: uuid.UUID
     type: str
     status: str
+    title: str | None
     mime_type: str | None
     url: str | None
 
@@ -216,6 +218,14 @@ class AssetResponse(BaseModel):
 class AttachAssetRequest(BaseModel):
     asset_id: uuid.UUID
     role: str = "sender_photo"
+
+
+class MasterFrameRequest(BaseModel):
+    concept: str = "cinematic"
+    prompt: str = ""
+    negative_prompt: str | None = None
+    width: int = 1024
+    height: int = 1024
 
 
 class PriceResponse(BaseModel):
@@ -507,6 +517,59 @@ async def complete_brief(project_id: uuid.UUID, user: User = Depends(current_use
     project.status = "recommended"
     await record_event(db, "brief_completed", user_id=user.id, project_id=project.id)
     return {"project_id": project.id, "status": "recommendations_ready"}
+
+
+@router.post("/projects/{project_id}/master-frame", response_model=AssetResponse, status_code=201)
+async def generate_master_frame(
+    project_id: uuid.UUID,
+    payload: MasterFrameRequest,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await get_owned_project(db, user, project_id)
+    concept = payload.concept
+    prompt = payload.prompt
+    width = payload.width
+    height = payload.height
+
+    image_provider = ai_router.get_image_provider()
+    result = await image_provider.generate_image(
+        prompt=prompt or f"Portrait of a {concept} hero, cinematic lighting",
+        negative_prompt=payload.negative_prompt,
+        width=width,
+        height=height,
+    )
+
+    image_url = result.get("url") or result.get("image_url")
+    if not image_url:
+        raise HTTPException(502, "Image provider returned empty result")
+
+    storage = StorageObject(
+        bucket="daragent",
+        object_key=f"projects/{project.id}/master-frame/{uuid.uuid4()}.png",
+        mime_type="image/png",
+        size_bytes=len(result.get("content", b"")) if isinstance(result.get("content"), bytes) else 0,
+    )
+    db.add(storage)
+    await db.flush()
+
+    asset = Asset(
+        owner_user_id=user.id,
+        type="image",
+        status="ready",
+        storage_object_id=storage.id,
+        title="master-frame",
+        mime_type="image/png",
+        url=image_url,
+    )
+    db.add(asset)
+    await db.flush()
+
+    project.master_frame_asset_id = asset.id
+    await db.flush()
+
+    await record_event(db, "master_frame_generated", user_id=user.id, project_id=project.id)
+    return AssetResponse.model_validate(asset)
 
 
 @router.get("/templates", response_model=list[TemplateResponse])

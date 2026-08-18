@@ -7,7 +7,7 @@
 
 ## Обзор
 
-DarAgent — не генератор видео, а **система управления генерацией видео**. Главная задача: получить от пользователя фотографию + смысл поздравления → выбрать лучший проверенный сценарий → выбрать подходящую модель → скомпилировать prompt → сгенерировать → автоматически проверить → при необходимости исправить и перегенерировать → выдать только качественный результат.
+DarAgent — не генератор видео, а **система создания персональных мини-фильмов**. Главная задача: получить от пользователя фотографию + смысл поздравления → превратить пользователя в героя → согласовать сценарий → сгенерировать видео → добавить голос, VFX и финальную надпись → выдать эмоциональный результат, который запомнят.
 
 ```
 USER
@@ -16,24 +16,32 @@ USER
 Upload Photo
   │
   ▼
-IMAGE PREFLIGHT
+AI PHOTO ANALYSIS
   │
   ├─ BAD PHOTO → Fix/Reject
   │
   ▼
-TEMPLATE ENGINE
+IMAGE GENERATION 1 — New Look / New Scene
   │
   ▼
-RECOMMENDATION ENGINE
+MASTER FRAME PREVIEW
+  │
+  ├─ "✨ Удиви меня" → 3 cinematic concepts
   │
   ▼
-SCENE TEMPLATE + MODEL SELECTOR
+USER CHOOSES CONCEPT
   │
   ▼
-VIDEO RECIPE
+RECIPIENT / OCCASION / MOOD
   │
   ▼
-GENERATION
+AI VIDEO SCRIPT
+  │
+  ▼
+VIDEO GENERATION 2 — Motion / Mimic / Camera / VFX
+  │
+  ▼
+VOICE + TEXT OVERLAY + FINAL COMPOSITING
   │
   ▼
 VIDEO QUALITY GATE
@@ -50,9 +58,53 @@ PROMPT REPAIR ENGINE
 TARGETED REGENERATION
 ```
 
-**Текущий статус:** Фазы 0–2.4, 3.1–3.3 и 5 выполнены. Закрытие пробелов из ДарАГЕНТ.txt. Добавлен Intelligence Core: Image Preflight, Video Recipes, Prompt Repair, Failure Analyzer, targeted regeneration.
+**Текущий статус:** Фазы 0–2.4, 3.1–3.3 и 5 выполнены. Закрытие пробелов из ДарАГЕНТ.txt. Добавлен Intelligence Core: Image Preflight, Video Recipes, Prompt Repair, Failure Analyzer, targeted regeneration. Границы MVP зафиксированы в [ТЗ_MVP.md](./ТЗ_MVP.md) — разделение на Lite Greeting (6 сек, вирусный, 3 бесплатно/мес) и Premium (cinematic mini-film c утверждением master frame).
 
-**Ключевой принцип MVP:** Пользователь не создаёт контент с нуля. Он выбирает повод → человека → настроение → формат, а система сама собирает лучший сценарий поздравления.
+**Ключевой принцип MVP:** Пользователь не создаёт контент с нуля. Он загружает фото → Дарагент превращает его в героя → выбирает готовый концепт/сцену → согласовывает сценарий → только после этого запускается дорогая видеогенерация.
+
+---
+
+## Архитектура генерации: 2 этапа
+
+Вместо одного shot-in-the-dark video generation:
+
+1. **Image Generation 1** — создаём **master frame** (идеальный ключевой кадр): новый образ пользователя + новая сцена + кинематографический свет.
+2. **Video Generation 2** — оживляем master frame: движение, мимика, жесты, камера, спецэффекты, речь, финальная надпись.
+
+Плюс отдельные ингредиенты:
+- **TTS** — голос
+- **VFX engine** — частицы, искры, сияние, конфетти
+- **Compositor** — финальная надпись/титры
+
+Финал: `IMAGE → VIDEO → VOICE → VFX → TEXT OVERLAY → FINAL RENDER`
+
+## Онбординг и сценарий создания
+
+- **Splash → Welcome → Auth (phone/SMS) → About Me (gender/age) → Photos → Quality Check → Home**
+- **Home:** нижняя навигация Главная / История / Фото / Профиль
+- **Новое поздравление (wizard):**
+  1. Кого поздравляем?
+  2. Профиль получателя (имя, возраст, прозвище)
+  3. Повод
+  4. Отношения + черты характера (теги)
+  5. Интересы + заметки
+  6. Настроение (До слёз / До смеха / Вау! / Стильно / Как кино / Необычно)
+  7. **✨ Удиви меня** — Дарагент предлагает 3 готовых cinematic concepts на основе данных пользователя/получателя
+  8. Текст поздравления (редактировать/перегенерировать/оставить)
+  9. Шаблон/визуальный концепт
+  10. Финальный обзор
+  11. Оплата/бонусы
+  12. Генерация (прогресс)
+  13. Результат + Share
+  14. Рейтинг/отзыв
+
+## Отдельная воронка: «Примерить образ»
+
+Кнопка на главном экране: **✨ Примерить образ**.
+Бесплатно/дёшево делает Image Generation 1, не создавая полного поздравления.
+После получения master frame:
+- **Оживить этот образ** → переход в полноценный wizard поздравления.
+Самостоятельная воронка продаж.
 
 ---
 
@@ -75,9 +127,9 @@ TARGETED REGENERATION
 
 ---
 
-## Фаза 1: MVP Core — «От Брифа до Скрипта» (4–6 недель)
+## Фаза 1: MVP Core — «От Фото до Скрипта» (4–6 недель)
 
-*Цель: Пользователь может создать проект, заполнить бриф и получить персонализированный текстовый сценарий.*
+*Цель: Пользователь может загрузить фото, получить master frame и персонализированный текстовый сценарий.*
 
 ### 1.1 Управление Получателями (Recipients)
 
@@ -92,7 +144,20 @@ TARGETED REGENERATION
 - [x] Поиск и фильтрация по имени, дате рождения, тегам
 - [ ] Импорт контактов (CSV/JSON) — *опционально для MVP*
 
-### 1.2 Creative Brief Wizard
+### 1.2 AI Photo Analysis & Image Generation 1
+
+- [x] Preflight анализ фото
+  - [x] Quality score, face count, pose, sharpness
+  - [x] Recommend models/templates
+- [x] Image Generation 1 — master frame
+  - [x] Новый образ пользователя (новый look)
+  - [x] Новая сцена (фон, атмосфера, свет)
+  - [x] Провайдеры: OpenAI DALL-E 3, Flux, Stable Diffusion
+- [x] Master Frame Preview
+  - [x] Пользователь утверждает кадр перед дорогой видеогенерацией
+  - [x] **✨ Удиви меня** — 3 готовых cinematic concepts
+
+### 1.3 Creative Brief Wizard
 
 - [x] API создания/обновления брифа (`/api/v1/projects/{id}/brief`)
   - [x] `PUT /projects/{id}/brief` — создание/обновление
@@ -103,7 +168,7 @@ TARGETED REGENERATION
 - [ ] Сохранение черновиков (autosave каждые 30 сек)
 - [ ] Предпросмотр заполненного брифа перед отправкой на генерацию
 
-### 1.3 AI Script Generation (Grok Integration)
+### 1.4 AI Script Generation (Grok Integration)
 
 - [x] Доработка `GrokClient`: промпт-инжиниринг для сценариев
   - [x] System prompt для разных типов поздравлений
@@ -121,7 +186,7 @@ TARGETED REGENERATION
 - [x] API получения результатов (`/api/v1/generations/{id}`)
 - [ ] Механизм fallback при ошибке AI (кэшированные шаблоны)
 
-### 1.4 Recommendations Engine (v1)
+### 1.5 Recommendations Engine (v1)
 
 - [x] Простой scoring algorithm:
   - [x] Match по `occasion_code`
@@ -143,46 +208,47 @@ TARGETED REGENERATION
 
 *Цель: Автоматическая генерация видео по выбранному сценарию.*
 
-### 2.1 Asset Management System
+### 2.1 Image Generation 1 — Master Frame
 
-- [x] Storage abstraction layer
-  - [x] `StorageProvider` interface (MinIO, Yandex Disk, S3)
-  - [x] Factory pattern для выбора провайдера по config
-- [x] Upload API с presigned URLs
-  - [x] `POST /assets/upload-url` — получить presigned URL
-  - [x] `POST /assets/confirm-upload` — подтвердить загрузку
-- [x] Проверка файлов
-  - [x] MIME type validation
-  - [x] Size limits (image: 10MB, video: 500MB)
-  - [x] Dimensions check (min 720p for video)
-- [x] Moderation queue
-  - [x] Автоматическая базовая проверка (NSFW detection)
-  - [x] Ручная модерация для flagged content
-  - [x] Статусы: `pending → approved → rejected`
-- [x] CDN-friendly URL generation
-  - [x] Signed URLs с expiration
-  - [x] Thumbnail generation для изображений
+- [x] AI Photo Analysis (preflight)
+  - [x] Quality score, face count, pose, sharpness
+  - [x] Recommend models/templates
+- [x] Image Generation 1
+  - [x] Новый образ пользователя (новый look)
+  - [x] Новая сцена (фон, атмосфера, свет)
+  - [x] Master frame — идеальный ключевой кадр
+  - [x] Провайдеры: OpenAI DALL-E 3, Flux, Stable Diffusion
+- [x] Master Frame Preview
+  - [x] Пользователь утверждает кадр перед дорогой видеогенерацией
+  - [x] **✨ Удиви меня** — 3 готовых cinematic concepts
+- [x] Asset Management System
+  - [x] Storage abstraction layer
+  - [x] Upload API с presigned URLs
+  - [x] Проверка файлов
+  - [x] CDN-friendly URL generation
 
-### 2.2 Video Generation Pipeline
+### 2.2 Video Generation 2 — Motion & VFX
 
 - [x] Оркестратор пайплайна (Celery canvas / chain):
   ```
-  script_approved
-    → voice_synthesis
-    → avatar_animation  
-    → scene_composition
-    → rendering
-    → post_processing
+  master_frame_approved
+    → video_generation (motion/mimic/camera)
+    → voice_synthesis (TTS)
+    → vfx_engine (частицы/искры/сияние/конфетти)
+    → compositor (текст/титры/финальная надпись)
+    → final_render
     → upload_final
   ```
-- [x] Интеграция с TTS-провайдером
-  - [x] Yandex SpeechKit (primary)
-  - [x] ElevenLabs (fallback/premium)
-  - [ ] Voice cloning (optional, Phase 3+)
 - [x] Интеграция с Video AI
   - [x] HeyGen API (primary)
   - [x] D-ID API (fallback)
   - [x] SadTalker self-hosted (cost optimization)
+- [x] TTS
+  - [x] Yandex SpeechKit (primary)
+  - [x] ElevenLabs (fallback/premium)
+- [x] VFX engine
+  - [x] Particles, sparks, glow, confetti
+  - [x] Text overlay / final title
 - [x] Progress tracking через `generation_steps`
   - [x] Real-time status updates
   - [x] ETA calculation
@@ -301,7 +367,16 @@ TARGETED REGENERATION
   - [x] Timezone-aware scheduling
   - [x] Cancel/reschedule
 
-### 3.3 Sharing & Virality
+### 3.3 Воронка продаж: «Примерить образ»
+
+- [x] Image Generation 1 как отдельная услуга
+  - [x] Бесплатно/дёшево master frame без полного поздравления
+  - [x] Кнопка «Оживить этот образ» → переход в wizard
+- [x] Финальная надпись как отдельный объект
+  - [x] Не полагаемся на video-model для текста
+  - [x] Compositor накладывает титры после генерации
+
+### 3.4 Sharing & Virality
 
 - [x] Share links с аналитикой просмотров
   - [x] Unique link per share
@@ -350,9 +425,19 @@ TARGETED REGENERATION
   - [x] Service worker для offline
   - [x] Install prompt
 - [x] Onboarding flow
-  - [x] Interactive tutorial (первый визит)
-  - [x] Demo project (попробовать без регистрации)
-  - [x] Progressive disclosure
+  - [x] Splash / Welcome / Auth (phone+SMS)
+  - [x] About Me (gender/age)
+  - [x] Photo upload + quality check
+  - [x] Home with bottom nav (Главная/История/Фото/Профиль)
+- [x] Новое поздравление (wizard)
+  - [x] Кого? / Получатель / Повод / Отношения / Интересы / Настроение
+  - [x] **✨ Удиви меня** — 3 AI cinematic concepts
+  - [x] Текст (редактировать/перегенерировать)
+  - [x] Шаблон/визуальный концепт
+  - [x] Финальный обзор / Оплата / Генерация / Результат / Share / Рейтинг
+- [x] **✨ Примерить образ** (воронка продаж)
+  - [x] Image Generation 1 master frame без полного поздравления
+  - [x] Кнопка «Оживить этот образ» → переход в wizard
 - [x] Dashboard
   - [x] Мои проекты (active, completed, archived)
   - [x] История покупок
@@ -594,6 +679,7 @@ TARGETED REGENERATION
 ## 📚 Полезные ссылки
 
 - [Техническое задание](./ДарАГЕНТ.txt)
+- [MVP Specification — границы Lite / Premium](./ТЗ_MVP.md)
 - [API Documentation](./docs/api.md) *(TODO)*
 - [Architecture Decision Records](./docs/adr/) *(TODO)*
 - [Figma Designs](https://figma.com/file/xxx) *(TODO)*

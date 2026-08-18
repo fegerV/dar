@@ -132,3 +132,43 @@ class TestProjectLifecycle:
             "occasion_code": "birthday",
         }, headers=headers)
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_master_frame_generation(self, client: AsyncClient):
+        reg = await client.post("/api/v1/auth/register", json={
+            "email": "user3@example.com",
+            "password": "password123",
+            "display_name": "Test User 3",
+        })
+        assert reg.status_code == 201
+        token = reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        recipient = await client.post("/api/v1/recipients", json={
+            "first_name": "Иван",
+            "last_name": "Петров",
+            "relationship_type": "friend",
+            "interests": ["кино", "музыка"],
+            "traits": ["весёлый"],
+        }, headers=headers)
+        assert recipient.status_code == 201
+        recipient_id = recipient.json()["id"]
+
+        project = await client.post("/api/v1/projects", json={
+            "recipient_id": recipient_id,
+            "occasion_code": "birthday",
+        }, headers=headers)
+        assert project.status_code == 201
+        project_id = project.json()["id"]
+
+        master = await client.post(f"/api/v1/projects/{project_id}/master-frame", json={
+            "concept": "cinematic",
+            "prompt": "A hero in a suit on a red carpet",
+            "width": 1024,
+            "height": 1024,
+        }, headers=headers)
+        assert master.status_code == 201
+        body = master.json()
+        assert body["title"] == "master-frame"
+        assert body["type"] == "image"
+        assert body["status"] == "ready"

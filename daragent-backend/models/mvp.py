@@ -99,6 +99,7 @@ class Project(Base):
     occasion_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     selected_recommendation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     selected_template_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    master_frame_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="SET NULL"), nullable=True, index=True)
     final_generation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     price_rub: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
     paid_rub: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
@@ -108,6 +109,7 @@ class Project(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     brief: Mapped["CreativeBrief"] = relationship(back_populates="project", cascade="all, delete-orphan")
+    master_frame: Mapped["Asset"] = relationship("Asset")
 
 
 class CreativeBrief(Base):
