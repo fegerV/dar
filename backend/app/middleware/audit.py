@@ -1,10 +1,11 @@
 import logging
 from uuid import UUID
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+from sqlalchemy import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user_optional
+from app.core.database import async_session_factory
+from app.models.audit import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,18 @@ class AuditMiddleware(BaseHTTPMiddleware):
             path = request.url.path
             method = request.method
             if method in ("POST", "PATCH", "DELETE", "PUT"):
-                user = await get_current_user_optional(request)
-                actor_id = getattr(user, "id", None) if user else None
+                actor_id = None
+                auth = request.headers.get("authorization")
+                if auth and auth.lower().startswith("bearer "):
+                    from app.core.security import decode_token
+                    token = auth.split(" ", 1)[1]
+                    payload = decode_token(token)
+                    if payload and payload.get("type") == "access":
+                        try:
+                            actor_id = UUID(payload.get("sub"))
+                        except (ValueError, TypeError):
+                            actor_id = None
+
                 target_type = None
                 target_id = None
                 parts = path.strip("/").split("/")
@@ -31,14 +42,19 @@ class AuditMiddleware(BaseHTTPMiddleware):
                             target_id = None
                 ip = request.client.host if request.client else None
                 ua = request.headers.get("user-agent")
-                logger.info(
-                    "AUDIT %s %s %s %s %s",
-                    actor_id,
-                    method,
-                    path,
-                    target_type,
-                    target_id,
-                )
-        except Exception as exc:  # pragma: no cover
+
+                async with async_session_factory() as session:
+                    stmt = insert(AuditLog).values(
+                        actor_user_id=actor_id,
+                        action=f"{method}:{path}",
+                        target_type=target_type,
+                        target_id=target_id,
+                        ip_address=ip,
+                        user_agent=ua,
+                        metadata={},
+                    )
+                    await session.execute(stmt)
+                    await session.commit()
+        except Exception as exc:
             logger.debug("Audit middleware skipped: %s", exc)
         return response

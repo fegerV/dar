@@ -1,4 +1,8 @@
-from fastapi import FastAPI
+import shutil
+from sqlalchemy import text
+from app.core.database import engine
+
+app = FastAPI(
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -37,14 +41,11 @@ async def health():
 
 
 @app.get("/health/detailed")
-async def health_detailed():
-    import shutil
-    from app.core.database import engine
-
+    async def health_detailed():
     db_ok = False
     try:
         async with engine.connect() as conn:
-            await conn.execute(__import__("sqlalchemy").text("SELECT 1"))
+            await conn.execute(text("SELECT 1"))
         db_ok = True
     except Exception:
         db_ok = False

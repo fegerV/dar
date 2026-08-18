@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.models.intelligence import GenerationFailure
 from app.schemas.intelligence import (
     GenerationFailureResponse,
     ImagePreflightRequest,
@@ -50,10 +52,9 @@ async def get_generation_failure(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    from app.models.intelligence import GenerationFailure
     from app.core.exceptions import NotFoundException
     result = await db.execute(
-        __import__("sqlalchemy").select(GenerationFailure).where(GenerationFailure.generation_id == generation_id)
+        select(GenerationFailure).where(GenerationFailure.generation_id == generation_id)
     )
     failure = result.scalar_one_or_none()
     if failure is None:

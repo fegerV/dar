@@ -94,4 +94,3 @@ volumes:
   pgdata:
   miniodata:
   backups:
-  miniodata:

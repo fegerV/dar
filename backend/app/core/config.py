@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://daragent:daragent@localhost:5432/daragent"
 
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_RATE_LIMIT_URL: str = "redis://localhost:6379/1"
 
     JWT_SECRET_KEY: str = "change-me-jwt"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

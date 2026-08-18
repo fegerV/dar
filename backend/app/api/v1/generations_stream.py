@@ -1,3 +1,5 @@
+import asyncio
+import json
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -67,13 +69,13 @@ async def stream_generation_progress(
                     ],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
-                yield f"data: {__import__('json').dumps(payload)}\n\n"
+                yield f"data: {json.dumps(payload)}\n\n"
                 last_progress = progress
 
             if status in ("completed", "failed", "cancelled", "approved", "rejected"):
                 break
 
-            await __import__("asyncio").sleep(1)
+            await asyncio.sleep(1)
             iteration += 1
 
     return StreamingResponse(
