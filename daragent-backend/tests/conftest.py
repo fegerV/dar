@@ -3,24 +3,21 @@ from __future__ import annotations
 
 import os
 import sys
-import pytest
-import pytest_asyncio
+
+from core.config import get_settings
+from core.database import Base, get_db
 from httpx import AsyncClient
+from main import create_app
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+get_settings.cache_clear()
 
 # Ensure backend directory is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Set test database URL before importing app modules
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_daragent.db"
-
-from core.config import get_settings
-
-get_settings.cache_clear()
-
-from core.database import get_db, Base
-from main import create_app
 
 # Test engine
 engine = create_async_engine("sqlite+aiosqlite:///./test_daragent.db", echo=False)

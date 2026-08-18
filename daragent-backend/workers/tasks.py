@@ -8,7 +8,7 @@ and future real providers.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -24,7 +24,7 @@ def run_generation_pipeline(self, generation_id: str) -> dict[str, Any]:
     try:
         return asyncio.run(_execute_generation_pipeline(UUID(generation_id)))
     except Exception as exc:
-        raise self.retry(exc=exc, countdown=60)
+        raise self.retry(exc=exc, countdown=60) from None
 
 
 async def _execute_generation_pipeline(generation_id: UUID) -> dict[str, Any]:
@@ -37,7 +37,7 @@ async def _execute_generation_pipeline(generation_id: UUID) -> dict[str, Any]:
             raise ValueError(f"Project {generation.project_id} not found")
 
         generation.status = "processing"
-        generation.started_at = datetime.now(timezone.utc)
+        generation.started_at = datetime.now(UTC)
         steps = [(1, "compile_prompt", "script"), (2, "mock_video", "video"), (3, "quality_check", "final")]
         for no, code, kind in steps:
             generation.current_step = code
@@ -51,7 +51,7 @@ async def _execute_generation_pipeline(generation_id: UUID) -> dict[str, Any]:
                     status="completed",
                     input_json={"project_id": str(project.id)},
                     output_json={"mock": True},
-                    completed_at=datetime.now(timezone.utc),
+                    completed_at=datetime.now(UTC),
                 )
             )
             await session.flush()
@@ -85,7 +85,7 @@ async def _execute_generation_pipeline(generation_id: UUID) -> dict[str, Any]:
         generation.status = "completed"
         generation.progress = 100
         generation.current_step = None
-        generation.completed_at = datetime.now(timezone.utc)
+        generation.completed_at = datetime.now(UTC)
         project.status = "ready"
         await session.commit()
         return {"generation_id": str(generation.id), "status": generation.status}

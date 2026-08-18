@@ -102,7 +102,7 @@ class RecipientIn(BaseModel):
     last_name: str | None = None
     nickname: str | None = None
     gender: str | None = None
-    relationship: str | None = None
+    relationship_type: str | None = None
     relationship_label: str | None = None
     interests: list[str] = []
     traits: list[str] = []
@@ -141,7 +141,7 @@ class ProjectResponse(BaseModel):
 
 
 class BriefIn(BaseModel):
-    relationship: str | None = None
+    relationship_type: str | None = None
     desired_mood: str | None = None
     desired_length_sec: int | None = Field(default=None, ge=3, le=300)
     humor_level: int | None = Field(default=None, ge=0, le=100)
@@ -464,7 +464,7 @@ async def create_project(payload: ProjectCreate, user: User = Depends(current_us
     project = Project(owner_user_id=user.id, **payload.model_dump())
     db.add(project)
     await db.flush()
-    db.add(CreativeBrief(project_id=project.id, relationship=recipient.relationship))
+    db.add(CreativeBrief(project_id=project.id, relationship_type=recipient.relationship_type))
     await record_event(db, "project_created", user_id=user.id, project_id=project.id)
     return project
 
@@ -849,7 +849,7 @@ async def generate_recommendations_for_project(db: AsyncSession, project: Projec
         reasons = []
         if project.occasion_code in template.occasion_codes or "other" in template.occasion_codes:
             score += Decimal("0.20"); reasons.append("подходит под повод")
-        if recipient and (recipient.relationship in template.relationship_types or "other" in template.relationship_types):
+        if recipient and (recipient.relationship_type in template.relationship_types or "other" in template.relationship_types):
             score += Decimal("0.20"); reasons.append("подходит под отношения")
         if brief.desired_mood and brief.desired_mood in template.moods:
             score += Decimal("0.15"); reasons.append("попадает в настроение")

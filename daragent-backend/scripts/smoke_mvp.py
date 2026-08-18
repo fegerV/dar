@@ -28,7 +28,7 @@ def main() -> None:
         headers=headers,
         json={
             "first_name": "Сергей",
-            "relationship": "colleague",
+            "relationship_type": "colleague",
             "interests": ["cars", "fishing"],
             "traits": ["funny"],
         },

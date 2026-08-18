@@ -20,7 +20,7 @@ class TestProjectLifecycle:
         recipient = await client.post("/api/v1/recipients", json={
             "first_name": "Иван",
             "last_name": "Петров",
-            "relationship": "friend",
+            "relationship_type": "friend",
             "interests": ["кино", "музыка"],
             "traits": ["весёлый"],
         }, headers=headers)
@@ -44,7 +44,7 @@ class TestProjectLifecycle:
 
         # 5. Update brief
         brief_update = await client.put(f"/api/v1/projects/{project_id}/brief", json={
-            "relationship": "friend",
+            "relationship_type": "friend",
             "desired_mood": "funny",
             "inside_joke": "шутка про кота",
             "personalization_level": 80,
