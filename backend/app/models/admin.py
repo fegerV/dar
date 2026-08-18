@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,10 +53,10 @@ class Worker(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     gpu_model: Mapped[str | None] = mapped_column(String(50))
     gpu_vram_total_gb: Mapped[int | None] = mapped_column(Integer)
     gpu_vram_used_gb: Mapped[int | None] = mapped_column(Integer)
-    cpu_usage_percent: Mapped[float | None] = mapped_column(Integer)
+    cpu_usage_percent: Mapped[float | None] = mapped_column(Float)
     jobs_today: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failures_today: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    avg_generation_time_sec: Mapped[float | None] = mapped_column(Integer)
+    avg_generation_time_sec: Mapped[float | None] = mapped_column(Float)
     last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 

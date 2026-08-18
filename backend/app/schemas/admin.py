@@ -98,7 +98,7 @@ class AdminWorkerResponse(BaseModel):
     gpu_model: str | None = None
     gpu_vram_total_gb: int | None = None
     gpu_vram_used_gb: int | None = None
-    cpu_usage_percent: int | None = None
+    cpu_usage_percent: float | None = None
     jobs_today: int
     failures_today: int
     avg_generation_time_sec: float | None = None
@@ -127,13 +127,13 @@ class AdminQueueJobResponse(BaseModel):
 class AdminPaymentResponse(BaseModel):
     id: UUID
     user_id: UUID | None = None
-    amount: float
-    currency: str
+    amount_rub: float
+    method: str
     status: str
-    provider: str | None = None
-    external_id: str | None = None
+    provider_id: UUID | None = None
+    external_payment_id: str | None = None
     created_at: datetime
-    completed_at: datetime | None = None
+    paid_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
