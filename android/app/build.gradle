@@ -14,12 +14,31 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        buildConfigField "boolean", "BUILD_TYPE_CI", "true"
+    }
+
+    signingConfigs {
+        release {
+            if (project.hasProperty("DARAGENT_SIGNING_KEY")) {
+                storeFile file("daragent-release.jks")
+                storePassword System.getenv("DARAGENT_SIGNING_STORE_PASSWORD")
+                keyAlias System.getenv("DARAGENT_SIGNING_KEY_ALIAS")
+                keyPassword System.getenv("DARAGENT_SIGNING_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (project.hasProperty("DARAGENT_SIGNING_KEY")) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
         }
     }
 
