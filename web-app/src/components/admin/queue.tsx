@@ -1,27 +1,65 @@
 "use client"
 
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Select } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react"
-
-const runningJobs = [
-  { id: "89213", model: "Kling", progress: 72 },
-  { id: "89212", model: "Veo", progress: 41 },
-]
-
-const pendingJobs = [
-  { id: "89214", model: "Kling" },
-  { id: "89215", model: "Wan" },
-  { id: "89216", model: "Veo" },
-  { id: "89217", model: "Kling" },
-]
+import { Pause, RotateCcw, X, ArrowUp, ArrowDown } from "lucide-react"
+import { apiFetch } from "@/lib/api"
+import type { AdminQueueJob } from "@/types/admin"
+import { useRouter } from "next/navigation"
+import { useAdminAuth } from "@/contexts/admin-auth-context"
 
 export function AdminQueue() {
-  const { t } = useTranslation()
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [jobs, setJobs] = useState<AdminQueueJob[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const { user, loading: authLoading } = useAdminAuth()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/admin/login")
+    }
+  }, [authLoading, user, router])
+
+  const loadJobs = async () => {
+    if (!user) return
+    setLoading(true)
+    try {
+      const params = statusFilter ? `?status=${statusFilter}` : ""
+      const data = await apiFetch<AdminQueueJob[]>(`/admin/queue${params}`)
+      setJobs(data)
+    } catch {
+      setJobs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadJobs()
+  }, [user, statusFilter, loadJobs])
+
+  const runningJobs = jobs.filter((j) => j.status === "running")
+  const pendingJobs = jobs.filter((j) => j.status === "pending" || j.status === "queued")
+
+  if (authLoading || loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Generation Queue</h1>
+          <p className="text-muted-foreground mt-1">Dispatch and monitor generation jobs</p>
+        </div>
+        <Card>
+          <CardContent>
+            <p className="py-8 text-center text-muted-foreground">Loading queue...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -29,6 +67,14 @@ export function AdminQueue() {
         <h1 className="text-3xl font-bold">Generation Queue</h1>
         <p className="text-muted-foreground mt-1">Dispatch and monitor generation jobs</p>
       </div>
+
+      <Select value={statusFilter || ""} onValueChange={(v) => setStatusFilter(v || null)} className="w-[180px]" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="running">Running</option>
+        <option value="failed">Failed</option>
+        <option value="canceled">Canceled</option>
+      </Select>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -40,10 +86,13 @@ export function AdminQueue() {
               <div key={job.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-mono font-medium">#{job.id}</span>
-                  <span className="text-sm text-muted-foreground">{job.model}</span>
+                  <span className="text-sm text-muted-foreground">Gen: {job.generation_id?.slice(0, 8)}…</span>
                 </div>
-                <Progress value={job.progress} aria-label={`Job ${job.id} progress ${job.progress}%`} />
-                <div className="mt-3 flex gap-2">
+                <div className="mb-2">
+                  <Progress value={(job.retry_count + 1) * 25} aria-label={`Job ${job.id} progress`} />
+                  <div className="text-xs text-muted-foreground mt-1">Retries: {job.retry_count}</div>
+                </div>
+                <div className="flex gap-2">
                   <Button size="sm" variant="outline" aria-label={`Pause job ${job.id}`}>
                     <Pause className="h-4 w-4" aria-hidden="true" />
                   </Button>
@@ -53,6 +102,9 @@ export function AdminQueue() {
                 </div>
               </div>
             ))}
+            {runningJobs.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center">No running jobs</p>
+            )}
           </CardContent>
         </Card>
 
@@ -62,11 +114,11 @@ export function AdminQueue() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {pendingJobs.map((job, idx) => (
+              {pendingJobs.map((job) => (
                 <div key={job.id} className="flex items-center justify-between rounded-lg border p-3">
                   <div>
                     <span className="font-mono font-medium">#{job.id}</span>
-                    <span className="ml-3 text-sm text-muted-foreground">{job.model}</span>
+                    <span className="ml-3 text-sm text-muted-foreground">Gen: {job.generation_id?.slice(0, 8)}…</span>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" aria-label={`Move job ${job.id} to front`}>
@@ -81,6 +133,9 @@ export function AdminQueue() {
                   </div>
                 </div>
               ))}
+              {pendingJobs.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center">No pending jobs</p>
+              )}
             </div>
           </CardContent>
         </Card>

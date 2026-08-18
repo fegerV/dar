@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+const ADMIN_PATHS = ["/admin/dashboard", "/admin/orders", "/admin/generations", "/admin/queue", "/admin/users", "/admin/templates", "/admin/payments", "/admin/workers", "/admin/system"]
+
 export function middleware(request: NextRequest) {
   const locale = request.nextUrl.searchParams.get("locale") || "ru"
   const response = NextResponse.redirect(new URL(`/${locale}${request.nextUrl.pathname}`, request.url))
   response.cookies.set("locale", locale, { path: "/", maxAge: 60 * 60 * 24 * 365 })
 
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    const session = request.cookies.get("session")?.value
-    if (!session) {
-      return NextResponse.redirect(new URL("/onboarding", request.url))
+  if (request.nextUrl.pathname.startsWith("/admin") && !request.nextUrl.pathname.startsWith("/admin/login") && !request.nextUrl.pathname.startsWith("/admin/init")) {
+    const token = request.cookies.get("daragent_admin_token")?.value
+    if (!token) {
+      return NextResponse.redirect(new URL("/admin/login", request.url))
     }
   }
 

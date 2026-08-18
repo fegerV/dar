@@ -1,21 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, Play, Eye } from "lucide-react"
-
-const orders = [
-  { id: "10482", user: "@ivan", occasion: "День Рожд.", template: "Gangster", status: "READY", amount: "590 ₽" },
-  { id: "10481", user: "@anna", occasion: "Юбилей", template: "Mom", status: "GENERATING", amount: "790 ₽" },
-  { id: "10480", user: "@alex", occasion: "Коллеге", template: "Office", status: "FAILED", amount: "490 ₽" },
-  { id: "10479", user: "@maria", occasion: "Свадьба", template: "Romantic", status: "READY", amount: "890 ₽" },
-  { id: "10478", user: "@petr", occasion: "День Рожд.", template: "Rockstar", status: "QUEUED", amount: "690 ₽" },
-]
+import { Search, Play, Eye } from "lucide-react"
+import { apiFetch } from "@/lib/api"
+import type { AdminOrder } from "@/types/admin"
+import { useRouter } from "next/navigation"
+import { useAdminAuth } from "@/contexts/admin-auth-context"
 
 const statusColors: Record<string, string> = {
   READY: "bg-green-100 text-green-800",
@@ -25,15 +20,48 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminOrders() {
-  const { t } = useTranslation()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [orders, setOrders] = useState<AdminOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const { user, loading: authLoading } = useAdminAuth()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/admin/login")
+    }
+  }, [authLoading, user, router])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<AdminOrder[]>("/admin/orders")
+      .then(setOrders)
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false))
+  }, [user])
 
   const filtered = orders.filter((o) => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false
-    if (search && !o.id.includes(search) && !o.user.includes(search) && !o.template.toLowerCase().includes(search.toLowerCase())) return false
+    if (search && !o.id.includes(search) && !(o.requested_by_user_id || "").includes(search) && !(o.template_version_id || "").toString().toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
+
+  if (authLoading || loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Orders</h1>
+          <p className="text-muted-foreground mt-1">Manage customer orders</p>
+        </div>
+        <Card>
+          <CardContent>
+            <p className="py-8 text-center text-muted-foreground">Loading orders...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -71,7 +99,6 @@ export function AdminOrders() {
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium">ID</th>
                   <th className="text-left py-3 px-4 font-medium">User</th>
-                  <th className="text-left py-3 px-4 font-medium">Occasion</th>
                   <th className="text-left py-3 px-4 font-medium">Template</th>
                   <th className="text-left py-3 px-4 font-medium">Status</th>
                   <th className="text-right py-3 px-4 font-medium">Amount</th>
@@ -82,13 +109,12 @@ export function AdminOrders() {
                 {filtered.map((order) => (
                   <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4 font-mono">#{order.id}</td>
-                    <td className="py-3 px-4">{order.user}</td>
-                    <td className="py-3 px-4">{order.occasion}</td>
-                    <td className="py-3 px-4">{order.template}</td>
+                    <td className="py-3 px-4">{order.requested_by_user_id || "—"}</td>
+                    <td className="py-3 px-4">{order.template_version_id || "—"}</td>
                     <td className="py-3 px-4">
                       <Badge className={statusColors[order.status] || "bg-gray-100"}>{order.status}</Badge>
                     </td>
-                    <td className="py-3 px-4 text-right">{order.amount}</td>
+                    <td className="py-3 px-4 text-right">{order.cost_rub} ₽</td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Button size="sm" variant="ghost" aria-label={`View order ${order.id}`}>

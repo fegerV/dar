@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { getAccessToken } from "@/lib/api"
 
 export default function AdminInitPage() {
   const router = useRouter()
@@ -16,15 +17,15 @@ export default function AdminInitPage() {
     try {
       const res = await fetch("/api/v1/admin/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken()}` },
       })
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.detail || "Failed to init admin")
       }
       router.push("/admin/dashboard")
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e: unknown) {
+      setError((e as Error)?.message)
     } finally {
       setLoading(false)
     }

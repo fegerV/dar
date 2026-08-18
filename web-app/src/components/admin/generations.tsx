@@ -1,17 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Play } from "lucide-react"
-
-const generations = [
-  { id: "89213", model: "Kling 3", workflow: "birthday_v4", status: "SUCCESS", duration: "87 sec", cost: "$0.81" },
-  { id: "89212", model: "Veo", workflow: "portrait_v2", status: "FAILED", duration: "12 sec", cost: "$0.45" },
-  { id: "89211", model: "Grok", workflow: "cinematic_v1", status: "SUCCESS", duration: "64 sec", cost: "$0.62" },
-]
+import { apiFetch } from "@/lib/api"
+import type { AdminGeneration } from "@/types/admin"
+import { useRouter } from "next/navigation"
+import { useAdminAuth } from "@/contexts/admin-auth-context"
 
 const statusColors: Record<string, string> = {
   SUCCESS: "bg-green-100 text-green-800",
@@ -21,7 +18,40 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminGenerations() {
-  const { t } = useTranslation()
+  const [generations, setGenerations] = useState<AdminGeneration[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const { user, loading: authLoading } = useAdminAuth()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/admin/login")
+    }
+  }, [authLoading, user, router])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<AdminGeneration[]>("/admin/generations")
+      .then(setGenerations)
+      .catch(() => setGenerations([]))
+      .finally(() => setLoading(false))
+  }, [user])
+
+  if (authLoading || loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Generations</h1>
+          <p className="text-muted-foreground mt-1">All generation attempts and their details</p>
+        </div>
+        <Card>
+          <CardContent>
+            <p className="py-8 text-center text-muted-foreground">Loading generations...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -43,21 +73,24 @@ export function AdminGenerations() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Model</p>
-                  <p className="font-medium">{gen.model}</p>
+                  <p className="font-medium">{gen.model_name || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Workflow</p>
-                  <p className="font-medium">{gen.workflow}</p>
+                  <p className="text-muted-foreground">Project</p>
+                  <p className="font-medium">{gen.project_id?.slice(0, 8)}…</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Duration</p>
-                  <p className="font-medium">{gen.duration}</p>
+                  <p className="font-medium">{gen.duration_ms ? `${gen.duration_ms / 1000}s` : "—"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Cost</p>
-                  <p className="font-medium">{gen.cost}</p>
+                  <p className="font-medium">{gen.cost_rub} ₽</p>
                 </div>
               </div>
+              {gen.error_message && (
+                <p className="mt-2 text-sm text-red-600">{gen.error_message}</p>
+              )}
               <div className="mt-4 flex justify-end">
                 <Button size="sm" variant="outline" aria-label={`Play video for generation ${gen.id}`}>
                   <Play className="h-4 w-4 mr-2" aria-hidden="true" />

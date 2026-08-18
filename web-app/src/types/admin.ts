@@ -1,0 +1,146 @@
+export interface AdminUser {
+  id: string
+  status: string
+  email: string | null
+  display_name: string | null
+  is_admin: boolean
+  created_at: string
+}
+
+export interface DashboardStats {
+  total_users: number
+  total_projects: number
+  total_payments: number
+  pending_reviews: number
+  active_generations: number
+  running_jobs: number
+  queued_jobs: number
+  failed_jobs: number
+  ai_cost_today: number
+  revenue_today: number
+  profit_today: number
+}
+
+export interface AdminTemplate {
+  id: string
+  code: string
+  title: string
+  description: string | null
+  kind: string
+  status: string
+  category: string | null
+  occasion_codes: string[]
+  relationship_types: string[]
+  moods: string[]
+  base_price_rub: number
+  created_at: string
+}
+
+export interface AdminTemplateCreate {
+  code: string
+  title: string
+  description?: string | null
+  kind: string
+  category?: string | null
+  occasion_codes: string[]
+  relationship_types: string[]
+  moods: string[]
+  base_price_rub: number
+}
+
+export interface AdminGeneration {
+  id: string
+  project_id: string
+  status: string
+  progress: number
+  current_step: string | null
+  model_name: string | null
+  attempt: number
+  error_code: string | null
+  error_message: string | null
+  cost_rub: number
+  duration_ms: number | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface AdminOrder {
+  id: string
+  project_id: string
+  requested_by_user_id: string | null
+  status: string
+  cost_rub: number
+  template_version_id: string | null
+  model_name: string | null
+  error_code: string | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface AdminWorker {
+  id: string
+  name: string
+  status: string
+  gpu_model: string | null
+  gpu_vram_total_gb: number | null
+  gpu_vram_used_gb: number | null
+  cpu_usage_percent: number | null
+  jobs_today: number
+  failures_today: number
+  avg_generation_time_sec: number | null
+  last_heartbeat_at: string | null
+  created_at: string
+}
+
+export interface AdminQueueJob {
+  id: string
+  generation_id: string
+  worker_id: string | null
+  status: string
+  priority: number
+  error_code: string | null
+  error_message: string | null
+  retry_count: number
+  started_at: string | null
+  finished_at: string | null
+  created_at: string
+}
+
+export interface AdminPayment {
+  id: string
+  user_id: string | null
+  amount_rub: number
+  method: string
+  status: string
+  provider_id: string | null
+  external_payment_id: string | null
+  created_at: string
+  paid_at: string | null
+}
+
+export interface AdminAuditLog {
+  id: string
+  actor_user_id: string | null
+  action: string
+  target_type: string | null
+  target_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+export interface SystemSetting {
+  id: string
+  key: string
+  value: Record<string, unknown>
+  description: string | null
+  is_public: boolean
+  updated_at: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}

@@ -1,37 +1,72 @@
 "use client"
 
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
+import { useEffect, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
 import { Users, ShoppingCart, Sparkles, Cpu, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
-
-const stats = [
-  { title: "Users", value: "12 482", icon: Users, color: "text-blue-600" },
-  { title: "Orders", value: "1 842", icon: ShoppingCart, color: "text-green-600" },
-  { title: "Generations", value: "3 921", icon: Sparkles, color: "text-purple-600" },
-  { title: "Revenue", value: "1 248 500 ₽", icon: DollarSign, color: "text-emerald-600" },
-  { title: "AI Cost", value: "183 400 ₽", icon: Cpu, color: "text-orange-600" },
-  { title: "Profit", value: "1 065 100 ₽", icon: TrendingUp, color: "text-teal-600" },
-]
-
-const jobStats = [
-  { label: "Running", value: 17, status: "running", icon: CheckCircle2, color: "text-green-600" },
-  { label: "Queued", value: 42, status: "queued", icon: AlertTriangle, color: "text-yellow-600" },
-  { label: "Failed", value: 3, status: "failed", icon: XCircle, color: "text-red-600" },
-  { label: "Completed", value: 318, status: "completed", icon: CheckCircle2, color: "text-gray-600" },
-]
-
-const workers = [
-  { name: "video-worker-01", gpu: "RTX4090", vram: "21/24 GB", jobs: 2, status: "🟢" },
-  { name: "video-worker-02", gpu: "V100", vram: "28/32 GB", jobs: 1, status: "🟢" },
-  { name: "video-worker-03", gpu: "V100", vram: "31/32 GB", jobs: 1, status: "🟡" },
-  { name: "worker-04", gpu: "—", vram: "—", jobs: 0, status: "🔴" },
-]
+import { apiFetch } from "@/lib/api"
+import type { DashboardStats } from "@/types/admin"
+import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useRouter } from "next/navigation"
 
 export function AdminDashboard() {
-  const { t } = useTranslation()
+  const { user, loading: authLoading, error } = useAdminAuth()
+  const router = useRouter()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!authLoading && !user && !error) {
+      router.push("/admin/login")
+    }
+  }, [authLoading, user, error, router])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<DashboardStats>("/admin/stats")
+      .then(setStats)
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false))
+  }, [user])
+
+  if (authLoading || loading || !stats) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Operational center overview</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">—</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">—</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const summaryCards = [
+    { title: "Users", value: stats.total_users.toLocaleString(), icon: Users, color: "text-blue-600" },
+    { title: "Orders", value: stats.total_projects.toLocaleString(), icon: ShoppingCart, color: "text-green-600" },
+    { title: "Generations", value: stats.total_payments.toLocaleString(), icon: Sparkles, color: "text-purple-600" },
+    { title: "Revenue", value: stats.revenue_today.toLocaleString() + " \u20BD", icon: DollarSign, color: "text-emerald-600" },
+    { title: "AI Cost", value: stats.ai_cost_today.toLocaleString() + " \u20BD", icon: Cpu, color: "text-orange-600" },
+    { title: "Profit", value: stats.profit_today.toLocaleString() + " \u20BD", icon: TrendingUp, color: "text-teal-600" },
+  ]
+
+  const jobStats = [
+    { label: "Running", value: stats.running_jobs, status: "running", icon: CheckCircle2, color: "text-green-600" },
+    { label: "Queued", value: stats.queued_jobs, status: "queued", icon: AlertTriangle, color: "text-yellow-600" },
+    { label: "Failed", value: stats.failed_jobs, status: "failed", icon: XCircle, color: "text-red-600" },
+    { label: "Completed", value: stats.total_projects - stats.failed_jobs - stats.running_jobs - stats.queued_jobs, status: "completed", icon: CheckCircle2, color: "text-gray-600" },
+  ]
 
   return (
     <div className="space-y-6">
@@ -41,7 +76,7 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => {
+        {summaryCards.map((stat) => {
           const Icon = stat.icon
           return (
             <Card key={stat.title}>
@@ -60,7 +95,7 @@ export function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Generations Now</CardTitle>
+            <CardTitle>Jobs Now</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -82,47 +117,23 @@ export function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>GPU / Workers</CardTitle>
+            <CardTitle>Profit Margin</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {workers.map((worker) => (
-                <div key={worker.name} className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">{worker.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {worker.gpu} · {worker.vram} · {worker.jobs} jobs
-                    </p>
-                  </div>
-                  <span className="text-lg">{worker.status}</span>
-                </div>
-              ))}
+          <CardContent className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span>Today</span>
+              {stats.revenue_today > 0 && (
+                <span>Margin: {((stats.profit_today / stats.revenue_today) * 100).toFixed(1)}%</span>
+              )}
             </div>
-            <Button className="w-full mt-4" variant="outline">
-              View All Workers
-            </Button>
+            {stats.revenue_today > 0 && <Progress value={(stats.profit_today / stats.revenue_today) * 100} aria-label="Profit margin" />}
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>AI Cost: {stats.ai_cost_today.toLocaleString()} ₽</span>
+              <span>Revenue: {stats.revenue_today.toLocaleString()} ₽</span>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Cost vs Revenue</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>Today</span>
-              <span>Margin: 85.3%</span>
-            </div>
-            <Progress value={85.3} aria-label="Profit margin 85.3%" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>AI Cost: 183 400 ₽</span>
-              <span>Revenue: 1 248 500 ₽</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

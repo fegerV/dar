@@ -1,21 +1,50 @@
 "use client"
 
-import { useState } from "react"
-import { useTranslation } from "react-i18next"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Cpu, HardDrive, Activity } from "lucide-react"
-
-const workers = [
-  { id: "1", name: "video-worker-01", gpu: "RTX4090", vramTotal: 24, vramUsed: 21, cpu: 78, jobs: 2, status: "active" },
-  { id: "2", name: "video-worker-02", gpu: "V100", vramTotal: 32, vramUsed: 28, cpu: 42, jobs: 1, status: "active" },
-  { id: "3", name: "video-worker-03", gpu: "V100", vramTotal: 32, vramUsed: 31, cpu: 91, jobs: 1, status: "warning" },
-  { id: "4", name: "worker-04", gpu: null, vramTotal: null, vramUsed: null, cpu: null, jobs: 0, status: "offline" },
-]
+import { apiFetch } from "@/lib/api"
+import type { AdminWorker } from "@/types/admin"
+import { useRouter } from "next/navigation"
+import { useAdminAuth } from "@/contexts/admin-auth-context"
 
 export function AdminWorkers() {
-  const { t } = useTranslation()
+  const [workers, setWorkers] = useState<AdminWorker[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const { user, loading: authLoading } = useAdminAuth()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/admin/login")
+    }
+  }, [authLoading, user, router])
+
+  useEffect(() => {
+    if (!user) return
+    apiFetch<AdminWorker[]>("/admin/workers")
+      .then(setWorkers)
+      .catch(() => setWorkers([]))
+      .finally(() => setLoading(false))
+  }, [user])
+
+  if (authLoading || loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">AI / Workers</h1>
+          <p className="text-muted-foreground mt-1">GPU workers and model status</p>
+        </div>
+        <Card>
+          <CardContent>
+            <p className="py-8 text-center text-muted-foreground">Loading workers...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -43,18 +72,19 @@ export function AdminWorkers() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <span>{worker.gpu || "—"}</span>
+                  <span>{worker.gpu_model || "—"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <HardDrive className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <span>{worker.vramUsed ?? "—"} / {worker.vramTotal ?? "—"} GB</span>
+                  <span>{worker.gpu_vram_used_gb ?? "—"} / {worker.gpu_vram_total_gb ?? "—"} GB</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <span>CPU: {worker.cpu ?? "—"}%</span>
+                  <span>CPU: {worker.cpu_usage_percent?.toFixed(0) ?? "—"}%</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Jobs today:</span> {worker.jobs}
+                  <span className="text-muted-foreground">Jobs today:</span> {worker.jobs_today}
+                  {worker.failures_today > 0 && <span className="text-red-600 ml-2">({worker.failures_today} failed)</span>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -64,6 +94,9 @@ export function AdminWorkers() {
             </CardContent>
           </Card>
         ))}
+        {workers.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center col-span-2">No workers registered</p>
+        )}
       </div>
     </div>
   )
