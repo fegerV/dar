@@ -9,6 +9,8 @@ from app.models.intelligence import (
     VideoRecipe,
 )
 from app.models.quality import QualityCheck, VideoCriticResult
+from app.models.user import User, UserAuthIdentity, UserPreferences
+from app.models.admin import AdminUser, Role, UserRole, Worker, QueueJob, SystemSettings
 
 __all__ = [
     "Base",
@@ -23,4 +25,13 @@ __all__ = [
     "GenerationFailure",
     "UserFeedback",
     "ModelProfile",
+    "User",
+    "UserAuthIdentity",
+    "UserPreferences",
+    "AdminUser",
+    "Role",
+    "UserRole",
+    "Worker",
+    "QueueJob",
+    "SystemSettings",
 ]

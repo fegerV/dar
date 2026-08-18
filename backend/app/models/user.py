@@ -22,6 +22,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="Europe/Moscow")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="RUB")
     birth_date: Mapped[date | None] = mapped_column(Date)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -402,6 +402,43 @@ TARGETED REGENERATION
   - [x] CSAT after delivery
   - [x] Feature request voting
 
+## Фаза 4.5: Admin — Operational Center (2–3 недели)
+
+*Цель: Управление продуктом как фабрикой поздравлений, а не CRUD.*
+
+- [x] RBAC + Admin Users
+  - [x] `is_admin` на `User`
+  - [x] Роли: Owner, Admin, Content Manager, Support, AI Operator, Analyst, Moderator
+  - [x] Аудит действий
+- [x] Dashboard
+  - [x] Users / Orders / Generations / Revenue / AI Cost / Profit
+  - [x] Running / Queued / Failed jobs
+  - [x] GPU / Workers heartbeat
+- [x] Orders
+  - [x] Таблица заказов с фильтрами
+  - [x] Карточка заказа: input, prompt, generation, output, timeline, margin
+- [x] Generations
+  - [x] Все попытки генерации
+  - [x] Model / Workflow / Prompt version / Seed / Cost / Duration
+- [x] Queue
+  - [x] Running / Pending / Failed
+  - [x] Pause / Retry / Cancel / Priority controls
+- [x] Users + Wallet
+  - [x] Сегменты
+  - [x] Ledger operations (только ledger, не прямой edit баланса)
+  - [x] Impersonate с audit log
+- [x] Templates + Content
+  - [x] Template editor с scenes / variables / conditions
+  - [x] Prompt Library
+- [x] Payments
+  - [x] Платежи + Ledger
+  - [x] Webhooks
+- [x] AI / Workers
+  - [x] Workers heartbeat
+  - [x] GPU / VRAM / Jobs
+- [x] System
+  - [x] Logs / Audit / Settings
+
 ---
 
 ## 🕳️ Пробелы из ДарАГЕНТ.txt
