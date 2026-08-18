@@ -11,6 +11,7 @@ from app.api.v1.feedback import router as feedback_router
 from app.api.v1.generations import router as generations_router
 from app.api.v1.generations_stream import router as generations_stream_router
 from app.api.v1.holidays import router as holidays_router
+from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.pricing import router as pricing_router
@@ -36,6 +37,7 @@ v1_router.include_router(telegram_router)
 v1_router.include_router(assets_router)
 v1_router.include_router(generations_router)
 v1_router.include_router(generations_stream_router)
+v1_router.include_router(intelligence_router)
 v1_router.include_router(holidays_router)
 v1_router.include_router(referrals_router)
 v1_router.include_router(quality_router)

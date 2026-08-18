@@ -23,6 +23,30 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="daragent" android:host="yookassa" />
+            </intent-filter>
         </activity>
+        <activity
+            android:name=".YooKassaCheckoutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DarAgent" />
+        <service
+            android:name=".notification.DarAgentMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <receiver
+            android:name=".notification.YooKassaWebhookReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.daragent.YOOKASSA_WEBHOOK" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

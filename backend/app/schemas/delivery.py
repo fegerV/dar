@@ -8,7 +8,8 @@ class DeliveryCreate(BaseModel):
     channel: str = Field(..., pattern="^(telegram|vk|whatsapp|link|download|email|other)$")
     destination: str | None = None
     expires_in_days: int = Field(30, ge=1, le=365)
-    password: str | None = None
+    max_views: int | None = Field(None, ge=1)
+    password: str | None = Field(None, min_length=1)
     scheduled_at: datetime | None = None
 
 
@@ -37,6 +38,7 @@ class ShareLinkResponse(BaseModel):
     public_url: str
     expires_at: datetime | None = None
     max_views: int | None = None
+    password_protected: bool = False
 
 
 class PublicShareView(BaseModel):
@@ -49,3 +51,12 @@ class PublicShareView(BaseModel):
     duration_sec: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class PublicShareAccessRequest(BaseModel):
+    password: str | None = None
+
+
+class DeliveryTrackRequest(BaseModel):
+    delivery_id: UUID
+</

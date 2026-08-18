@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.generation import Generation
+from app.models.quality import VideoCriticResult
 
 
 class QualityRepository:
@@ -17,6 +18,12 @@ class QualityRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_critic_result(self, generation_id: UUID) -> VideoCriticResult | None:
+        result = await self.db.execute(
+            select(VideoCriticResult).where(VideoCriticResult.generation_id == generation_id)
+        )
+        return result.scalar_one_or_none()
+
     async def update_generation_status(
         self, generation_id: UUID, status: str, output_json: dict | None = None
     ) -> Generation | None:
@@ -26,6 +33,5 @@ class QualityRepository:
         generation.status = status
         if output_json:
             generation.output_json = output_json
-        generation.completed_at = datetime.now(datetime.timezone.utc)
         await self.db.flush()
         return generation

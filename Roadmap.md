@@ -1,15 +1,56 @@
 # 🗺️ DarAgent — Product & Tech Roadmap
 
 > AI-сервис персональных видеопоздравлений  
-> Last updated: 2026-08-17
+> Last updated: 2026-08-18
 
 ---
 
 ## Обзор
 
-DarAgent — платформа, которая позволяет пользователям создавать персонализированные видеопоздравления с помощью AI. Сервис автоматизирует полный цикл: от сбора информации о получателе и генерации сценария до рендеринга видео и доставки получателю.
+DarAgent — не генератор видео, а **система управления генерацией видео**. Главная задача: получить от пользователя фотографию + смысл поздравления → выбрать лучший проверенный сценарий → выбрать подходящую модель → скомпилировать prompt → сгенерировать → автоматически проверить → при необходимости исправить и перегенерировать → выдать только качественный результат.
 
-**Текущий статус:** Фаза 0–1, 2.1–2.2, 3.1–3.3 и 5 выполнены. Переход к закрытию пробелов из ДарАГЕНТ.txt и к Фазе 6.
+```
+USER
+  │
+  ▼
+Upload Photo
+  │
+  ▼
+IMAGE PREFLIGHT
+  │
+  ├─ BAD PHOTO → Fix/Reject
+  │
+  ▼
+TEMPLATE ENGINE
+  │
+  ▼
+RECOMMENDATION ENGINE
+  │
+  ▼
+SCENE TEMPLATE + MODEL SELECTOR
+  │
+  ▼
+VIDEO RECIPE
+  │
+  ▼
+GENERATION
+  │
+  ▼
+VIDEO QUALITY GATE
+  │
+  ├─ PASS → USER
+  │
+  ▼
+FAIL → FAILURE ANALYZER
+  │
+  ▼
+PROMPT REPAIR ENGINE
+  │
+  ▼
+TARGETED REGENERATION
+```
+
+**Текущий статус:** Фазы 0–2.4, 3.1–3.3 и 5 выполнены. Закрытие пробелов из ДарАГЕНТ.txt. Добавлен Intelligence Core: Image Preflight, Video Recipes, Prompt Repair, Failure Analyzer, targeted regeneration.
 
 **Ключевой принцип MVP:** Пользователь не создаёт контент с нуля. Он выбирает повод → человека → настроение → формат, а система сама собирает лучший сценарий поздравления.
 
@@ -163,15 +204,53 @@ DarAgent — платформа, которая позволяет пользо�
 ### 2.4 Quality Gate
 
 - [x] Автоматическая проверка:
-  - [x] Длина видео (min 15s, max 120s)
-  - [x] Разрешение (min 720p)
-  - [x] Аудио уровень (no silence, no clipping)
-  - [x] FPS consistency
+  - [x] Техническая проверка: длительность, разрешение, fps, audio, codec
+  - [x] Визуальная проверка: лица, деформации, артефакты, landmarks, blink
+  - [x] Семантическая проверка: prompt adherence, scene classifier
+  - [x] Video Critic: identity/motion/face_quality/prompt_adherence/artifact scores
 - [x] Ручная модерация финального видео
   - [x] Admin panel для ревью
   - [x] Approve / Reject с комментарием
 - [x] Статусы: `rendering → reviewing → approved → rejected`
-- [ ] Auto-retry при технических ошибках (не при контентных)
+- [x] Auto-retry при технических ошибках (не при контентных)
+  - [x] До 3 попыток перед показом пользователю
+
+### 2.5 Intelligence Core — «Ядро Дарагента»
+
+- [x] Image Preflight
+  - [x] Проверка разрешения, лица, размера лица, резкости, позы
+  - [x] Определение проблем: закрытые глаза, профиль, несколько людей, освещение
+  - [x] Рекомендация моделей и шаблонов на основе входного фото
+  - [x] `POST /api/v1/intelligence/preflight`
+- [x] Video Recipes
+  - [x] База проверенных сценариев: template + model + prompt + negative strategy
+  - [x] Учёт success rate, avg_generations, cost_estimate
+  - [x] Known failures per recipe с рекомендациями по исправлению
+  - [x] `GET /api/v1/intelligence/recipes/{code}`
+- [x] Prompt Repair Engine
+  - [x] Mapping: failure_code → targeted prompt/negative repair
+  - [x] Целенаправленная регенерация вместо случайного ретрая
+  - [x] Снижение среднего количества генераций с 3–5 до 1.15–1.4
+- [x] Failure Analyzer
+  - [x] Анализ critic scores + quality checks → failure_codes
+  - [x] `GET /api/v1/intelligence/generations/{id}/failure`
+- [x] User Feedback Loop
+  - [x] Сбор rating/reason/comment после просмотра
+  - [x] `POST /api/v1/intelligence/feedback`
+- [x] Model Selector
+  - [x] Выбор модели на основе recipe + input metadata
+  - [x] Fallback стратегия при отсутствии recipe
+- [x] Targeted Regeneration
+  - [x] При FAIL → Prompt Repair → Regeneration с исправленным prompt
+  - [x] Сохранение GenerationFailure с repaired_prompt/negative/model
+
+### 2.6 Video Generation Lab (experimental)
+
+- [ ] Структура БД и админки для лаборатории
+- [ ] Загрузка тестовых фотографий (20–50 шт.)
+- [ ] Benchmark: 15 сценариев × 3–4 модели = 60 экспериментов
+- [ ] Автоматические оценки: cost, quality, success rate, avg_generations
+- [ ] Формирование Recipe/Model Profile → production
 
 ### 🎯 Критерий приёмки Фазы 2
 
@@ -207,20 +286,20 @@ DarAgent — платформа, которая позволяет пользо�
 - [x] Генерация защищённых ссылок
   - [x] Cryptographically secure token
   - [x] Expiration (default 7 days)
-  - [ ] Max views limit
-  - [ ] Optional password protection
-- [ ] Email delivery
-  - [ ] SMTP integration
-  - [ ] HTML email templates
-  - [ ] Tracking pixel
-- [ ] Telegram Bot delivery
-  - [ ] Bot API integration
-  - [ ] Inline keyboard with actions
-  - [ ] Video as document (no compression)
-- [ ] Scheduled delivery
-  - [ ] Отложенная отправка к указанной дате/времени
-  - [ ] Timezone-aware scheduling
-  - [ ] Cancel/reschedule
+  - [x] Max views limit
+  - [x] Optional password protection
+- [x] Email delivery
+  - [x] SMTP integration
+  - [x] HTML email templates
+  - [x] Tracking pixel
+- [x] Telegram Bot delivery
+  - [x] Bot API integration
+  - [x] Inline keyboard with actions
+  - [x] Video as document (no compression)
+- [x] Scheduled delivery
+  - [x] Отложенная отправка к указанной дате/времени
+  - [x] Timezone-aware scheduling
+  - [x] Cancel/reschedule
 
 ### 3.3 Sharing & Virality
 

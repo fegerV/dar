@@ -1,4 +1,14 @@
 ```markdown
+# Android
+android/app/google-services.json
+android/local.properties
+*.jks
+*.keystore
+
+# Gradle
+.gradle/
+build/
+
 # Compiled and build artifacts
 *.pyc
 __pycache__/

@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,12 @@ fun PaymentScreen(
 
     LaunchedEffect(projectId, amount) {
         viewModel.init(projectId, amount)
+    }
+
+    LaunchedEffect(state.payment?.status) {
+        if (state.payment?.status == "pending") {
+            viewModel.pollPaymentStatus()
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -63,6 +70,9 @@ fun PaymentScreen(
                 }
             }
         }
+        if (!state.checkoutUrl.isNullOrBlank()) {
+            Text(text = "Открываю оплату...", modifier = Modifier.padding(16.dp))
+        }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PaymentMethod.values().forEach { method ->
                 Card(
@@ -90,8 +100,8 @@ fun PaymentScreen(
             }
             Button(onClick = {
                 viewModel.pay()
-                onSuccess()
-            }, modifier = Modifier.weight(1f).padding(16.dp), enabled = !state.isLoading) {
+                viewModel.pollPaymentStatus()
+            }, modifier = Modifier.weight(1f).padding(16.dp), enabled = !state.isLoading && state.checkoutUrl.isNullOrBlank()) {
                 Text("Оплатить")
             }
         }
@@ -104,3 +114,4 @@ enum class PaymentMethod(val title: String) {
     BONUS("Бонусы"),
     PROMO("Промокод")
 }
+

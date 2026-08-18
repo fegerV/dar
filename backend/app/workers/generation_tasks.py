@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
+from app.repositories.generations import GenerationRepository
+from app.services.quality.service import QualityGateService
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,21 @@ async def _process_generation_job(job_id: str):
         job.finished_at = datetime.now(timezone.utc)
         await db.commit()
         logger.info("Generation %s completed", generation.id)
+
+        try:
+            quality = QualityGateService(db)
+            await quality.run_quality_checks(
+                __import__("app.schemas.quality", fromlist=["QualityCheckRequest"]).QualityCheckRequest(
+                    generation_id=generation.id,
+                    asset_ids=[],
+                    prompt=generation.prompt,
+                )
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Quality gate failed for %s: %s", generation.id, e)
+            generation.status = "completed"
+            await GenerationRepository(db).update(generation)
+            await db.commit()
 
 
 def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:

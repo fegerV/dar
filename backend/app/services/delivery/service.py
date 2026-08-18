@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -38,12 +40,17 @@ class DeliveryService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_in_days)
 
+        password_hash = None
+        if body.password:
+            password_hash = hashlib.sha256(body.password.encode()).hexdigest()
+
         link = DeliveryLink(
             project_id=project_id,
             generation_id=generation.id,
             token_hash=token_hash,
             expires_at=expires_at,
             max_views=None,
+            password_hash=password_hash,
             is_active=True,
         )
         link = await self.repo.create_link(link)
@@ -113,12 +120,13 @@ class DeliveryService:
         )
 
     async def get_delivery(self, delivery_id: UUID, user_id: UUID) -> DeliveryResponse:
-        delivery = await self.repo.get_by_id(delivery_id)
+        deliveries = await self.repo.list_by_project(delivery_id)
+        delivery = next((d for d in deliveries if d.id == delivery_id), None)
         if delivery is None or delivery.user_id != user_id:
             raise NotFoundException("Доставка не найдена")
         return DeliveryResponse.model_validate(delivery)
 
-    async def get_public_share(self, token: str) -> PublicShareView:
+    async def get_public_share(self, token: str, password: str | None = None) -> PublicShareView:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         link = await self.repo.get_link_by_token(token_hash)
         if link is None or not link.is_active:
@@ -126,6 +134,15 @@ class DeliveryService:
 
         if link.expires_at and datetime.now(timezone.utc) > link.expires_at:
             raise NotFoundException("Ссылка истекла")
+
+        if link.max_views is not None and (link.view_count or 0) >= link.max_views:
+            raise NotFoundException("Лимит просмотров исчерпан")
+
+        if link.password_hash:
+            if not password:
+                raise ValidationException("Требуется пароль")
+            if hashlib.sha256(password.encode()).hexdigest() != link.password_hash:
+                raise ValidationException("Неверный пароль")
 
         await self.repo.increment_link_views(link.id)
 

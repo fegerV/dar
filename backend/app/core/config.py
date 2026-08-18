@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     GROK_API_KEY: str = ""
     GROK_MODEL: str = "grok-2-latest"
 
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@daragent.ru"
+    SMTP_USE_TLS: bool = True
+
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_PROXY: str | None = None
+
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
 
     model_config = {"env_file": ".env", "extra": "ignore"}

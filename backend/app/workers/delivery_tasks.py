@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.config import settings
 from app.models.delivery import Delivery
 from app.repositories.delivery import DeliveryRepository
+from app.services.delivery.email import EmailDeliveryService
+from app.services.delivery.telegram import TelegramDeliveryService
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +34,27 @@ async def _process_scheduled_deliveries():
         )
         deliveries = list(result.scalars().all())
         for delivery in deliveries:
-            delivery.status = "sent"
-            delivery.sent_at = now
-            await db.flush()
-            logger.info("Scheduled delivery sent: %s", delivery.id)
+            generation = await repo.get_latest_generation(delivery.project_id)
+            output = generation.output_json if generation else {}
+            video_url = output.get("video_url")
+            thumbnail_url = output.get("thumbnail_url")
+
+            if delivery.channel == "email":
+                service = EmailDeliveryService(db)
+                await service.send(
+                    delivery=delivery,
+                    video_url=video_url,
+                    thumbnail_url=thumbnail_url,
+                )
+            elif delivery.channel == "telegram":
+                service = TelegramDeliveryService(db)
+                await service.send(
+                    delivery=delivery,
+                    video_url=video_url,
+                )
+            else:
+                delivery.status = "sent"
+                delivery.sent_at = now
+                await db.flush()
+                logger.info("Scheduled delivery sent: %s", delivery.id)
         await db.commit()
