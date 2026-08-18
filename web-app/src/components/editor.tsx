@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { Save, RotateCcw, History } from "lucide-react"
 
@@ -70,17 +70,12 @@ export function EditorScreen({ generationId }: { generationId: string }) {
                 <label className="block text-sm font-medium mb-2" htmlFor="model-select">
                   {t("editor.model")}
                 </label>
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger id="model-select" aria-label={t("editor.model")}>
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={model} onValueChange={setModel} id="model-select" aria-label={t("editor.model")}>
+                  {models.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </CardContent>

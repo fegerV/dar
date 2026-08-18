@@ -79,10 +79,10 @@ class AdminGenerationResponse(BaseModel):
 class AdminOrderResponse(BaseModel):
     id: UUID
     project_id: UUID
-    user_id: UUID | None = None
+    requested_by_user_id: UUID | None = None
     status: str
-    total_rub: float
-    template_code: str | None = None
+    cost_rub: float
+    template_version_id: UUID | None = None
     model_name: str | None = None
     error_code: str | None = None
     created_at: datetime

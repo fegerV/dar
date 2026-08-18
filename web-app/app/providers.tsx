@@ -1,6 +1,6 @@
 "use client"
 
-import { Next13ReactProgressBar as ProgressBar } from "next13-react-progress-bar"
+import ProgressBar from "next13-react-progress-bar"
 import { ThemeProvider } from "next-themes"
 import { SessionProvider } from "next-auth/react"
 import { I18nextProvider } from "react-i18next"

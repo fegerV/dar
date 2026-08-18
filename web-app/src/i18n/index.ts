@@ -6,8 +6,6 @@ const resources = {
   ru: {
     translation: {
       home: "Главная",
-      dashboard: "Дашборд",
-      new_greeting: "Новое поздравление",
       profile: "Профиль",
       onboarding: {
         title: "Создавайте поздравления с AI",
@@ -47,8 +45,6 @@ const resources = {
   en: {
     translation: {
       home: "Home",
-      dashboard: "Dashboard",
-      new_greeting: "New Greeting",
       profile: "Profile",
       onboarding: {
         title: "Create AI greetings",

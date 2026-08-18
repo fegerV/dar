@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Search, Filter, Play, Eye } from "lucide-react"
 
@@ -55,18 +55,12 @@ export function AdminOrders() {
                 aria-label="Search orders"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filter by status">
-                <Filter className="h-4 w-4 mr-2" aria-hidden="true" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="READY">Ready</SelectItem>
-                <SelectItem value="GENERATING">Generating</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
-                <SelectItem value="QUEUED">Queued</SelectItem>
-              </SelectContent>
+            <Select value={statusFilter} onValueChange={setStatusFilter} className="w-full sm:w-[180px]" aria-label="Filter by status">
+              <option value="all">All</option>
+              <option value="READY">Ready</option>
+              <option value="GENERATING">Generating</option>
+              <option value="FAILED">Failed</option>
+              <option value="QUEUED">Queued</option>
             </Select>
           </div>
         </CardHeader>

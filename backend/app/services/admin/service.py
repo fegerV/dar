@@ -39,7 +39,7 @@ class AdminService:
         projects_count = await self.db.execute(select(func.count()).select_from(Generation))
         total_projects = projects_count.scalar() or 0
 
-        payments_sum = await self.db.execute(select(func.coalesce(func.sum(Payment.amount), 0)))
+        payments_sum = await self.db.execute(select(func.coalesce(func.sum(Payment.amount_rub), 0)))
         total_payments = float(payments_sum.scalar() or 0)
 
         pending_reviews = await self.db.execute(
@@ -64,7 +64,7 @@ class AdminService:
             select(func.coalesce(func.sum(Generation.cost_rub), 0)).where(Generation.started_at >= today_start)
         )
         revenue_today = await self.db.execute(
-            select(func.coalesce(func.sum(Payment.amount), 0)).where(Payment.created_at >= today_start)
+            select(func.coalesce(func.sum(Payment.amount_rub), 0)).where(Payment.created_at >= today_start)
         )
         ai_cost = float(ai_cost_today.scalar() or 0)
         revenue = float(revenue_today.scalar() or 0)
