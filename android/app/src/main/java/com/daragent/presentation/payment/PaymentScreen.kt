@@ -13,23 +13,27 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 
 @Composable
 fun PaymentScreen(
     projectId: String,
     amount: Double,
+    navController: NavHostController? = null,
     viewModel: PaymentViewModel = viewModel(),
     onBack: () -> Unit = {},
     onSuccess: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(projectId, amount) {
         viewModel.init(projectId, amount)
@@ -38,6 +42,16 @@ fun PaymentScreen(
     LaunchedEffect(state.payment?.status) {
         if (state.payment?.status == "pending") {
             viewModel.pollPaymentStatus()
+        }
+    }
+
+    LaunchedEffect(state.checkoutUrl) {
+        if (!state.checkoutUrl.isNullOrBlank()) {
+            val intent = android.content.Intent(context, com.daragent.YooKassaCheckoutActivity::class.java).apply {
+                putExtra("checkout_url", state.checkoutUrl)
+                putExtra("return_url", "daragent://yookassa/return")
+            }
+            context.startActivity(intent)
         }
     }
 
@@ -98,11 +112,21 @@ fun PaymentScreen(
             Button(onClick = onBack, modifier = Modifier.weight(1f).padding(16.dp)) {
                 Text("Назад")
             }
-            Button(onClick = {
-                viewModel.pay()
-                viewModel.pollPaymentStatus()
-            }, modifier = Modifier.weight(1f).padding(16.dp), enabled = !state.isLoading && state.checkoutUrl.isNullOrBlank()) {
+            Button(
+                onClick = {
+                    viewModel.pay()
+                    viewModel.pollPaymentStatus()
+                },
+                modifier = Modifier.weight(1f).padding(16.dp),
+                enabled = !state.isLoading && state.checkoutUrl.isNullOrBlank()
+            ) {
                 Text("Оплатить")
+            }
+        }
+
+        LaunchedEffect(state.payment?.status) {
+            if (state.payment?.status == "paid") {
+                onSuccess()
             }
         }
     }

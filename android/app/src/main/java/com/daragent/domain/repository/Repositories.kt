@@ -12,3 +12,11 @@ interface TemplateRepository {
     suspend fun list(): Result<List<Template>>
     suspend fun get(id: String): Result<Template>
 }
+
+interface AuthRepository {
+    suspend fun login(email: String, password: String): Result<AuthTokens>
+    suspend fun register(email: String, password: String, displayName: String?): Result<AuthTokens>
+    suspend fun me(): Result<UserProfile>
+    fun getAccessToken(): String?
+    fun clearTokens()
+}

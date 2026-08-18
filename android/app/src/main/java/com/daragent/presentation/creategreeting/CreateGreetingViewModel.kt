@@ -43,14 +43,10 @@ enum class FlowStep {
 }
 
 class CreateGreetingViewModel(
-    peopleRepository: PeopleRepository? = null,
-    projectRepository: ProjectRepository? = null,
-    templateRepository: TemplateRepository? = null
+    private val peopleRepo: PeopleRepository = ServiceLocator.peopleRepository,
+    private val projectRepo: ProjectRepository = ServiceLocator.projectRepository,
+    private val templateRepo: TemplateRepository = ServiceLocator.templateRepository
 ) : ViewModel() {
-    private val peopleRepo = peopleRepository ?: ServiceLocator.peopleRepository
-    private val projectRepo = projectRepository ?: ServiceLocator.projectRepository
-    private val templateRepo = templateRepository ?: ServiceLocator.templateRepository
-
     private val _state = MutableStateFlow(CreateGreetingState())
     val state: StateFlow<CreateGreetingState> = _state
 
@@ -161,5 +157,22 @@ class CreateGreetingViewModel(
 
     fun selectTemplate(template: Template) {
         _state.value = _state.value.copy(selectedTemplate = template, step = FlowStep.GENERATION)
+    }
+
+    fun startGeneration(templateVersionId: String) {
+        val project = _state.value.project ?: return
+        _state.value = _state.value.copy(isLoading = true, error = null)
+        viewModelScope.launch {
+            val result = projectRepo.startGeneration(project.id, templateVersionId)
+            result.onSuccess { generation ->
+                _state.value = _state.value.copy(
+                    generation = generation,
+                    step = FlowStep.GENERATION,
+                    isLoading = false
+                )
+            }.onFailure { e ->
+                _state.value = _state.value.copy(error = e.message, isLoading = false)
+            }
+        }
     }
 }

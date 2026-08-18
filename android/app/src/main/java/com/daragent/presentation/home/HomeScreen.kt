@@ -20,22 +20,29 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 
 @Composable
-fun HomeScreen(navController: NavHostController? = null, viewModel: HomeViewModel = viewModel()) {
+fun HomeScreen(
+    navController: NavHostController? = null,
+    onNewGreeting: () -> Unit = {},
+    viewModel: HomeViewModel = viewModel()
+) {
     val state by viewModel.state.collectAsState()
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = "Кого будем удивлять?", modifier = Modifier.padding(16.dp))
+        Text(text = state.user?.displayName?.let { "Привет, $it!" } ?: "Кого будем удивлять?", modifier = Modifier.padding(16.dp))
         if (state.isLoading) {
             Text(text = "Загрузка...", modifier = Modifier.padding(16.dp))
         }
         state.error?.let { Text(text = it, modifier = Modifier.padding(16.dp)) }
-        LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.people) { person ->
-                Card(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(text = person.name, modifier = Modifier.padding(16.dp))
+        if (state.people.isNotEmpty()) {
+            Text(text = "Ваши люди", modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
+            LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(state.people) { person ->
+                    Card(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Text(text = person.name, modifier = Modifier.padding(16.dp))
+                    }
                 }
             }
         }
-        Button(onClick = { navController?.navigate("select_person") }, modifier = Modifier.padding(16.dp)) {
+        Button(onClick = onNewGreeting, modifier = Modifier.padding(16.dp)) {
             Text("+ Новое поздравление")
         }
     }

@@ -1,9 +1,10 @@
 package com.daragent.presentation.payment
 
-import android.content.Context
-import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.daragent.data.local.entity.EntitlementEntity
+import com.daragent.data.local.entity.PaymentEntity
+import com.daragent.data.local.entity.WalletEntity
 import com.daragent.domain.model.Entitlement
 import com.daragent.domain.model.Payment
 import com.daragent.domain.model.Wallet
@@ -27,8 +28,7 @@ data class PaymentState(
 )
 
 class PaymentViewModel(
-    private val paymentRepository: PaymentRepository? = null,
-    private val context: Context? = null
+    private val paymentRepository: PaymentRepository? = ServiceLocator.paymentRepository
 ) : ViewModel() {
     private val repo = paymentRepository ?: ServiceLocator.paymentRepository
     private val cache = ServiceLocator.localCacheRepository
@@ -54,9 +54,6 @@ class PaymentViewModel(
             result.onSuccess { payment ->
                 _state.value = _state.value.copy(payment = payment, checkoutUrl = payment.confirmationUrl, isLoading = false)
                 cachePaymentLocally(payment)
-                if (payment.status == "pending" && !payment.confirmationUrl.isNullOrBlank()) {
-                    launchCheckout(payment.confirmationUrl)
-                }
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message, isLoading = false)
             }
@@ -76,16 +73,6 @@ class PaymentViewModel(
                 _state.value = _state.value.copy(error = e.message, isLoading = false)
             }
         }
-    }
-
-    private fun launchCheckout(url: String) {
-        val appContext = context ?: return
-        val intent = Intent(appContext, com.daragent.YooKassaCheckoutActivity::class.java).apply {
-            putExtra("checkout_url", url)
-            putExtra("return_url", "daragent://yookassa/return")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        appContext.startActivity(intent)
     }
 
     fun pollPaymentStatus() {
@@ -111,7 +98,7 @@ class PaymentViewModel(
         viewModelScope.launch {
             repo.wallet().onSuccess { wallet ->
                 _state.value = _state.value.copy(wallet = wallet)
-                cache.cacheWallet(com.daragent.data.local.entity.WalletEntity(wallet.userId, wallet.balanceRub, wallet.bonusBalance, wallet.updatedAt))
+                cache.cacheWallet(WalletEntity(wallet.userId, wallet.balanceRub, wallet.bonusBalance, wallet.updatedAt ?: ""))
             }
         }
     }
@@ -120,12 +107,12 @@ class PaymentViewModel(
         viewModelScope.launch {
             repo.listEntitlements().onSuccess { entitlements ->
                 _state.value = _state.value.copy(entitlements = entitlements)
-                entitlements.forEach { cache.cacheEntitlement(com.daragent.data.local.entity.EntitlementEntity(it.id, it.userId, it.code, it.quantity, it.consumed, it.expiresAt, it.source, it.createdAt)) }
+                entitlements.forEach { cache.cacheEntitlement(EntitlementEntity(it.id, it.userId, it.code, it.quantity, it.consumed, it.expiresAt, it.source, it.createdAt)) }
             }
         }
     }
 
-    private suspend fun cachePaymentLocally(payment: com.daragent.domain.model.Payment) {
-        cache.cachePayment(com.daragent.data.local.entity.PaymentEntity(payment.id, payment.userId, payment.projectId, payment.amount, payment.status, payment.method, null, null, payment.createdAt, null))
+    private suspend fun cachePaymentLocally(payment: Payment) {
+        cache.cachePayment(PaymentEntity(payment.id, payment.userId, payment.projectId, payment.amount, payment.status, payment.method, null, payment.confirmationUrl, payment.createdAt, payment.paidAt))
     }
 }

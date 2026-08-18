@@ -2,6 +2,7 @@ package com.daragent.presentation.generationprogress
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.daragent.data.local.AuthTokenManager
 import com.daragent.data.network.stream.SseClient
 import com.daragent.domain.model.Generation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,7 @@ data class GenerationStep(
 )
 
 class GenerationProgressViewModel(
-    private val accessToken: String,
+    private val accessToken: String = AuthTokenManager.getAccessToken() ?: "",
     private val baseUrl: String = "https://api.daragent.ru/api/v1"
 ) : ViewModel() {
     private val _state = MutableStateFlow(GenerationProgressState())

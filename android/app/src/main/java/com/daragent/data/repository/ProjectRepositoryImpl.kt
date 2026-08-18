@@ -5,10 +5,13 @@ import com.daragent.data.network.api.HolidaysApi
 import com.daragent.data.network.dto.BriefResponseDto
 import com.daragent.data.network.dto.BriefUpdateRequest
 import com.daragent.data.network.dto.GenerationResponse
+import com.daragent.data.network.dto.HolidayResponseDto
 import com.daragent.data.network.dto.ProjectCreateRequest
+import com.daragent.data.network.dto.ProjectListResponse
 import com.daragent.data.network.dto.ProjectResponseDto
+import com.daragent.data.network.dto.RecommendationListResponse
 import com.daragent.data.network.dto.RecommendationResponseDto
-import com.daragent.data.network.dto.RecommendationSelectRequest
+import com.daragent.data.network.dto.RecommendationSelectResponse
 import com.daragent.data.network.dto.StartGenerationRequest
 import com.daragent.domain.model.Brief
 import com.daragent.domain.model.Occasion
@@ -74,21 +77,34 @@ class ProjectRepositoryImpl(
     override suspend fun getRecommendations(projectId: String): Result<List<Recommendation>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                recommendationsApi.list(projectId).body().orEmpty().map { it.toDomain() }
+                recommendationsApi.list(projectId).body()!!.items.map { it.toDomain() }
             }
         }
 
     override suspend fun selectRecommendation(projectId: String, recommendationId: String): Result<Recommendation> =
         withContext(Dispatchers.IO) {
             runCatching {
-                recommendationsApi.select(projectId, RecommendationSelectRequest(recommendationId)).body()!!.toDomain()
+                val selectResponse = recommendationsApi.select(projectId, recommendationId).body()!!
+                val recommendation = recommendationsApi.list(projectId).body()!!.items
+                    .firstOrNull { it.id == recommendationId }
+                recommendation?.toDomain()
+                    ?: Recommendation(
+                        id = recommendationId,
+                        projectId = projectId,
+                        templateVersionId = selectResponse.selected_template_version_id,
+                        rank = 0,
+                        score = null,
+                        matchReasons = emptyList(),
+                        explanation = null,
+                        selectedAt = selectResponse.status
+                    )
             }
         }
 
     override suspend fun startGeneration(projectId: String, templateVersionId: String): Result<com.daragent.domain.model.Generation> =
         withContext(Dispatchers.IO) {
             runCatching {
-                generationsApi.start(StartGenerationRequest(projectId, templateVersionId)).body()!!.toDomain()
+                generationsApi.start(projectId, StartGenerationRequest(variables = mapOf("template_version_id" to templateVersionId))).body()!!.toDomain()
             }
         }
 
@@ -96,6 +112,13 @@ class ProjectRepositoryImpl(
         withContext(Dispatchers.IO) {
             runCatching {
                 holidaysApi.list().body().orEmpty().map { it.toDomain() }
+            }
+        }
+
+    override suspend fun listProjects(): Result<List<Project>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                projectsApi.list().body()!!.items.map { it.toDomain() }
             }
         }
 }
@@ -150,4 +173,12 @@ private fun GenerationResponse.toDomain() = com.daragent.domain.model.Generation
     progress = progress,
     currentStep = current_step,
     estimatedSeconds = estimated_seconds
+)
+
+private fun HolidayResponseDto.toDomain() = Occasion(
+    code = code,
+    title = title,
+    kind = kind,
+    month = month,
+    day = day
 )

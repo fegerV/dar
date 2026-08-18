@@ -1,21 +1,29 @@
 package com.daragent.data.network.api
 
 import com.daragent.data.network.NetworkModule
+import com.daragent.data.network.dto.AuthResponse
 import com.daragent.data.network.dto.BriefResponseDto
 import com.daragent.data.network.dto.BriefUpdateRequest
 import com.daragent.data.network.dto.ConsumeEntitlementRequest
-import com.daragent.data.network.dto.DeliveryResponseDto
+import com.daragent.data.network.dto.CreatePersonRequest
+import com.daragent.data.network.dto.DeliveryListResponse
 import com.daragent.data.network.dto.EntitlementResponse
 import com.daragent.data.network.dto.GenerationResponse
 import com.daragent.data.network.dto.HolidayResponseDto
+import com.daragent.data.network.dto.LoginRequest
 import com.daragent.data.network.dto.PaymentCreateRequest
 import com.daragent.data.network.dto.PaymentResponse
+import com.daragent.data.network.dto.PersonResponse
 import com.daragent.data.network.dto.ProjectCreateRequest
+import com.daragent.data.network.dto.ProjectListResponse
 import com.daragent.data.network.dto.ProjectResponseDto
-import com.daragent.data.network.dto.RecommendationResponseDto
-import com.daragent.data.network.dto.RecommendationSelectRequest
+import com.daragent.data.network.dto.RecommendationListResponse
+import com.daragent.data.network.dto.RecommendationSelectResponse
 import com.daragent.data.network.dto.StartGenerationRequest
+import com.daragent.data.network.dto.TemplateListResponse
+import com.daragent.data.network.dto.TemplateResponse
 import com.daragent.data.network.dto.WalletResponse
+import com.daragent.data.network.dto.UserResponseDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -30,19 +38,22 @@ interface AuthApi {
 
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
+
+    @GET("auth/me")
+    suspend fun me(): Response<UserResponseDto>
 }
 
 interface PeopleApi {
-    @GET("people")
+    @GET("recipients")
     suspend fun list(): Response<List<PersonResponse>>
 
-    @POST("people")
+    @POST("recipients")
     suspend fun create(@Body request: CreatePersonRequest): Response<PersonResponse>
 }
 
 interface TemplatesApi {
     @GET("templates")
-    suspend fun list(): Response<List<TemplateResponse>>
+    suspend fun list(): Response<TemplateListResponse>
 
     @GET("templates/{id}")
     suspend fun get(@Path("id") id: String): Response<TemplateResponse>
@@ -53,7 +64,7 @@ interface ProjectsApi {
     suspend fun create(@Body request: ProjectCreateRequest): Response<ProjectResponseDto>
 
     @GET("projects")
-    suspend fun list(): Response<List<ProjectResponseDto>>
+    suspend fun list(): Response<ProjectListResponse>
 }
 
 interface BriefsApi {
@@ -68,35 +79,38 @@ interface BriefsApi {
 }
 
 interface RecommendationsApi {
-    @GET("projects/{project_id}/recommendations")
-    suspend fun list(@Path("project_id") projectId: String): Response<List<RecommendationResponseDto>>
+    @GET("recommendations/projects/{project_id}")
+    suspend fun list(@Path("project_id") projectId: String): Response<RecommendationListResponse>
 
-    @POST("projects/{project_id}/recommendations/select")
-    suspend fun select(@Path("project_id") projectId: String, @Body request: RecommendationSelectRequest): Response<RecommendationResponseDto>
+    @POST("recommendations/projects/{project_id}/select/{recommendation_id}")
+    suspend fun select(
+        @Path("project_id") projectId: String,
+        @Path("recommendation_id") recommendationId: String
+    ): Response<RecommendationSelectResponse>
 }
 
 interface GenerationsApi {
-    @POST("generations")
-    suspend fun start(@Body request: StartGenerationRequest): Response<GenerationResponse>
+    @POST("generations/projects/{project_id}")
+    suspend fun start(@Path("project_id") projectId: String, @Body request: StartGenerationRequest): Response<GenerationResponse>
 
     @GET("generations/{id}")
     suspend fun get(@Path("id") id: String): Response<GenerationResponse>
 }
 
 interface PaymentsApi {
-    @POST("projects/{project_id}")
+    @POST("payments/projects/{project_id}")
     suspend fun create(@Path("project_id") projectId: String, @Body request: PaymentCreateRequest): Response<PaymentResponse>
 
-    @GET("{payment_id}")
+    @GET("payments/{payment_id}")
     suspend fun get(@Path("payment_id") paymentId: String): Response<PaymentResponse>
 
-    @GET("wallet")
+    @GET("payments/wallet")
     suspend fun wallet(): Response<WalletResponse>
 
-    @GET("entitlements")
+    @GET("payments/entitlements")
     suspend fun entitlements(): Response<List<EntitlementResponse>>
 
-    @POST("entitlements/{entitlement_id}/consume")
+    @POST("payments/entitlements/{entitlement_id}/consume")
     suspend fun consumeEntitlement(@Path("entitlement_id") entitlementId: String, @Body request: ConsumeEntitlementRequest = ConsumeEntitlementRequest()): Response<EntitlementResponse>
 }
 
@@ -107,7 +121,7 @@ interface HolidaysApi {
 
 interface DeliveriesApi {
     @GET("delivery/projects/{project_id}")
-    suspend fun byProject(@Path("project_id") projectId: String): Response<List<DeliveryResponseDto>>
+    suspend fun byProject(@Path("project_id") projectId: String): Response<DeliveryListResponse>
 }
 
 object ApiModule {

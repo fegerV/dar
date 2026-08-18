@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.DarAgent" parent="android:Theme.Material.DayNight.NoActionBar" />
+    <style name="Theme.DarAgent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="colorSecondary">@color/secondary</item>
+    </style>
+
+    <color name="primary">#FF6B35</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="secondary">#FF9E7D</color>
+    <color name="on_secondary">#FF000000</color>
 </resources>

@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +29,21 @@ fun SelectTemplateScreen(
     onBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(state.generation?.id) {
+        state.generation?.id?.let { generationId ->
+            val project = state.project
+            if (project != null) {
+                navController?.navigate(
+                    "generation_progress/$generationId" +
+                        "?templateVersionId=${state.selectedTemplate?.id ?: ""}" +
+                        "&projectId=${project.id}" +
+                        "&amount=${project.priceRub}"
+                )
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "Выберите шаблон", modifier = Modifier.padding(16.dp))
         if (state.isLoading) {
@@ -41,15 +57,11 @@ fun SelectTemplateScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .clickable {
-                            viewModel.selectTemplate(template)
-                            val project = state.project
-                            if (project != null) {
-                                viewModel.selectTemplate(template)
                             val selected = state.selectedRecommendation
                             val templateVersionId = selected?.templateVersionId ?: template.id
-                            val generationId = "gen_${project.id}"
-                            navController?.navigate("generation_progress/$generationId?templateVersionId=$templateVersionId&projectId=${project.id}&amount=${project.priceRub}")
-                            }
+                            viewModel.selectTemplate(template)
+                            viewModel.startGeneration(templateVersionId)
+                            onNext()
                         }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {

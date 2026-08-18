@@ -34,6 +34,14 @@ data class ProjectResponseDto(
 )
 
 @JsonClass(generateAdapter = true)
+data class ProjectListResponse(
+    val items: List<ProjectResponseDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val page_size: Int = 20
+)
+
+@JsonClass(generateAdapter = true)
 data class BriefUpdateRequest(
     val occasion_text: String? = null,
     val sender_role: String? = null,
@@ -80,8 +88,8 @@ data class BriefResponseDto(
     val desired_phrase: String?,
     val forbidden_topics: String?,
     val sender_message: String?,
-    val personalization_answers: Map<String, Any>,
-    val selected_options: Map<String, Any>,
+    val personalization_answers: Map<String, Any>? = null,
+    val selected_options: Map<String, Any>? = null,
     val created_at: String,
     val updated_at: String,
     val completed_at: String?
@@ -103,6 +111,14 @@ data class RecommendationResponseDto(
 )
 
 @JsonClass(generateAdapter = true)
-data class RecommendationSelectRequest(
-    val recommendation_id: String
+data class RecommendationListResponse(
+    val items: List<RecommendationResponseDto> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class RecommendationSelectResponse(
+    val id: String,
+    val project_id: String,
+    val selected_template_version_id: String,
+    val status: String
 )

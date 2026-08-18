@@ -13,15 +13,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.daragent.presentation.creategreeting.GenerationScreen
 
 @Composable
 fun GenerationProgressScreen(
@@ -52,8 +52,8 @@ fun GenerationProgressScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                if (step.status == "completed") MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surface
+                                if (step.status == "completed") Color(0xFFBBDEFB)
+                                else Color(0xFF1C1B1F)
                             )
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween

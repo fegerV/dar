@@ -44,18 +44,20 @@ class PaymentRepositoryImpl(private val api: PaymentsApi) : PaymentRepository {
 
 private fun PaymentResponse.toDomain() = Payment(
     id = id,
-    userId = user_id,
     projectId = project_id,
-    amount = amount,
+    amount = amount_rub,
     status = status,
     method = method,
-    createdAt = created_at
+    confirmationUrl = confirmation_url,
+    createdAt = created_at,
+    paidAt = paid_at
 )
 
 private fun WalletResponse.toDomain() = Wallet(
     userId = user_id,
     balanceRub = balance_rub,
-    bonusBalance = bonus_balance
+    bonusBalance = bonus_balance,
+    updatedAt = null
 )
 
 private fun EntitlementResponse.toDomain() = Entitlement(

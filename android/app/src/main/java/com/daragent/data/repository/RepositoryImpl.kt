@@ -2,17 +2,63 @@ package com.daragent.data.repository
 
 import com.daragent.data.network.api.PeopleApi
 import com.daragent.data.network.api.TemplatesApi
+import com.daragent.data.network.dto.CreatePersonRequest
+import com.daragent.data.network.dto.TemplateListResponse
+import com.daragent.data.network.dto.TemplateResponse
 import com.daragent.domain.model.Person
 import com.daragent.domain.model.Template
 import com.daragent.domain.repository.PeopleRepository
 import com.daragent.domain.repository.TemplateRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class PeopleRepositoryImpl(private val api: PeopleApi) : PeopleRepository {
-    override suspend fun list() = runCatching { api.list().body().orEmpty() }
-    override suspend fun create(person: Person) = runCatching { api.create(person).body()!! }
+    override suspend fun list(): Result<List<Person>> =
+        withContext(Dispatchers.IO) {
+            runCatching { api.list().body()?.map { it.toDomain() }.orEmpty() }
+        }
+
+    override suspend fun create(person: Person): Result<Person> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                api.create(
+                    CreatePersonRequest(
+                        name = person.name,
+                        relationship = person.relationship,
+                        birthDate = person.birthDate,
+                        interests = person.interests,
+                        insideJokes = person.insideJokes
+                    )
+                ).body()!!.toDomain()
+            }
+        }
 }
 
 class TemplateRepositoryImpl(private val api: TemplatesApi) : TemplateRepository {
-    override suspend fun list() = runCatching { api.list().body().orEmpty() }
-    override suspend fun get(id: String) = runCatching { api.get(id).body()!! }
+    override suspend fun list(): Result<List<Template>> =
+        withContext(Dispatchers.IO) {
+            runCatching { api.list().body()?.items?.map { it.toDomain() }.orEmpty() }
+        }
+
+    override suspend fun get(id: String): Result<Template> =
+        withContext(Dispatchers.IO) {
+            runCatching { api.get(id).body()!!.toDomain() }
+        }
 }
+
+private fun com.daragent.data.network.dto.PersonResponse.toDomain() = Person(
+    id = id,
+    name = name,
+    relationship = relationship,
+    birthDate = birthDate,
+    interests = interests,
+    insideJokes = insideJokes
+)
+
+private fun TemplateResponse.toDomain() = Template(
+    id = id,
+    title = title,
+    category = category ?: "",
+    previewUrl = null,
+    priceRub = base_price_rub
+)

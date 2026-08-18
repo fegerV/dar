@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.daragent.R
-import com.daragent.presentation.home.HomeActivity
+import com.daragent.MainActivity
 
 object NotificationHelper {
     private const val CHANNEL_ID = "daragent_channel"

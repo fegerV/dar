@@ -1,20 +1,21 @@
 package com.daragent
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
+import com.daragent.data.local.AuthTokenManager
 import com.daragent.data.local.DarAgentDatabase
-import com.daragent.navigation.DarAgentNavGraph
+import com.daragent.presentation.home.MainScreen
 import com.daragent.notification.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
         NotificationHelper.createChannel(this)
+        AuthTokenManager.init(this)
         DarAgentDatabase.getDatabase(this)
 
         val deepLink = intent?.data
@@ -22,18 +23,18 @@ class MainActivity : ComponentActivity() {
             val paymentId = deepLink.getQueryParameter("payment_id")
             val status = deepLink.getQueryParameter("status")
             if (paymentId != null && status != null) {
-                PaymentStatusWorker.enqueue(this, paymentId, status)
+                com.daragent.notification.PaymentStatusWorker.enqueue(this, paymentId, status)
             }
         }
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            androidx.compose.material3.MaterialTheme {
                 val navController = rememberNavController()
                 val generationId = intent?.getStringExtra("generation_id")
                 if (generationId != null) {
                     navController.navigate("generation_progress/$generationId")
                 }
-                DarAgentNavGraph(navController = navController)
+                MainScreen(navController = navController)
             }
         }
     }

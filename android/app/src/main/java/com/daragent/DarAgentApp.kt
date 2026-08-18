@@ -1,8 +1,8 @@
 package com.daragent
 
 import android.app.Application
-import com.daragent.data.local.DatabaseModule
+import com.daragent.data.local.DarAgentDatabase
 
 class DarAgentApp : Application() {
-    val database by lazy { DatabaseModule.provideDatabase(this) }
+    val database by lazy { DarAgentDatabase.getDatabase(this) }
 }

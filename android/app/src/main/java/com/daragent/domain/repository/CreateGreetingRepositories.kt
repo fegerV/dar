@@ -15,4 +15,5 @@ interface ProjectRepository {
     suspend fun selectRecommendation(projectId: String, recommendationId: String): Result<Recommendation>
     suspend fun listOccasions(): Result<List<Occasion>>
     suspend fun startGeneration(projectId: String, templateVersionId: String): Result<Generation>
+    suspend fun listProjects(): Result<List<Project>>
 }

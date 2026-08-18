@@ -1,20 +1,20 @@
 package com.daragent.data.repository
 
 import com.daragent.data.network.api.DeliveriesApi
-import com.daragent.data.network.dto.DeliveryResponseDto
+import com.daragent.data.network.dto.DeliveryListResponse
 import com.daragent.domain.model.Delivery
 import com.daragent.domain.repository.DeliveryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class DeliveryRepositoryImpl(private val api: DeliveriesApi) : DeliveryRepository {
-    override suspend fun getByProject(projectId: String): Result<Delivery> =
+    override suspend fun getByProject(projectId: String): Result<List<Delivery>> =
         withContext(Dispatchers.IO) {
-            runCatching { api.byProject(projectId).body()!!.toDomain() }
+            runCatching { api.byProject(projectId).body()!!.items.map { it.toDomain() } }
         }
 }
 
-private fun DeliveryResponseDto.toDomain() = Delivery(
+private fun com.daragent.data.network.dto.DeliveryResponseDto.toDomain() = Delivery(
     id = id,
     projectId = project_id,
     channel = channel,
