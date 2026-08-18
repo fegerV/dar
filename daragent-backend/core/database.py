@@ -7,16 +7,16 @@ from sqlalchemy.orm import DeclarativeBase
 from core.config import settings
 
 
-# Database engine
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DB_ECHO,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+engine_kwargs = {
+    "echo": settings.DB_ECHO,
+    "pool_pre_ping": True,
+}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
 
-# Session factory
+engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
+
 async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
@@ -28,8 +28,6 @@ async_session_maker = async_sessionmaker(
 
 class Base(DeclarativeBase):
     """Base class for all models."""
-
-    pass
 
 
 async def get_db() -> AsyncSession:
