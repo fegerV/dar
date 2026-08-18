@@ -19,6 +19,8 @@ import com.daragent.data.network.dto.ProjectListResponse
 import com.daragent.data.network.dto.ProjectResponseDto
 import com.daragent.data.network.dto.RecommendationListResponse
 import com.daragent.data.network.dto.RecommendationSelectResponse
+import com.daragent.data.network.dto.RecipientListResponse
+import com.daragent.data.network.dto.RegisterRequest
 import com.daragent.data.network.dto.StartGenerationRequest
 import com.daragent.data.network.dto.TemplateListResponse
 import com.daragent.data.network.dto.TemplateResponse
@@ -28,7 +30,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
-import retrofit2.http.PATCH
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -45,7 +47,7 @@ interface AuthApi {
 
 interface PeopleApi {
     @GET("recipients")
-    suspend fun list(): Response<List<PersonResponse>>
+    suspend fun list(): Response<RecipientListResponse>
 
     @POST("recipients")
     suspend fun create(@Body request: CreatePersonRequest): Response<PersonResponse>
@@ -68,7 +70,7 @@ interface ProjectsApi {
 }
 
 interface BriefsApi {
-    @PATCH("projects/{project_id}/brief")
+    @PUT("projects/{project_id}/brief")
     suspend fun update(@Path("project_id") projectId: String, @Body request: BriefUpdateRequest): Response<BriefResponseDto>
 
     @GET("projects/{project_id}/brief")

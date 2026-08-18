@@ -8,6 +8,7 @@ from app.core.exceptions import ConflictException, NotFoundException
 from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
 from app.models.payment import Payment, Wallet
+from app.models.project import Project
 from app.models.referral import Referral, ReferralCode
 from app.models.template import Template, TemplateVersion
 from app.models.user import User
@@ -63,7 +64,7 @@ class AdminService:
         users_count = await self.db.execute(select(func.count()).select_from(User))
         total_users = users_count.scalar() or 0
 
-        projects_count = await self.db.execute(select(func.count()).select_from(Generation))
+        projects_count = await self.db.execute(select(func.count()).select_from(Project))
         total_projects = projects_count.scalar() or 0
 
         payments_sum = await self.db.execute(select(func.coalesce(func.sum(Payment.amount_rub), 0)))

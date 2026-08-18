@@ -75,13 +75,12 @@ async def _process_generation_job(job_id: str):
 
         try:
             quality = QualityGateService(db)
-            await quality.run_quality_checks(
-                __import__("app.schemas.quality", fromlist=["QualityCheckRequest"]).QualityCheckRequest(
-                    generation_id=generation.id,
-                    asset_ids=[],
-                    prompt=generation.prompt,
-                )
+            quality_request = __import__("app.schemas.quality", fromlist=["QualityCheckRequest"]).QualityCheckRequest(
+                generation_id=generation.id,
+                asset_ids=[],
+                prompt=(generation.input_json or {}).get("prompt", "") if isinstance(generation.input_json, dict) else "",
             )
+            await quality.run_quality_checks(quality_request)
         except Exception as e:  # noqa: BLE001
             logger.warning("Quality gate failed for %s: %s", generation.id, e)
             generation.status = "completed"

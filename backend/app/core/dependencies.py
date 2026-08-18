@@ -46,10 +46,10 @@ async def get_current_user_optional(request: Request) -> object | None:
     user_id = payload.get("sub")
     if not user_id:
         return None
-    from app.core.database import get_db
-    db = next(get_db()) if hasattr(get_db, "__call__") else None
-    if db is None:
+    try:
+        async for db in get_db():
+            repo = UserRepository(db)
+            user = await repo.get_by_id(UUID(user_id))
+            return user
+    except Exception:
         return None
-    repo = UserRepository(db)
-    user = await repo.get_by_id(UUID(user_id))
-    return user

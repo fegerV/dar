@@ -29,6 +29,7 @@ class AuthResponse(TokenResponse):
 class UserResponse(BaseModel):
     id: str
     status: str
+    is_admin: bool = False
     display_name: str | None = None
     first_name: str | None = None
     last_name: str | None = None

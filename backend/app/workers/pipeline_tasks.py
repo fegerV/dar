@@ -100,11 +100,11 @@ async def _execute_pipeline(generation_id: str):
                 "prompt_adherence": 0.88,
                 "artifact_score": 0.95,
             },
-            "scene_description": generation.prompt or "",
+            "scene_description": (generation.input_json or {}).get("prompt", ""),
             "source_face": {
                 "face_count": 1,
             },
-            "prompt": generation.prompt,
+            "prompt": (generation.input_json or {}).get("prompt", ""),
         }
 
         result = await db.execute(

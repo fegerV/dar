@@ -154,9 +154,13 @@ class PaymentService:
         payment.external_payment_id = yookassa_payment.get("id")
         payment.idempotency_key = str(payment.id)
         payment.provider_payload = yookassa_payment
+        confirmation_url = yookassa_payment.get("confirmation", {}).get("confirmation_url")
         await self.db.commit()
 
-        return PaymentResponse.model_validate(payment)
+        response = PaymentResponse.model_validate(payment)
+        if confirmation_url:
+            response.confirmation_url = confirmation_url
+        return response
 
     async def handle_webhook(self, body: dict, signature: str | None = None) -> dict:
         if signature and not self.yookassa.verify_webhook_signature(

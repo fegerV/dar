@@ -33,7 +33,7 @@ class RecommendationService:
         self.diversity_filter = DiversityFilter()
 
     async def generate(self, project_id: UUID) -> RecommendationListResponse:
-        project = await self.project_repo.get_by_id(project_id, project_id)
+        project = await self.project_repo.get_by_id(project_id, project.owner_user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 
@@ -116,7 +116,7 @@ class RecommendationService:
         if rec is None:
             raise NotFoundException("Рекомендация не найдена")
 
-        project = await self.project_repo.get_by_id(project_id, project_id)
+        project = await self.project_repo.get_by_id(project_id, project.owner_user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 
@@ -128,7 +128,7 @@ class RecommendationService:
         await self.db.commit()
 
         return RecommendationSelectResponse(
-            id=project.id,
+            id=rec.id,
             project_id=project_id,
             selected_template_version_id=rec.template_version_id,
             status=project.status,

@@ -1,5 +1,6 @@
 package com.daragent.data.network.dto
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
@@ -41,20 +42,47 @@ data class LoginRequest(
 @JsonClass(generateAdapter = true)
 data class PersonResponse(
     val id: String,
-    val name: String,
-    val relationship: String,
-    val birthDate: String?,
-    val interests: List<String>,
-    val insideJokes: List<String>
+    val status: String,
+    @Json(name = "first_name") val firstName: String?,
+    @Json(name = "last_name") val lastName: String?,
+    val nickname: String?,
+    val gender: String?,
+    @Json(name = "birth_date") val birthDate: String?,
+    val city: String?,
+    val occupation: String?,
+    val relationship: String?,
+    val notes: String?,
+    val interests: List<String> = emptyList(),
+    val traits: List<String> = emptyList(),
+    val favorite_things: List<String> = emptyList(),
+    val forbidden_topics: List<String> = emptyList(),
+    val created_at: String,
+    val updated_at: String
+)
+
+@JsonClass(generateAdapter = true)
+data class RecipientListResponse(
+    val items: List<PersonResponse> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    val page_size: Int = 20
 )
 
 @JsonClass(generateAdapter = true)
 data class CreatePersonRequest(
-    val name: String,
-    val relationship: String,
-    val birthDate: String? = null,
+    @Json(name = "first_name") val firstName: String,
+    @Json(name = "last_name") val lastName: String? = null,
+    val nickname: String? = null,
+    val gender: String? = null,
+    @Json(name = "birth_date") val birthDate: String? = null,
+    val city: String? = null,
+    val occupation: String? = null,
+    val relationship: String? = null,
+    val notes: String? = null,
     val interests: List<String> = emptyList(),
-    val insideJokes: List<String> = emptyList()
+    val traits: List<String> = emptyList(),
+    val favorite_things: List<String> = emptyList(),
+    val forbidden_topics: List<String> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
@@ -100,15 +128,8 @@ data class GenerationResponse(
 )
 
 @JsonClass(generateAdapter = true)
-data class CreatePaymentRequest(
-    val project_id: String,
-    val amount: Double
-)
-
-@JsonClass(generateAdapter = true)
 data class PaymentResponse(
     val id: String,
-    val user_id: String,
     val project_id: String?,
     val status: String,
     val method: String,
@@ -118,13 +139,6 @@ data class PaymentResponse(
     val confirmation_url: String?,
     val created_at: String,
     val paid_at: String? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class PaymentCreateRequest(
-    val method: String,
-    val return_url: String? = null,
-    val promo_code: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -165,17 +179,24 @@ data class HolidayResponseDto(
 )
 
 @JsonClass(generateAdapter = true)
-data class PaymentResponse(
-    val id: String,
-    val project_id: String?,
-    val status: String,
+data class PaymentCreateRequest(
     val method: String,
-    val amount_rub: Double,
-    val bonus_amount_rub: Double,
-    val discount_rub: Double,
-    val confirmation_url: String?,
+    val return_url: String? = null,
+    val promo_code: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DeliveryResponseDto(
+    val id: String,
+    val project_id: String,
+    val channel: String,
+    val status: String,
+    val destination: String?,
+    val public_url: String?,
     val created_at: String,
-    val paid_at: String? = null
+    val scheduled_at: String?,
+    val sent_at: String?,
+    val opened_at: String?
 )
 
 @JsonClass(generateAdapter = true)

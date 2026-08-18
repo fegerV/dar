@@ -4,6 +4,8 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import NotFoundException
+from app.repositories.projects import ProjectRepository
 from app.schemas.payment import (
     EntitlementResponse,
     PaymentCreate,
@@ -33,9 +35,15 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Проект не найден")
+
     service = PaymentService(db)
+    amount = float(project.price_rub)
     return await service.create_payment(
-        current_user.id, project_id, amount=0, method=body.method
+        current_user.id, project_id, amount=amount, method=body.method
     )
 
 

@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 class PeopleRepositoryImpl(private val api: PeopleApi) : PeopleRepository {
     override suspend fun list(): Result<List<Person>> =
         withContext(Dispatchers.IO) {
-            runCatching { api.list().body()?.map { it.toDomain() }.orEmpty() }
+            runCatching { api.list().body()?.items?.map { it.toDomain() }.orEmpty() }
         }
 
     override suspend fun create(person: Person): Result<Person> =
@@ -23,11 +23,11 @@ class PeopleRepositoryImpl(private val api: PeopleApi) : PeopleRepository {
             runCatching {
                 api.create(
                     CreatePersonRequest(
-                        name = person.name,
+                        firstName = person.name,
                         relationship = person.relationship,
                         birthDate = person.birthDate,
                         interests = person.interests,
-                        insideJokes = person.insideJokes
+                        traits = person.traits
                     )
                 ).body()!!.toDomain()
             }
@@ -48,11 +48,11 @@ class TemplateRepositoryImpl(private val api: TemplatesApi) : TemplateRepository
 
 private fun com.daragent.data.network.dto.PersonResponse.toDomain() = Person(
     id = id,
-    name = name,
+    name = "${firstName ?: ""} ${lastName ?: ""}".trim(),
     relationship = relationship,
     birthDate = birthDate,
     interests = interests,
-    insideJokes = insideJokes
+    traits = traits
 )
 
 private fun TemplateResponse.toDomain() = Template(

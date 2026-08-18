@@ -3,10 +3,10 @@ package com.daragent.domain.model
 data class Person(
     val id: String,
     val name: String,
-    val relationship: String,
+    val relationship: String?,
     val birthDate: String?,
     val interests: List<String>,
-    val insideJokes: List<String>
+    val traits: List<String>
 )
 
 data class Template(

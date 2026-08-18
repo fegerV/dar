@@ -96,7 +96,7 @@ class ProjectRepositoryImpl(
                         score = null,
                         matchReasons = emptyList(),
                         explanation = null,
-                        selectedAt = selectResponse.status
+                        selectedAt = null
                     )
             }
         }

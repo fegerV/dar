@@ -10,20 +10,6 @@ export interface AdminUser {
   created_at: string
 }
 
-export interface DashboardStats {
-  total_users: number
-  total_projects: number
-  total_payments: number
-  pending_reviews: number
-  active_generations: number
-  running_jobs: number
-  queued_jobs: number
-  failed_jobs: number
-  ai_cost_today: number
-  revenue_today: number
-  profit_today: number
-}
-
 export interface AdminTemplate {
   id: string
   code: string
@@ -78,6 +64,8 @@ export interface AdminOrder {
   error_code: string | null
   created_at: string
   completed_at: string | null
+  input_json?: Record<string, unknown> | null
+  output_json?: Record<string, unknown> | null
 }
 
 export interface AdminWorker {
@@ -121,26 +109,6 @@ export interface AdminPayment {
   paid_at: string | null
 }
 
-export interface AdminAuditLog {
-  id: string
-  actor_user_id: string | null
-  action: string
-  target_type: string | null
-  target_id: string | null
-  ip_address: string | null
-  user_agent: string | null
-  created_at: string
-}
-
-export interface SystemSetting {
-  id: string
-  key: string
-  value: Record<string, unknown>
-  description: string | null
-  is_public: boolean
-  updated_at: string
-}
-
 export interface AuditLog {
   id: string
   actor_user_id: string | null
@@ -152,21 +120,6 @@ export interface AuditLog {
   created_at: string
 }
 
-export interface AdminOrder {
-  id: string
-  project_id: string
-  requested_by_user_id: string | null
-  status: string
-  cost_rub: number
-  template_version_id: string | null
-  model_name: string | null
-  error_code: string | null
-  created_at: string
-  completed_at: string | null
-  input_json?: Record<string, unknown> | null
-  output_json?: Record<string, unknown> | null
-}
-
 export interface SystemSetting {
   id: string
   key: string
@@ -174,6 +127,20 @@ export interface SystemSetting {
   description: string | null
   is_public: boolean
   updated_at: string
+}
+
+export interface DashboardStats {
+  total_users: number
+  total_projects: number
+  total_payments: number
+  pending_reviews: number
+  active_generations: number
+  running_jobs: number
+  queued_jobs: number
+  failed_jobs: number
+  ai_cost_today: number
+  revenue_today: number
+  profit_today: number
 }
 
 export interface UserWallet {
@@ -202,11 +169,4 @@ export interface Referral {
   referee_bonus_granted: boolean
   metadata: Record<string, unknown> | null
   created_at: string
-}
-
-export interface PaginatedResponse<T> {
-  items: T[]
-  total: number
-  page: number
-  page_size: number
 }
