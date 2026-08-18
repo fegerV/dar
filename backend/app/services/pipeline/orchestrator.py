@@ -22,8 +22,8 @@ class PipelineOrchestrator:
         self.ai = AIOrchestrator(db)
         self.compiler = PromptCompilerService(db)
 
-    async def run(self, body: PipelineRunRequest) -> PipelineRunResponse:
-        project = await self.project_repo.get_by_id(body.project_id, body.project_id)
+    async def run(self, body: PipelineRunRequest, user_id: UUID) -> PipelineRunResponse:
+        project = await self.project_repo.get_by_id(body.project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 

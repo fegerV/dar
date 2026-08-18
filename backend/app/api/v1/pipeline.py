@@ -18,4 +18,4 @@ async def run_pipeline(
     current_user=Depends(get_current_user),
 ):
     orchestrator = PipelineOrchestrator(db)
-    return await orchestrator.run(body)
+    return await orchestrator.run(body, current_user.id)
