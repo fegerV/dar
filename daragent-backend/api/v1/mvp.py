@@ -6,17 +6,23 @@ domain flow while keeping room to split services/repositories later.
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import hashlib
+import hmac
+import json
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.config import get_settings
 
 from ai_providers.router import ai_router
 from core.database import get_db
@@ -178,7 +184,7 @@ class TemplateResponse(BaseModel):
     occasion_codes: list[str]
     relationship_types: list[str]
     moods: list[str]
-    base_price_rub: Decimal
+    base_price_rub: float
 
     model_config = {"from_attributes": True}
 
@@ -228,13 +234,6 @@ class MasterFrameRequest(BaseModel):
     height: int = 1024
 
 
-class PriceResponse(BaseModel):
-    base_price_rub: Decimal
-    total_rub: Decimal
-    currency: str = "RUB"
-    free_generation_available: bool
-
-
 class PaymentCreate(BaseModel):
     method: str = "mock"
     idempotency_key: str | None = None
@@ -247,6 +246,8 @@ class PaymentResponse(BaseModel):
     method: str
     amount_rub: Decimal
     provider: str
+    external_payment_id: str | None = None
+    confirmation_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -320,6 +321,48 @@ class AnalyticsIn(BaseModel):
     properties: dict[str, Any] = {}
 
 
+LITE_SCRIPT_MAX_WORDS = 30
+
+
+class ScriptVariant(BaseModel):
+    text: str
+    word_count: int
+
+
+class ScriptResponse(BaseModel):
+    variants: list[ScriptVariant]
+    selected: int = 0
+    word_limit: int = LITE_SCRIPT_MAX_WORDS
+    suitable_for_lite: bool = True
+
+
+class ScriptRequest(BaseModel):
+    word_limit: int | None = LITE_SCRIPT_MAX_WORDS
+    variants: int = 3
+
+
+class PreviewResponse(BaseModel):
+    preview_url: str | None = None
+    resolution: str = "360p"
+    watermarked: bool = True
+    kind: str = "master_frame"
+    expires_at: datetime | None = None
+
+
+class TopUpRequest(BaseModel):
+    amount_rub: Decimal = Field(gt=0)
+    method: str = "mock"
+
+
+class PriceResponse(BaseModel):
+    base_price_rub: Decimal
+    total_rub: Decimal
+    currency: str = "RUB"
+    free_generation_available: bool
+    bonus_used_rub: Decimal = Decimal("0")
+    bonus_balance_rub: Decimal = Decimal("0")
+
+
 async def current_user(
     authorization: str | None = Header(default=None), db: AsyncSession = Depends(get_db)
 ) -> User:
@@ -361,9 +404,24 @@ async def get_project_brief(db: AsyncSession, project_id: uuid.UUID) -> Creative
 
 
 async def calculate_price(db: AsyncSession, user: User, project: Project) -> PriceResponse:
-    free = await has_entitlement(db, user.id, "first_generation")
-    total = Decimal("0") if free else project.price_rub
-    return PriceResponse(base_price_rub=project.price_rub, total_rub=total, free_generation_available=free)
+    free = await has_entitlement(db, user.id, "free_lite")
+    base = project.price_rub
+    total = Decimal("0") if free else base
+    bonus_used = Decimal("0")
+    bonus_balance = Decimal("0")
+    if not free and total > 0:
+        wallet = await db.scalar(select(Wallet).where(Wallet.user_id == user.id))
+        if wallet:
+            bonus_balance = wallet.bonus_balance
+            if bonus_balance > 0:
+                bonus_used = min(wallet.bonus_balance, total * Decimal("0.30"))
+    return PriceResponse(
+        base_price_rub=base,
+        total_rub=max(Decimal("0"), total - bonus_used),
+        free_generation_available=free,
+        bonus_used_rub=bonus_used,
+        bonus_balance_rub=bonus_balance,
+    )
 
 
 def response_generation(gen: Generation, assets: list[Asset] | None = None) -> GenerationResponse:
@@ -383,7 +441,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     await db.flush()
     db.add(AuthAccount(user_id=user.id, provider="email", provider_user_id=user.email))
     db.add(Wallet(user_id=user.id))
-    db.add(Entitlement(user_id=user.id, code="first_generation", quantity=1, source="registration"))
+    db.add(Entitlement(user_id=user.id, code="free_lite", quantity=3, source="registration"))
     if is_first_user:
         db.add(AdminUser(user_id=user.id, role="owner"))
     refresh, refresh_hash = new_refresh_token()
@@ -413,7 +471,11 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
     expires_at = row.expires_at.replace(tzinfo=None) if row.expires_at.tzinfo else row.expires_at
     if expires_at < now:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
-    return {"access_token": create_access_token(row.user_id), "token_type": "bearer"}
+    row.revoked_at = datetime.now(UTC)
+    new_refresh, new_hash = new_refresh_token()
+    db.add(RefreshToken(user_id=row.user_id, token_hash=new_hash, expires_at=token_expiry()))
+    await record_event(db, "token_refreshed", user_id=row.user_id)
+    return {"access_token": create_access_token(row.user_id), "refresh_token": new_refresh, "token_type": "bearer"}
 
 
 @router.get("/auth/me", response_model=UserResponse)
@@ -472,6 +534,7 @@ async def create_project(payload: ProjectCreate, user: User = Depends(current_us
     if not recipient or recipient.owner_user_id != user.id:
         raise HTTPException(404, "Recipient not found")
     project = Project(owner_user_id=user.id, **payload.model_dump())
+    project.status = "briefing"
     db.add(project)
     await db.flush()
     db.add(CreativeBrief(project_id=project.id, relationship_type=recipient.relationship_type))
@@ -500,8 +563,11 @@ async def get_brief(project_id: uuid.UUID, user: User = Depends(current_user), d
 async def update_brief(project_id: uuid.UUID, payload: BriefIn, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     await get_owned_project(db, user, project_id)
     brief = await get_project_brief(db, project_id)
+    if brief.status == "draft":
+        brief.status = "in_progress"
     for key, value in payload.model_dump().items():
         setattr(brief, key, value)
+    await db.flush()
     return brief
 
 
@@ -572,6 +638,37 @@ async def generate_master_frame(
     return AssetResponse.model_validate(asset)
 
 
+@router.get("/projects/{project_id}/preview", response_model=PreviewResponse)
+async def get_preview(
+    project_id: uuid.UUID, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+):
+    project = await get_owned_project(db, user, project_id)
+    expires = datetime.now(UTC) + timedelta(hours=1)
+    if project.master_frame_asset_id:
+        master = await db.get(Asset, project.master_frame_asset_id)
+        if master and master.url:
+            return PreviewResponse(
+                preview_url=f"{master.url}?mode=preview&w=360",
+                resolution="360p",
+                watermarked=True,
+                kind="master_frame",
+                expires_at=expires,
+            )
+    if project.final_generation_id:
+        generation = await db.get(Generation, project.final_generation_id)
+        if generation and generation.status == "completed":
+            video = next((a for a in await generation_assets(db, generation.id) if a.type == "video"), None)
+            if video and video.url:
+                return PreviewResponse(
+                    preview_url=f"{video.url}?mode=preview&w=360",
+                    resolution="360p",
+                    watermarked=True,
+                    kind="video",
+                    expires_at=expires,
+                )
+    raise HTTPException(404, "Preview not available yet")
+
+
 @router.get("/templates", response_model=list[TemplateResponse])
 async def list_templates(db: AsyncSession = Depends(get_db)):
     await seed_templates(db)
@@ -611,6 +708,126 @@ async def select_recommendation(project_id: uuid.UUID, recommendation_id: uuid.U
     return project
 
 
+# Cached Lite fallback greetings (max ~30 words => fits a ~6s video) used when
+# the LLM call fails or returns unusable output (механизм fallback при ошибке AI).
+_LITE_FALLBACK = [
+    "С днём рождения, {name}! Желаю счастья, крепкого здоровья и ярких моментов.",
+    "Поздравляем, {name}! Пусть каждый день дарит радость, а мечты сбываются.",
+    "{name}, с поздравлением! Тёплых объятий и солнца в каждый день.",
+]
+
+
+def _split_script_lines(text: str) -> list[str]:
+    out: list[str] = []
+    for line in (text or "").splitlines():
+        line = line.strip().lstrip("0123456789.)- \t").strip()
+        if line:
+            out.append(line)
+    return out
+
+
+def _parse_script_variants(raw: str) -> list[str]:
+    text = (raw or "").strip()
+    try:
+        data = json.loads(text)
+    except Exception:
+        data = None
+    if isinstance(data, dict) and isinstance(data.get("variants"), list):
+        data = data["variants"]
+    if isinstance(data, list):
+        return [str(x) for x in data if str(x).strip()]
+    return _split_script_lines(text)
+
+
+def _script_variants(parsed: list[str], name: str, count: int) -> list[str]:
+    if len(parsed) >= count:
+        return list(parsed[:count])
+    filled = list(parsed)
+    for template in _LITE_FALLBACK:
+        candidate = template.format(name=name)
+        if candidate not in filled:
+            filled.append(candidate)
+        if len(filled) >= count:
+            break
+    if not filled:
+        filled = [template.format(name=name) for template in _LITE_FALLBACK[:count]]
+    return filled[:count]
+
+
+async def build_script(brief: CreativeBrief, recipient: Recipient | None, project: Project, word_limit: int) -> ScriptResponse:
+    name = (recipient.first_name or recipient.nickname or "друг") if recipient else "друг"
+    relationship = brief.relationship_type or (recipient.relationship_type if recipient else None) or "друг"
+    mood = brief.desired_mood or "тёплое"
+    ll = [
+        "Ты — сценарист видеопоздравлений. Придумай ровно 3 короткие персонализированные поздравления",
+        "для видео длительностью около 6 секунд (8–30 слов каждое), без хештегов и эмодзи.",
+        "",
+        f"Контекст: получатель — {name}, отношения — {relationship}, повод — {project.occasion_code}, настроение — {mood}.",
+    ]
+    if brief.hobbies_text:
+        ll.append(f"Интересы получателя: {brief.hobbies_text}.")
+    if brief.inside_joke:
+        ll.append(f"Личная шутка: {brief.inside_joke}.")
+    ll.append(f"Поздравления для {name}: 1. 2. 3.")
+    prompt = "\n".join(ll)
+
+    parsed: list[str] = []
+    try:
+        raw = await asyncio.wait_for(
+            ai_router.get_llm_provider().generate_text(prompt=prompt, max_tokens=256, temperature=0.8),
+            timeout=30,
+        )
+        parsed = _parse_script_variants(raw)
+    except Exception:
+        parsed = []
+
+    variants = _script_variants(parsed, name, 3)
+    cleaned: list[ScriptVariant] = []
+    for text in variants:
+        words = text.split()
+        if len(words) > word_limit:
+            text = " ".join(words[:word_limit])
+        cleaned.append(ScriptVariant(text=text, word_count=len(text.split())))
+    return ScriptResponse(
+        variants=cleaned,
+        selected=0,
+        word_limit=word_limit,
+        suitable_for_lite=all(len(v.text.split()) <= word_limit for v in cleaned),
+    )
+
+
+@router.post("/projects/{project_id}/script", response_model=ScriptResponse, status_code=201)
+async def generate_script(
+    project_id: uuid.UUID,
+    payload: ScriptRequest | None = None,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await get_owned_project(db, user, project_id)
+    brief = await get_project_brief(db, project_id)
+    if brief.status != "completed":
+        raise HTTPException(409, "Brief must be completed before generating a script")
+    recipient = await db.get(Recipient, project.recipient_id) if project.recipient_id else None
+    word_limit = (payload.word_limit if payload else None) or LITE_SCRIPT_MAX_WORDS
+    script = await build_script(brief, recipient, project, word_limit)
+    project.metadata_json = {**(project.metadata_json or {}), "script": script.model_dump()}
+    project.status = "scripted"
+    await db.flush()
+    await record_event(db, "script_generated", user_id=user.id, project_id=project.id)
+    return script
+
+
+@router.get("/projects/{project_id}/script", response_model=ScriptResponse)
+async def get_script(
+    project_id: uuid.UUID, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)
+):
+    project = await get_owned_project(db, user, project_id)
+    data = project.metadata_json.get("script")
+    if not data:
+        raise HTTPException(404, "Script not generated yet")
+    return ScriptResponse(**data)
+
+
 @router.post("/assets", response_model=AssetResponse, status_code=201)
 async def create_asset(payload: AssetCreate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     key = f"users/{user.id}/{uuid.uuid4()}-{payload.filename}"
@@ -645,23 +862,154 @@ async def get_price(project_id: uuid.UUID, user: User = Depends(current_user), d
 async def create_payment(project_id: uuid.UUID, payload: PaymentCreate, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     project = await get_owned_project(db, user, project_id)
     price = await calculate_price(db, user, project)
+    is_free = price.total_rub == Decimal("0") or price.free_generation_available
+    if is_free:
+        payment = Payment(
+            user_id=user.id,
+            project_id=project.id,
+            provider="free",
+            method=payload.method,
+            status="paid",
+            amount_rub=Decimal("0"),
+            external_payment_id=f"free_{uuid.uuid4()}",
+            idempotency_key=payload.idempotency_key,
+            paid_at=datetime.now(UTC),
+            provider_payload={"bonus_used_rub": str(price.bonus_used_rub)},
+        )
+        db.add(payment)
+        await db.flush()
+        await _finalize_payment(db, payment, price.bonus_used_rub)
+        await record_event(db, "payment_created", user_id=user.id, project_id=project.id, amount="0", free=True)
+        return payment
+    settings = get_settings()
+    if payload.method == "yookassa" and settings.YOOKASSA_SHOP_ID and settings.YOOKASSA_SECRET_KEY:
+        try:
+            external = await _create_yookassa_payment(
+                user, price.total_rub, _yookassa_description(project),
+                {"project_id": str(project.id), "user_id": str(user.id), "bonus_used_rub": str(price.bonus_used_rub)},
+            )
+            payment = Payment(
+                user_id=user.id,
+                project_id=project.id,
+                provider="yookassa",
+                method="yookassa",
+                status="pending",
+                amount_rub=price.total_rub,
+                external_payment_id=external["id"],
+                idempotency_key=payload.idempotency_key,
+                confirmation_url=external["confirmation_url"],
+                provider_payload={"bonus_used_rub": str(price.bonus_used_rub)},
+            )
+            db.add(payment)
+            await db.flush()
+            await record_event(db, "payment_created", user_id=user.id, project_id=project.id, amount=str(price.total_rub), provider="yookassa")
+            return payment
+        except Exception:
+            pass
     payment = Payment(
         user_id=user.id,
         project_id=project.id,
         provider="mock",
-        method=payload.method,
-        status="paid" if price.total_rub == 0 else "pending",
+        method="mock",
+        status="pending",
         amount_rub=price.total_rub,
         external_payment_id=f"mock_{uuid.uuid4()}",
         idempotency_key=payload.idempotency_key,
-        paid_at=datetime.now(timezone.utc) if price.total_rub == 0 else None,
+        provider_payload={"bonus_used_rub": str(price.bonus_used_rub)},
     )
     db.add(payment)
-    if payment.status == "paid":
-        project.paid_rub = price.total_rub
-        project.status = "paid"
-    await record_event(db, "payment_created", user_id=user.id, project_id=project.id, amount=str(price.total_rub))
+    await db.flush()
+    await record_event(db, "payment_created", user_id=user.id, project_id=project.id, amount=str(price.total_rub), provider="mock")
     return payment
+
+
+@router.post("/payments/topup", response_model=PaymentResponse, status_code=201)
+async def top_up_balance(payload: TopUpRequest, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    settings = get_settings()
+    if payload.method == "yookassa" and settings.YOOKASSA_SHOP_ID and settings.YOOKASSA_SECRET_KEY:
+        try:
+            external = await _create_yookassa_payment(user, payload.amount_rub, "DarAgent: пополнение баланса", {"user_id": str(user.id)})
+            payment = Payment(
+                user_id=user.id,
+                provider="yookassa",
+                method="topup",
+                status="pending",
+                amount_rub=payload.amount_rub,
+                external_payment_id=external["id"],
+                confirmation_url=external["confirmation_url"],
+                provider_payload={},
+            )
+            db.add(payment)
+            await record_event(db, "topup_created", user_id=user.id, amount=str(payload.amount_rub), provider="yookassa")
+            return payment
+        except Exception:
+            pass
+    payment = Payment(
+        user_id=user.id,
+        provider="mock",
+        method="topup",
+        status="paid",
+        amount_rub=payload.amount_rub,
+        external_payment_id=f"topup_{uuid.uuid4()}",
+        paid_at=datetime.now(UTC),
+        provider_payload={},
+    )
+    db.add(payment)
+    await db.flush()
+    wallet = await db.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    if not wallet:
+        wallet = Wallet(user_id=user.id)
+        db.add(wallet)
+        await db.flush()
+    wallet.balance_rub = wallet.balance_rub + payload.amount_rub
+    db.add(WalletTransaction(
+        wallet_id=wallet.id,
+        type="topup",
+        amount_rub=payload.amount_rub,
+        balance_after_rub=wallet.balance_rub,
+        payment_id=payment.id,
+        description="credits added",
+    ))
+    await record_event(db, "topup_succeeded", user_id=user.id, amount=str(payload.amount_rub))
+    return payment
+
+
+@router.post("/payments/webhook")
+async def payment_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    settings = get_settings()
+    raw = await request.body()
+    if settings.YOOKASSA_SECRET_KEY:
+        signature = request.headers.get("X-Yookassa-Signature", "")
+        expected = base64.b64encode(
+            hmac.new(settings.YOOKASSA_SECRET_KEY.encode("utf-8"), raw, hashlib.sha256).digest()
+        ).decode("ascii")
+        if not hmac.compare_digest(signature, expected):
+            raise HTTPException(401, "Invalid signature")
+    try:
+        payload = json.loads(raw)
+    except Exception:
+        raise HTTPException(400, "Invalid JSON")
+    event = payload.get("event", "")
+    obj = payload.get("object", {}) or {}
+    ext_id = obj.get("id")
+    payment = await db.scalar(select(Payment).where(Payment.external_payment_id == ext_id)) if ext_id else None
+    if not payment:
+        ide = obj.get("metadata", {}).get("idempotency_key")
+        if ide:
+            payment = await db.scalar(select(Payment).where(Payment.idempotency_key == ide))
+    if not payment:
+        raise HTTPException(404, "Payment not found")
+    if event == "payment.succeeded" and payment.status == "paid":
+        return {"received": True}
+    if event == "payment.succeeded":
+        payment.status = "paid"
+        payment.paid_at = datetime.now(UTC)
+        bonus_used = Decimal(str(payment.provider_payload.get("bonus_used_rub", "0")))
+        await _finalize_payment(db, payment, bonus_used)
+    elif event in ("payment.canceled", "payment.failed"):
+        payment.status = "canceled" if event == "payment.canceled" else "failed"
+    await record_event(db, "payment_webhook", payment_id=str(payment.id), event=event, status=payment.status)
+    return {"received": True}
 
 
 @router.post("/payments/mock/{payment_id}/succeed", response_model=PaymentResponse)
@@ -671,11 +1019,9 @@ async def mock_payment_succeed(payment_id: uuid.UUID, user: User = Depends(curre
         raise HTTPException(404, "Payment not found")
     if payment.status != "paid":
         payment.status = "paid"
-        payment.paid_at = datetime.now(timezone.utc)
-        project = await db.get(Project, payment.project_id)
-        if project:
-            project.paid_rub = payment.amount_rub
-            project.status = "paid"
+        payment.paid_at = datetime.now(UTC)
+        bonus_used = Decimal(str(payment.provider_payload.get("bonus_used_rub", "0")))
+        await _finalize_payment(db, payment, bonus_used)
         await record_event(db, "payment_succeeded", user_id=user.id, project_id=payment.project_id, amount=str(payment.amount_rub))
     return payment
 
@@ -710,7 +1056,7 @@ async def start_generation(project_id: uuid.UUID, user: User = Depends(current_u
     project = await get_owned_project(db, user, project_id)
     await validate_project_ready(db, user, project)
     if project.paid_rub <= 0:
-        await consume_entitlement(db, user.id, "first_generation", project.id)
+        await consume_entitlement(db, user.id, "free_lite", project.id)
     generation = Generation(project_id=project.id, template_version_id=project.selected_template_version_id, status="queued", progress=0)
     db.add(generation)
     await db.flush()
@@ -736,7 +1082,7 @@ async def get_generation(generation_id: uuid.UUID, user: User = Depends(current_
     generation = await db.get(Generation, generation_id)
     if not generation:
         raise HTTPException(404, "Generation not found")
-    project = await get_owned_project(db, user, generation.project_id)
+    await get_owned_project(db, user, generation.project_id)
     return response_generation(generation, await generation_assets(db, generation.id))
 
 
@@ -854,6 +1200,7 @@ async def admin_projects(_: User = Depends(admin_user), db: AsyncSession = Depen
 
 @router.get("/admin/templates", response_model=list[TemplateResponse])
 async def admin_templates(_: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
+    await seed_templates(db)
     rows = await db.scalars(select(Template).order_by(Template.created_at.desc()))
     return list(rows)
 
@@ -951,7 +1298,7 @@ async def validate_project_ready(db: AsyncSession, user: User, project: Project)
     asset = await db.scalar(select(ProjectAsset).where(ProjectAsset.project_id == project.id, ProjectAsset.role == "sender_photo"))
     if not asset:
         raise HTTPException(409, "sender_photo asset is required")
-    if project.paid_rub <= 0 and not await has_entitlement(db, user.id, "first_generation"):
+    if project.paid_rub <= 0 and not await has_entitlement(db, user.id, "free_lite"):
         paid = await db.scalar(select(Payment).where(Payment.project_id == project.id, Payment.status == "paid"))
         if not paid:
             raise HTTPException(402, "Payment required")
@@ -986,3 +1333,86 @@ async def run_mock_generation(db: AsyncSession, generation: Generation, project:
 async def generation_assets(db: AsyncSession, generation_id: uuid.UUID) -> list[Asset]:
     rows = await db.scalars(select(Asset).join(GenerationOutput, GenerationOutput.asset_id == Asset.id).where(GenerationOutput.generation_id == generation_id))
     return list(rows)
+
+
+async def grant_free_lite(db: AsyncSession, user_id: uuid.UUID, quantity: int = 3, source: str = "registration"):
+    db.add(Entitlement(user_id=user_id, code="free_lite", quantity=quantity, source=source))
+    await record_event(db, "free_lite_granted", user_id=user_id, quantity=quantity, source=source)
+
+
+async def _get_wallet(db: AsyncSession, user_id: uuid.UUID) -> Wallet | None:
+    return await db.scalar(select(Wallet).where(Wallet.user_id == user_id))
+
+
+async def _debit_bonus(db: AsyncSession, user_id: uuid.UUID, amount: Decimal, payment_id, project_id, description: str):
+    wallet = await _get_wallet(db, user_id)
+    if wallet and amount and amount > 0:
+        wallet.bonus_balance = wallet.bonus_balance - amount
+        db.add(WalletTransaction(
+            wallet_id=wallet.id,
+            type="bonus_debit",
+            amount_rub=Decimal("0"),
+            bonus_amount_rub=amount,
+            balance_after_rub=wallet.bonus_balance,
+            payment_id=payment_id,
+            project_id=project_id,
+            description=description,
+        ))
+
+
+async def _credit_bonus(db: AsyncSession, user_id: uuid.UUID, amount: Decimal, source: str, project_id, payment_id):
+    wallet = await _get_wallet(db, user_id)
+    if wallet and amount and amount > 0:
+        wallet.bonus_balance = wallet.bonus_balance + amount
+        db.add(WalletTransaction(
+            wallet_id=wallet.id,
+            type="bonus_credit",
+            amount_rub=Decimal("0"),
+            bonus_amount_rub=amount,
+            balance_after_rub=wallet.bonus_balance,
+            payment_id=payment_id,
+            project_id=project_id,
+            description=source,
+        ))
+
+
+async def _finalize_payment(db: AsyncSession, payment: Payment, bonus_used: Decimal) -> None:
+    if payment.status != "paid":
+        return
+    payment.paid_at = payment.paid_at or datetime.now(UTC)
+    if payment.project_id:
+        project = await db.get(Project, payment.project_id)
+        if project:
+            project.paid_rub = payment.amount_rub
+            project.status = "paid"
+    if bonus_used and bonus_used > 0:
+        await _debit_bonus(db, payment.user_id, bonus_used, payment.id, payment.project_id, "bonus applied")
+    cashback = (payment.amount_rub * Decimal("0.05")).quantize(Decimal("0.01"))
+    if cashback > 0:
+        await _credit_bonus(db, payment.user_id, cashback, "purchase_cashback", payment.project_id, payment.id)
+
+
+def _yookassa_description(project: Project) -> str:
+    return f"DarAgent поздравление: {project.title or project.occasion_code}"
+
+
+async def _create_yookassa_payment(user: User, amount: Decimal, description: str, metadata: dict) -> dict:
+    import yookassa
+
+    settings = get_settings()
+    yookassa.Configuration.account_id = settings.YOOKASSA_SHOP_ID
+    yookassa.Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+    payload = {
+        "amount": {"value": str(Decimal(amount).quantize(Decimal("0.01"))), "currency": "RUB"},
+        "payment_method_data": {"type": "bank_card"},
+        "confirmation": {"type": "redirect", "return_url": settings.YOOKASSA_RETURN_URL},
+        "capture": True,
+        "description": description,
+        "metadata": dict(metadata),
+    }
+    result = await asyncio.to_thread(yookassa.Payment.create, payload)
+    confirmation_url = None
+    confirmation = getattr(result, "confirmation", None)
+    if confirmation:
+        confirmation_url = getattr(confirmation, "confirmation_url", None)
+    return {"id": result.id, "confirmation_url": confirmation_url, "status": result.status}

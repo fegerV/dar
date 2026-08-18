@@ -286,6 +286,7 @@ class Payment(Base):
     external_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     provider_payload: Mapped[dict] = json_default(dict)
+    confirmation_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at = now_column()
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

@@ -4,9 +4,12 @@ from __future__ import annotations
 import os
 import sys
 
+import pytest
+import pytest_asyncio
+
 from core.config import get_settings
 from core.database import Base, get_db
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from main import create_app
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -64,5 +67,13 @@ async def client(setup_db):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+
+
+@pytest_asyncio.fixture
+async def db_session(setup_db):
+    """Raw DB session for tests that need to seed state directly."""
+    async with async_session_maker() as session:
+        yield session
+        await session.rollback()
