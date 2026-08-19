@@ -29,7 +29,10 @@ async def _get_user_from_token(access_token: str, db: AsyncSession) -> UserRespo
 
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
     service = AuthService(db)
     tokens = await service.register(body.email, body.password, body.display_name)
     user_resp = await _get_user_from_token(tokens["access_token"], db)
@@ -37,7 +40,10 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
     service = AuthService(db)
     tokens = await service.login(body.email, body.password)
     user_resp = await _get_user_from_token(tokens["access_token"], db)
@@ -45,9 +51,32 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+async def refresh(
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
     service = AuthService(db)
     return await service.refresh(body.refresh_token)
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+    await service.logout(body.refresh_token)
+    return None
+
+
+@router.post("/logout-all", status_code=204)
+async def logout_all(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = AuthService(db)
+    await service.logout_all(current_user.id)
+    return None
 
 
 @router.get("/me", response_model=UserResponse)

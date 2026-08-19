@@ -6,41 +6,50 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
+from app.models.admin import (  # noqa: F401
+    AdminUser,
+    QueueJob,
+    Role,
+    SystemSettings,
+    UserRole,
+    Worker,
+)
+from app.models.analytics import AnalyticsEvent  # noqa: F401
+from app.models.asset import Asset, StorageObject  # noqa: F401
+from app.models.audit import AuditLog  # noqa: F401
 from app.models.base import Base
+from app.models.brief import CreativeBrief  # noqa: F401
+from app.models.delivery import Delivery, DeliveryLink, ShareEvent  # noqa: F401
+from app.models.feedback import Feedback  # noqa: F401
+from app.models.gallery import GallerySubmission  # noqa: F401
+from app.models.generation import Generation, GenerationJob, GenerationStep  # noqa: F401
+from app.models.holiday import Holiday  # noqa: F401
+from app.models.intelligence import (  # noqa: F401
+    GenerationFailure,
+    ImagePreflightResult,
+    ModelProfile,
+    RecipeFailure,
+    UserFeedback,
+    VideoRecipe,
+)
+from app.models.payment import Entitlement, Payment, Wallet  # noqa: F401
+from app.models.project import Project  # noqa: F401
+from app.models.quality import QualityCheck, VideoCriticResult  # noqa: F401
+from app.models.recipient import Recipient, RecipientAsset  # noqa: F401
+from app.models.recommendation import Recommendation  # noqa: F401
+from app.models.referral import Referral, ReferralCode  # noqa: F401
+from app.models.refreshtoken import RefreshToken  # noqa: F401
+from app.models.relationship import RelationshipType  # noqa: F401
+from app.models.template import (  # noqa: F401
+    Scene,
+    SceneVariable,
+    Template,
+    TemplateVariable,
+    TemplateVersion,
+)
 
 # Import all models so Alembic can detect them
 from app.models.user import User, UserAuthIdentity, UserPreferences  # noqa: F401
-from app.models.recipient import Recipient, RecipientAsset  # noqa: F401
-from app.models.project import Project  # noqa: F401
-from app.models.brief import CreativeBrief  # noqa: F401
-from app.models.template import (  # noqa: F401
-    Template,
-    TemplateVersion,
-    Scene,
-    SceneVariable,
-    TemplateVariable,
-)
-from app.models.generation import Generation, GenerationStep, GenerationJob  # noqa: F401
-from app.models.payment import Wallet, Payment, Entitlement  # noqa: F401
-from app.models.asset import StorageObject, Asset  # noqa: F401
-from app.models.recommendation import Recommendation  # noqa: F401
-from app.models.delivery import DeliveryLink, Delivery, ShareEvent  # noqa: F401
-from app.models.analytics import AnalyticsEvent  # noqa: F401
-from app.models.holiday import Holiday  # noqa: F401
-from app.models.audit import AuditLog  # noqa: F401
-from app.models.relationship import RelationshipType  # noqa: F401
-from app.models.referral import Referral, ReferralCode  # noqa: F401
-from app.models.feedback import Feedback  # noqa: F401
-from app.models.quality import QualityCheck, VideoCriticResult  # noqa: F401
-from app.models.intelligence import (  # noqa: F401
-    ImagePreflightResult,
-    VideoRecipe,
-    RecipeFailure,
-    GenerationFailure,
-    UserFeedback,
-    ModelProfile,
-)
-from app.models.admin import AdminUser, Role, UserRole, Worker, QueueJob, SystemSettings  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

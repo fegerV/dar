@@ -1,3 +1,4 @@
+from app.models.admin import AdminUser, QueueJob, Role, SystemSettings, UserRole, Worker
 from app.models.base import Base
 from app.models.generation import Generation, GenerationJob, GenerationStep
 from app.models.intelligence import (
@@ -9,8 +10,8 @@ from app.models.intelligence import (
     VideoRecipe,
 )
 from app.models.quality import QualityCheck, VideoCriticResult
+from app.models.refreshtoken import RefreshToken
 from app.models.user import User, UserAuthIdentity, UserPreferences
-from app.models.admin import AdminUser, Role, UserRole, Worker, QueueJob, SystemSettings
 
 __all__ = [
     "Base",
@@ -34,4 +35,5 @@ __all__ = [
     "Worker",
     "QueueJob",
     "SystemSettings",
+    "RefreshToken",
 ]

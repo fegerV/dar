@@ -4,12 +4,19 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-
 CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 _API_PREFIX = re.compile(r"^/api/v\d+/")
 
-_EXEMPT_PATHS = {"/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/payments/webhook/yookassa", "/api/v1/telegram/webhook"}
+_EXEMPT_PATHS = {
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/logout",
+    "/api/v1/auth/logout-all",
+    "/api/v1/payments/webhook/yookassa",
+    "/api/v1/telegram/webhook",
+}
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):

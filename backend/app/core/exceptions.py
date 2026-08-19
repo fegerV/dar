@@ -31,4 +31,9 @@ class ConflictException(AppException):
 
 class ValidationException(AppException):
     def __init__(self, message: str = "Validation error", details: dict | None = None):
-        super().__init__("VALIDATION_ERROR", message, status.HTTP_422_UNPROCESSABLE_ENTITY, details)
+        super().__init__(
+            "VALIDATION_ERROR",
+            message,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            details,
+        )
