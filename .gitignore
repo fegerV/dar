@@ -24,6 +24,11 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Secrets
+google-services.json
+firebase-debug.log
+firebase-debug.*.log
+
 # Logs
 *.log
 logs/
