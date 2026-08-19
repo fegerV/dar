@@ -207,16 +207,15 @@ class PaymentService:
         paid_at = None
 
         if event == "payment.succeeded" or status == "succeeded":
-            payment.status = "paid"
-            paid_at = datetime.now(timezone.utc)
+            if payment.status != "paid":
+                payment.status = "paid"
+                paid_at = datetime.now(timezone.utc)
+                payment.paid_at = paid_at
+                await self.wallet_service.credit(payment.user_id, payment.amount_rub)
         elif event == "payment.canceled" or status == "canceled":
             payment.status = "failed"
         elif event == "payment.waiting_for_capture" or status == "waiting_for_capture":
             payment.status = "authorized"
-
-        if paid_at:
-            payment.paid_at = paid_at
-            await self.wallet_service.credit(payment.user_id, payment.amount_rub)
 
         await self.db.commit()
         return {"received": True, "payment_id": str(payment.id), "status": payment.status}

@@ -66,13 +66,16 @@ class PricingService:
         bundle_discount = await self._apply_bundle_discount(project.owner_user_id, price)
         discount_rub += bundle_discount
 
-        entitlement = await self.repo.get_entitlement_by_code(project.owner_user_id, "free_generation")
+        entitlement = await self.repo.get_entitlement_by_code(project.owner_user_id, "welcome_generation")
         if entitlement and entitlement.consumed < entitlement.quantity:
             free_generation_available = True
             bonus_discount_rub = price
             price = Decimal("0.00")
 
         total_rub = max(Decimal("0.00"), price - discount_rub - bonus_discount_rub)
+
+        project.price_rub = float(total_rub)
+        await self.repo.update_project(project)
 
         return PriceResponse(
             project_id=body.project_id,

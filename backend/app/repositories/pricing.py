@@ -34,3 +34,7 @@ class PricingRepository:
             )
         )
         return result.scalar_one_or_none()
+
+    async def update_project(self, project: Project) -> Project:
+        await self.db.flush()
+        return project
