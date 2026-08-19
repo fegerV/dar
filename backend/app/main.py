@@ -1,8 +1,9 @@
 import logging
 import shutil
 
-from fastapi import FastAPI, Response
+from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -157,3 +158,34 @@ async def metrics():
         monitor = MonitoringService(session)
         await monitor.collect_system_metrics()
         return Response(content=monitor.get_metrics(), media_type=MonitoringService.CONTENT_TYPE)
+
+
+from app.core.dependencies import get_current_user
+from app.core.exceptions import ForbiddenException
+
+
+@app.get("/admin/events/stream")
+async def admin_events_stream(request: Request, current_user=Depends(get_current_user)):
+    if not getattr(current_user, "is_admin", False):
+        raise ForbiddenException("Admin access required")
+
+    import asyncio
+    import json
+    from datetime import datetime, timezone
+
+    async def event_generator():
+        yield "retry: 5000\n\n"
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                async with async_session_factory() as session:
+                    from app.services.admin.service import AdminService
+                    service = AdminService(session)
+                    stats = await service.get_dashboard_stats()
+                    yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
+            await asyncio.sleep(5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})

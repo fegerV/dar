@@ -79,3 +79,24 @@ class PromoCode(Base, UUIDPrimaryKeyMixin):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class LedgerTransaction(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "ledger_transactions"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    wallet_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("wallets.id", ondelete="SET NULL"))
+    type: Mapped[str] = mapped_column(String(30), nullable=False)
+    amount_rub: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
+    is_bonus: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    admin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    reference_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user = relationship("User")
+    wallet = relationship("Wallet")

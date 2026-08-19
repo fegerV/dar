@@ -91,7 +91,15 @@ export function AdminGenerations() {
               {gen.error_message && (
                 <p className="mt-2 text-sm text-red-600">{gen.error_message}</p>
               )}
-              <div className="mt-4 flex justify-end">
+               <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`View generation ${gen.id}`}
+                  onClick={() => router.push(`/admin/generations/${gen.id}`)}
+                >
+                  View
+                </Button>
                 <Button size="sm" variant="outline" aria-label={`Play video for generation ${gen.id}`}>
                   <Play className="h-4 w-4 mr-2" aria-hidden="true" />
                   Play Video

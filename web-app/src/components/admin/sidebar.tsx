@@ -2,19 +2,26 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, CreditCard, Bot, Settings, ClipboardList, Shield } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, Gavel } from "lucide-react"
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/generations", label: "Generations", icon: Sparkles },
   { href: "/admin/queue", label: "Queue", icon: GitBranch },
+  { href: "/admin/errors", label: "Errors", icon: AlertCircle },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/templates", label: "Templates", icon: FileText },
+  { href: "/admin/prompts", label: "Prompt Library", icon: Edit3 },
+  { href: "/admin/workers", label: "AI / Workers", icon: Bot },
+  { href: "/admin/rbac", label: "RBAC", icon: ShieldCheck },
+  { href: "/admin/promo", label: "Promo Codes", icon: Percent },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
+  { href: "/admin/moderation", label: "Moderation", icon: Gavel },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/referrals", label: "Referrals", icon: ClipboardList },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: Shield },
-  { href: "/admin/workers", label: "AI / Workers", icon: Bot },
   { href: "/admin/system", label: "System", icon: Settings },
 ]
 

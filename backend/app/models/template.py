@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, SmallInteger, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -120,3 +120,20 @@ class TemplateVariable(Base, UUIDPrimaryKeyMixin):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     template_version = relationship("TemplateVersion", back_populates="variables")
+
+
+class PromptTemplate(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "prompt_templates"
+
+    code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(String(50))
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    variables: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    compatible_models: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    success_rate: Mapped[float | None] = mapped_column(Float)
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    rating: Mapped[float | None] = mapped_column(Float)

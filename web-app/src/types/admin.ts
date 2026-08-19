@@ -170,3 +170,21 @@ export interface Referral {
   metadata: Record<string, unknown> | null
   created_at: string
 }
+
+
+export interface AdminRole {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  permissions: string[]
+  is_system: boolean
+  created_at: string
+}
+
+
+export interface SystemRoleDef {
+  name: string
+  description: string
+  permissions: string[]
+}

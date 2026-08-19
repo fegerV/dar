@@ -126,6 +126,7 @@ export function AdminSystem() {
       <Tabs defaultValue="health">
         <TabsList>
           <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="flags">Feature Flags</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
         </TabsList>
@@ -150,6 +151,44 @@ export function AdminSystem() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="flags" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Feature Flags</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {settings.filter((s) => s.key === "feature_flags").map((setting) => {
+                const flags = setting.value as Record<string, boolean>
+                return (
+                  <div key={setting.id} className="space-y-3">
+                    {Object.entries(flags).map(([flag, value]) => (
+                      <div key={flag} className="flex items-center justify-between">
+                        <Label htmlFor={flag}>{flag}</Label>
+                        <input
+                          id={flag}
+                          type="checkbox"
+                          checked={value}
+                          onChange={(e) => {
+                            const newFlags = { ...flags, [flag]: e.target.checked }
+                            const settingInput = document.getElementById(setting.key) as HTMLInputElement
+                            if (settingInput) settingInput.value = JSON.stringify({ ...newFlags })
+                          }}
+                          aria-label={`Toggle ${flag}`}
+                        />
+                      </div>
+                    ))}
+                    <input type="hidden" id={setting.key} defaultValue={JSON.stringify(setting.value)} />
+                  </div>
+                )
+              })}
+              <Button onClick={handleSave} disabled={saving} className="w-full">
+                <Save className="h-4 w-4 mr-2" aria-hidden="true" />
+                {saving ? "Saving..." : "Save Feature Flags"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

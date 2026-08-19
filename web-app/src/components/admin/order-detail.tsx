@@ -108,13 +108,30 @@ export function AdminOrderDetail() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Timeline</CardTitle>
+          <CardTitle>Full Lifecycle Timeline</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p><span className="text-muted-foreground">Created:</span> {new Date(order.created_at).toLocaleString()}</p>
-            {order.completed_at && <p><span className="text-muted-foreground">Completed:</span> {new Date(order.completed_at).toLocaleString()}</p>}
-            {order.error_code && <p><span className="text-muted-foreground">Error:</span> {order.error_code}</p>}
+            <div className="flex items-start gap-3 py-2">
+              <span className="text-xs text-muted-foreground min-w-[80px]">Order created</span>
+              <span>{new Date(order.created_at).toLocaleString()}</span>
+            </div>
+            {order.error_code && (
+              <div className="flex items-start gap-3 py-2">
+                <span className="text-xs text-muted-foreground min-w-[80px]">Error</span>
+                <span className="text-red-600">{order.error_code}</span>
+              </div>
+            )}
+            {order.completed_at && (
+              <div className="flex items-start gap-3 py-2">
+                <span className="text-xs text-muted-foreground min-w-[80px]">Completed</span>
+                <span>{new Date(order.completed_at).toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-3 py-2">
+              <span className="text-xs text-muted-foreground min-w-[80px]">Status</span>
+              <Badge className={statusColors[order.status] || "bg-gray-100"}>{order.status}</Badge>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,9 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
 from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
@@ -17,6 +18,7 @@ from app.repositories.recommendations import TemplateRepository
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
+    AdminGenerationDetailResponse,
     AdminGenerationResponse,
     AdminOrderDetailResponse,
     AdminOrderResponse,
@@ -251,16 +253,31 @@ class AdminService:
 
         return AdminTemplateResponse.model_validate(template)
 
-    async def list_generations(self, page: int = 1, page_size: int = 20) -> tuple[list[AdminGenerationResponse], int]:
-        count_result = await self.db.execute(select(func.count()).select_from(Generation))
+    async def list_generations(self, page: int = 1, page_size: int = 20, status: str | None = None) -> tuple[list[AdminGenerationResponse], int]:
+        query = select(Generation)
+        if status:
+            query = query.where(Generation.status == status)
+        count_result = await self.db.execute(select(func.count()).select_from(query.subquery()))
         total = count_result.scalar() or 0
 
         offset = (page - 1) * page_size
         result = await self.db.execute(
-            select(Generation).order_by(Generation.created_at.desc()).offset(offset).limit(page_size)
+            query.order_by(Generation.created_at.desc()).offset(offset).limit(page_size)
         )
         generations = list(result.scalars().all())
         return [AdminGenerationResponse.model_validate(g) for g in generations], total
+
+    async def get_generation_detail(self, gen_id: UUID) -> AdminGenerationDetailResponse:
+        generation = await self.db.get(Generation, gen_id)
+        if generation is None:
+            raise NotFoundException("Generation not found")
+        result = await self.db.execute(
+            select(Generation).options(joinedload(Generation.steps)).where(Generation.id == gen_id)
+        )
+        generation = result.scalar_one_or_none()
+        if generation is None:
+            raise NotFoundException("Generation not found")
+        return AdminGenerationDetailResponse.model_validate(generation)
 
     async def list_orders(self, page: int = 1, page_size: int = 20) -> tuple[list[AdminOrderResponse], int]:
         count_result = await self.db.execute(select(func.count()).select_from(Generation))
@@ -317,8 +334,24 @@ class AdminService:
 
         _validate_system_setting(key, body.value)
         setting.value = body.value
+        from datetime import datetime as _dt, timezone as _tz
+        setting.updated_at = _dt.now(_tz.utc)
         await self.db.flush()
         return AdminSystemSettingsResponse.model_validate(setting)
+
+    async def ensure_default_settings(self) -> None:
+        defaults = [
+            ("feature_flags", {"NEW_RECOMMENDATION_ENGINE": False, "NEW_TEMPLATE_EDITOR": True, "VIDEO_LAB": False, "AUTO_MODERATION": False}),
+            ("generation", {"default_model": "kling", "max_retries": 3, "queue_timeout_sec": 300, "generation_timeout_sec": 600}),
+            ("payments", {"yookassa_enabled": True, "yookassa_webhook_secret": ""}),
+            ("notifications", {"telegram_enabled": False, "email_enabled": True}),
+        ]
+        for key, value in defaults:
+            existing = await self.db.get(SystemSettings, key)
+            if existing is None:
+                setting = SystemSettings(key=key, value=value, description=f"Default {key}", is_public=False)
+                self.db.add(setting)
+        await self.db.flush()
 
     async def get_user(self, user_id: UUID) -> AdminUserResponse:
         result = await self.db.execute(select(User).where(User.id == user_id))
@@ -367,8 +400,6 @@ class AdminService:
         submission = await self.db.get(GallerySubmission, submission_id)
         if submission is None:
             raise NotFoundException("Submission not found")
-        from datetime import datetime, timezone
-
         submission.status = GalleryStatus.approved if approve else GalleryStatus.rejected
         submission.moderator_id = moderator_id
         submission.reviewed_at = datetime.now(timezone.utc)
@@ -561,3 +592,74 @@ class AdminService:
         job.priority = priority
         await self.db.flush()
         return AdminQueueJobResponse.model_validate(job)
+
+    async def get_analytics(self, days: int = 7) -> dict:
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+
+        total_generations = await self.db.execute(
+            select(func.count()).select_from(Generation).where(Generation.created_at >= since)
+        )
+        total_payments = await self.db.execute(
+            select(func.sum(Payment.amount_rub)).where(Payment.created_at >= since, Payment.status == "paid")
+        )
+        total_users = await self.db.execute(
+            select(func.count()).select_from(User).where(User.created_at >= since)
+        )
+
+        status_counts = {}
+        status_result = await self.db.execute(
+            select(Generation.status, func.count())
+            .where(Generation.created_at >= since)
+            .group_by(Generation.status)
+        )
+        for status, count in status_result.all():
+            status_counts[status] = count
+
+        model_stats = {}
+        model_result = await self.db.execute(
+            select(Generation.model_name, func.count(), func.sum(Generation.cost_rub))
+            .where(Generation.created_at >= since)
+            .group_by(Generation.model_name)
+        )
+        for model, count, cost in model_result.all():
+            if model:
+                model_stats[model] = {"count": count, "cost": float(cost or 0)}
+
+        daily_revenue = {}
+        daily_result = await self.db.execute(
+            select(
+                func.date(Payment.created_at).label("date"),
+                func.sum(Payment.amount_rub).label("total"),
+            )
+            .where(Payment.created_at >= since, Payment.status == "paid")
+            .group_by(func.date(Payment.created_at))
+        )
+        for date, total in daily_result.all():
+            daily_revenue[str(date)] = float(total or 0)
+
+        daily_generations = {}
+        daily_gen_result = await self.db.execute(
+            select(
+                func.date(Generation.created_at).label("date"),
+                Generation.status,
+                func.count().label("count"),
+            )
+            .where(Generation.created_at >= since)
+            .group_by(func.date(Generation.created_at), Generation.status)
+        )
+        for date, status, count in daily_gen_result.all():
+            key = str(date)
+            if key not in daily_generations:
+                daily_generations[key] = {}
+            daily_generations[key][status] = count
+
+        return {
+            "period_days": days,
+            "total_generations": total_generations.scalar() or 0,
+            "total_revenue": float(total_payments.scalar() or 0),
+            "total_new_users": total_users.scalar() or 0,
+            "generation_status_breakdown": status_counts,
+            "cost_by_model": model_stats,
+            "daily_revenue": daily_revenue,
+            "daily_generations": daily_generations,
+        }

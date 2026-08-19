@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.redirect(new URL(`/${locale}${request.nextUrl.pathname}`, request.url))
   response.cookies.set("locale", locale, { path: "/", maxAge: 60 * 60 * 24 * 365 })
 
-  if (request.nextUrl.pathname.startsWith("/admin") && !request.nextUrl.pathname.startsWith("/admin/login") && !request.nextUrl.pathname.startsWith("/admin/init")) {
+  if (request.nextUrl.pathname.startsWith("/admin") && !request.nextUrl.pathname.startsWith("/admin/login") && !request.nextUrl.pathname.startsWith("/admin/init") && !request.nextUrl.pathname.startsWith("/admin/setup")) {
      const token = request.cookies.get("daragent_admin_access")?.value
     if (!token) {
       return NextResponse.redirect(new URL("/admin/login", request.url))

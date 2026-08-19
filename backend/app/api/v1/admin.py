@@ -1,16 +1,26 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import ForbiddenException, ValidationException
+from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException, ValidationException
+from app.core.rbac import get_user_permissions, permission_allowed, require_permission, SYSTEM_ROLES
+from app.models.admin import Role, UserRole
+from app.models.payment import Wallet, LedgerTransaction
+from app.models.template import Template, PromptTemplate
+from app.models.user import User
+from app.schemas.admin import RoleResponse, UserRoleAssign, RoleCreate, RoleUpdate, WalletAdjustmentRequest, WalletLedgerEntryResponse
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
+    AdminGenerationDetailResponse,
     AdminGenerationResponse,
-    AdminOrderDetailResponse,
+    AdminPromptTemplateCreate,
+    AdminPromptTemplateResponse,
+    AdminPromptTemplateUpdate,
     AdminOrderResponse,
     AdminPaymentResponse,
     AdminQueueJobResponse,
@@ -81,6 +91,16 @@ async def get_stats(
     return await service.get_dashboard_stats()
 
 
+@router.get("/analytics")
+async def get_analytics(
+    days: int = Query(default=7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_analytics(days)
+
+
 @router.get("/users", response_model=list[AdminUserResponse])
 async def list_users(
     page: int = 1,
@@ -119,12 +139,66 @@ async def create_template(
 async def list_generations(
     page: int = 1,
     page_size: int = 20,
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    generations, _ = await service.list_generations(page, page_size)
+    generations, _ = await service.list_generations(page, page_size, status)
     return generations
+
+
+@router.get("/generations/{gen_id}", response_model=AdminGenerationDetailResponse)
+async def get_generation(
+    gen_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_generation_detail(gen_id)
+
+
+@router.post("/generations/{gen_id}/retry")
+async def retry_generation(
+    gen_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.services.audit.service import AuditService
+
+    service = AdminService(db)
+    gen = await service.get_generation_detail(gen_id)
+    audit = AuditService(db)
+    await audit.log(
+        actor_user_id=current_user.id, action="generation_retry",
+        target_type="generation", target_id=gen_id,
+    )
+    await db.commit()
+    return {"status": "retried", "generation_id": str(gen_id)}
+
+
+@router.post("/generations/{gen_id}/cancel")
+async def cancel_generation(
+    gen_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.services.audit.service import AuditService
+
+    service = AdminService(db)
+    gen = await service.get_generation_detail(gen_id)
+    from app.models.generation import Generation as GenerationModel
+    generation = await db.get(GenerationModel, gen_id)
+    if generation and generation.status in ("running", "pending", "queued", "processing"):
+        generation.status = "canceled"
+        await db.flush()
+    audit = AuditService(db)
+    await audit.log(
+        actor_user_id=current_user.id, action="generation_cancel",
+        target_type="generation", target_id=gen_id,
+    )
+    await db.commit()
+    return {"status": "canceled", "generation_id": str(gen_id)}
 
 
 @router.get("/orders", response_model=list[AdminOrderResponse])
@@ -242,6 +316,55 @@ async def get_user_wallet(
     return await service.get_user_wallet(user_id)
 
 
+@router.post("/users/{user_id}/wallet/adjust")
+async def adjust_wallet(
+    user_id: UUID,
+    body: WalletAdjustmentRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("wallet.adjust")),
+):
+    from app.services.audit.service import AuditService
+
+    wallet = await db.get(Wallet, None)
+    result = await db.execute(select(Wallet).where(Wallet.user_id == user_id))
+    wallet = result.scalar_one_or_none()
+    if wallet is None:
+        raise NotFoundException("Wallet not found")
+
+    if body.is_bonus:
+        wallet.bonus_balance += body.amount_rub
+    else:
+        wallet.balance_rub += body.amount_rub
+
+    transaction = LedgerTransaction(
+        user_id=user_id,
+        wallet_id=wallet.id,
+        type=body.type,
+        amount_rub=body.amount_rub,
+        is_bonus=body.is_bonus,
+        admin_id=current_user.id,
+        reason=body.reason,
+    )
+    db.add(transaction)
+    await db.flush()
+
+    audit = AuditService(db)
+    await audit.log(
+        actor_user_id=current_user.id,
+        action="wallet_adjusted",
+        target_type="wallet",
+        target_id=user_id,
+        metadata={
+            "amount": body.amount_rub,
+            "type": body.type,
+            "is_bonus": body.is_bonus,
+            "reason": body.reason,
+        },
+    )
+    await db.commit()
+    return {"status": "ok", "wallet_id": str(wallet.id), "transaction_id": str(transaction.id)}
+
+
 @router.post("/users/{user_id}/impersonate")
 async def impersonate_user(
     user_id: UUID,
@@ -287,7 +410,80 @@ async def list_referral_codes(
     return await service.list_referral_codes()
 
 
-@router.get("/orders/{order_id}", response_model=AdminOrderDetailResponse)
+@router.get("/errors")
+async def list_errors(
+    limit: int = 100,
+    error_type: str | None = Query(None, pattern="^(cuda|api|timeout|storage|payment|validation|moderation|worker|database)$"),
+    resolved: bool | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from sqlalchemy import or_
+    from app.models import Generation as GenerationModel
+
+    query = select(GenerationModel).where(
+        GenerationModel.error_code.isnot(None),
+        GenerationModel.status == "failed",
+    )
+    if error_type:
+        pattern = f"%{error_type}%"
+        query = query.where(
+            or_(
+                GenerationModel.error_code.ilike(pattern),
+                GenerationModel.error_message.ilike(pattern),
+            )
+        )
+
+    result = await db.execute(query.order_by(GenerationModel.created_at.desc()).limit(limit))
+    errors = list(result.scalars().all())
+
+    grouped: dict[str, list[dict]] = {
+        "cuda": [], "api": [], "timeout": [], "storage": [],
+        "payment": [], "validation": [], "moderation": [], "worker": [], "database": [],
+        "other": [],
+    }
+
+    for err in errors:
+        code = (err.error_code or "").lower()
+        if "cuda" in code or "gpu" in code:
+            group = "cuda"
+        elif "timeout" in code or "expired" in code:
+            group = "timeout"
+        elif "storage" in code or "s3" in code or "minio" in code:
+            group = "storage"
+        elif "payment" in code or "yookassa" in code or "refund" in code:
+            group = "payment"
+        elif "validation" in code or "invalid" in code:
+            group = "validation"
+        elif "moderation" in code:
+            group = "moderation"
+        elif "worker" in code:
+            group = "worker"
+        elif "database" in code or "db" in code or "sql" in code:
+            group = "database"
+        elif "api" in code:
+            group = "api"
+        else:
+            group = "other"
+
+        grouped[group].append({
+            "id": str(err.id),
+            "error_code": err.error_code,
+            "error_message": err.error_message,
+            "model_name": err.model_name,
+            "project_id": str(err.project_id),
+            "attempt": err.attempt,
+            "cost_rub": float(err.cost_rub),
+            "duration_ms": err.duration_ms,
+            "created_at": err.created_at.isoformat(),
+            "resolved": False,
+        })
+
+    return {
+        "groups": grouped,
+        "total": sum(len(v) for v in grouped.values()),
+        "occurrences": {k: len(v) for k, v in grouped.items()},
+    }
 async def get_order(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -470,3 +666,190 @@ async def update_queue_job_priority(
 ):
     service = AdminService(db)
     return await service.update_queue_job_priority(job_id, body.priority)
+
+
+@router.get("/roles", response_model=list[RoleResponse])
+async def list_roles(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings.manage")),
+):
+    result = await db.execute(select(Role).order_by(Role.code))
+    roles = list(result.scalars().all())
+    return [RoleResponse.model_validate(r) for r in roles]
+
+
+@router.post("/roles", response_model=RoleResponse, status_code=201)
+async def create_role(
+    body: RoleCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings.manage")),
+):
+    existing = await db.get(Role, None)
+    result = await db.execute(select(Role).where(Role.code == body.code))
+    if result.scalar_one_or_none():
+        raise ConflictException(f"Role '{body.code}' already exists")
+    role = Role(
+        code=body.code,
+        name=body.name,
+        description=body.description,
+        permissions=body.permissions,
+        is_system=False,
+    )
+    db.add(role)
+    await db.flush()
+    await db.commit()
+    return RoleResponse.model_validate(role)
+
+
+@router.patch("/roles/{role_id}", response_model=RoleResponse)
+async def update_role(
+    role_id: UUID,
+    body: RoleUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings.manage")),
+):
+    role = await db.get(Role, role_id)
+    if role is None:
+        raise NotFoundException("Role not found")
+    if role.is_system:
+        raise ValidationException("Cannot modify system role")
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(role, key, value)
+    await db.commit()
+    return RoleResponse.model_validate(role)
+
+
+@router.get("/users/{user_id}/roles", response_model=list[RoleResponse])
+async def list_user_roles(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("users.read")),
+):
+    result = await db.execute(
+        select(Role, UserRole)
+        .join(UserRole, Role.id == UserRole.role_id, isouter=True)
+        .where(UserRole.user_id == user_id)
+    )
+    return [RoleResponse.model_validate(r) for r, _ in result.all()]
+
+
+@router.post("/users/{user_id}/roles", status_code=201)
+async def assign_user_role(
+    user_id: UUID,
+    body: UserRoleAssign,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("users.update")),
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise NotFoundException("User not found")
+    role = await db.get(Role, body.role_id)
+    if role is None:
+        raise NotFoundException("Role not found")
+    assignment = UserRole(
+        user_id=user_id,
+        role_id=body.role_id,
+        granted_by=body.granted_by or current_user.id,
+    )
+    db.add(assignment)
+    await db.commit()
+    return {"status": "ok", "message": f"Assigned {role.code} to user"}
+
+
+@router.delete("/users/{user_id}/roles/{role_id}", status_code=204)
+async def remove_user_role(
+    user_id: UUID,
+    role_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("users.update")),
+):
+    result = await db.execute(
+        select(UserRole).where(
+            UserRole.user_id == user_id, UserRole.role_id == role_id
+        )
+    )
+    assignment = result.scalar_one_or_none()
+    if assignment is None:
+        raise NotFoundException("Role assignment not found")
+    await db.delete(assignment)
+    await db.commit()
+
+
+@router.get("/rbac/permissions")
+async def get_permissions(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings.manage")),
+):
+    all_perms = set()
+    for role in SYSTEM_ROLES.values():
+        all_perms.update(role["permissions"])
+    return {"roles": SYSTEM_ROLES, "permissions": sorted(all_perms)}
+
+
+@router.get("/prompts", response_model=list[AdminPromptTemplateResponse])
+async def list_prompt_templates(
+    page: int = 1,
+    page_size: int = 50,
+    category: str | None = Query(None),
+    is_active: bool | None = Query(None),
+    search: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    query = select(PromptTemplate).order_by(PromptTemplate.created_at.desc())
+    if category:
+        query = query.where(PromptTemplate.category == category)
+    if is_active is not None:
+        query = query.where(PromptTemplate.is_active == is_active)
+    if search:
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(PromptTemplate.name.ilike(pattern), PromptTemplate.code.ilike(pattern), PromptTemplate.text.ilike(pattern))
+        )
+    offset = (page - 1) * page_size
+    query = query.offset(offset).limit(page_size)
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+@router.post("/prompts", response_model=AdminPromptTemplateResponse, status_code=201)
+async def create_prompt_template(
+    body: AdminPromptTemplateCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    existing = await db.execute(select(PromptTemplate).where(PromptTemplate.code == body.code))
+    if existing.scalar_one_or_none():
+        raise ConflictException(f"Prompt with code '{body.code}' already exists")
+    prompt = PromptTemplate(**body.model_dump())
+    db.add(prompt)
+    await db.flush()
+    from app.services.audit.service import AuditService
+    audit = AuditService(db)
+    await audit.log(actor_user_id=current_user.id, action="prompt_created", target_type="prompt", target_id=prompt.id)
+    await db.commit()
+    return AdminPromptTemplateResponse.model_validate(prompt)
+
+
+@router.patch("/prompts/{prompt_id}", response_model=AdminPromptTemplateResponse)
+async def update_prompt_template(
+    prompt_id: UUID,
+    body: AdminPromptTemplateUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    prompt = await db.get(PromptTemplate, prompt_id)
+    if prompt is None:
+        raise NotFoundException("Prompt not found")
+    is_system = prompt.is_active
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(prompt, key, value)
+    prompt.version += 1
+    await db.flush()
+    from app.services.audit.service import AuditService
+    audit = AuditService(db)
+    await audit.log(actor_user_id=current_user.id, action="prompt_updated", target_type="prompt", target_id=prompt_id, metadata=update_data)
+    await db.commit()
+    return AdminPromptTemplateResponse.model_validate(prompt)

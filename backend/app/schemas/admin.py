@@ -4,6 +4,36 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class RoleResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    description: str | None = None
+    permissions: list[str] = []
+    is_system: bool = False
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RoleCreate(BaseModel):
+    code: str = Field(..., max_length=50)
+    name: str = Field(..., max_length=120)
+    description: str | None = None
+    permissions: list[str] = []
+
+
+class RoleUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    permissions: list[str] | None = None
+
+
+class UserRoleAssign(BaseModel):
+    role_id: UUID
+    granted_by: UUID | None = None
+
+
 class AdminDashboardStats(BaseModel):
     total_users: int
     total_projects: int
@@ -37,6 +67,25 @@ class AdminUserWalletResponse(BaseModel):
     balance_rub: float
     bonus_balance: float
     updated_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class WalletAdjustmentRequest(BaseModel):
+    amount_rub: float = Field(..., gt=0, description="Amount must be positive")
+    type: str = Field(..., pattern="^(adjustment|bonus|refund|penalty)$", description="Transaction type")
+    is_bonus: bool = False
+    reason: str = Field(..., min_length=5, description="Reason for adjustment")
+
+
+class WalletLedgerEntryResponse(BaseModel):
+    id: UUID
+    type: str
+    amount_rub: float
+    is_bonus: bool
+    admin_id: UUID | None = None
+    reason: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -109,6 +158,55 @@ class AdminGenerationResponse(BaseModel):
     duration_ms: int | None = None
     created_at: datetime
     completed_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminGenerationDetailResponse(BaseModel):
+    id: UUID
+    project_id: UUID
+    parent_generation_id: UUID | None = None
+    template_version_id: UUID | None = None
+    type: str
+    status: str
+    attempt: int
+    requested_by_user_id: UUID | None = None
+    provider_id: UUID | None = None
+    model_name: str | None = None
+    input_json: dict
+    output_json: dict
+    error_code: str | None = None
+    error_message: str | None = None
+    cost_rub: float
+    duration_ms: int | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
+    progress: int
+    current_step: str | None = None
+    estimated_seconds: int | None = None
+    steps: list["AdminGenerationStepResponse"] = []
+
+    model_config = {"from_attributes": True}
+
+
+class AdminGenerationStepResponse(BaseModel):
+    id: UUID
+    step_no: int
+    step_code: str
+    type: str
+    status: str
+    provider_id: UUID | None = None
+    prompt_template_id: UUID | None = None
+    input_json: dict
+    output_json: dict
+    error_code: str | None = None
+    error_message: str | None = None
+    cost_rub: float
+    duration_ms: int | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -363,6 +461,52 @@ class AdminSceneUpdate(BaseModel):
     preview_asset_id: UUID | None = None
     scene_config: dict | None = None
     condition: dict | None = None
+
+
+class AdminSystemSettingsUpdate(BaseModel):
+    value: dict
+
+
+class AdminPromptTemplateResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    description: str | None = None
+    category: str | None = None
+    text: str
+    variables: list[str] = []
+    compatible_models: list[str] = []
+    is_active: bool = True
+    version: int
+    success_rate: float | None = None
+    usage_count: int
+    rating: float | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminPromptTemplateCreate(BaseModel):
+    code: str
+    name: str
+    description: str | None = None
+    category: str | None = None
+    text: str
+    variables: list[str] = []
+    compatible_models: list[str] = []
+    is_active: bool = True
+
+
+class AdminPromptTemplateUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    category: str | None = None
+    text: str | None = None
+    variables: list[str] | None = None
+    compatible_models: list[str] | None = None
+    is_active: bool | None = None
+    version: int | None = None
 
 
 class AdminSystemSettingsUpdate(BaseModel):

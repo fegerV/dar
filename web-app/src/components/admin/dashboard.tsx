@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
 import { Users, ShoppingCart, Sparkles, Cpu, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
 import { apiFetch } from "@/lib/api"
+import { useAdminEvents } from "@/hooks/use-admin-events"
 import type { DashboardStats } from "@/types/admin"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useRouter } from "next/navigation"
@@ -14,6 +16,7 @@ export function AdminDashboard() {
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const latestEvent = useAdminEvents(!!user)
 
   useEffect(() => {
     if (!authLoading && !user && !error) {
@@ -29,13 +32,29 @@ export function AdminDashboard() {
       .finally(() => setLoading(false))
   }, [user])
 
+  useEffect(() => {
+    if (latestEvent && latestEvent.type === "stats" && latestEvent.data) {
+      setStats((prev) => ({ ...(prev || {}), ...latestEvent.data } as DashboardStats))
+    }
+  }, [latestEvent])
+
+  const realtimeBadge = latestEvent ? (
+    <Badge variant="outline" className="bg-green-100 text-green-800">
+      <span className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse" aria-hidden="true" />
+      Live
+    </Badge>
+  ) : null
+
   if (authLoading || loading || !stats) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Operational center overview</p>
-        </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground mt-1">Operational center overview</p>
+            </div>
+            {realtimeBadge}
+          </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i}>
