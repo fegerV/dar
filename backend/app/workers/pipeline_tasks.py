@@ -129,7 +129,7 @@ async def _execute_pipeline(generation_id: str):
                 QualityCheckRequest(
                     generation_id=gen_uuid,
                     asset_ids=[],
-                    prompt=generation.prompt,
+                    prompt=(generation.input_json or {}).get("prompt", ""),
                 )
             )
             if quality_response.final_status == "rejected":
