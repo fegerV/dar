@@ -3,9 +3,11 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import httpx
+from sqlalchemy import select
 
 from app.core.config import settings
 from app.models.delivery import Delivery
+from app.models.user import User
 from app.repositories.delivery import DeliveryRepository
 
 logger = logging.getLogger(__name__)
@@ -24,8 +26,14 @@ class TelegramDeliveryService:
             return
 
         chat_id = delivery.destination
+        if not chat_id and delivery.user_id:
+            result = await self.db.execute(
+                select(User.telegram_user_id).where(User.id == delivery.user_id)
+            )
+            chat_id = result.scalar_one_or_none()
+
         if not chat_id:
-            logger.warning("Telegram chat_id missing")
+            logger.warning("Telegram chat_id missing for delivery %s", delivery.id)
             return
 
         text = caption or "Ваше видеопоздравление готово 🎬"
