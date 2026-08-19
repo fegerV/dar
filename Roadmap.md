@@ -550,13 +550,13 @@ TARGETED REGENERATION
 
 ### Product / Growth
 
-- [ ] Contact Import — локальная обработка контактов, явный выбор, privacy-first
-- [ ] Scheduled Delivery — отложенная отправка к дате/времени, timezone-aware
-- [ ] Referral Program — `referral_codes`, `referrals`, бонусы за invite/registration
+- [x] Contact Import — локальная обработка контактов, явный выбор, privacy-first
+- [x] Scheduled Delivery — отложенная отправка к дате/времени, timezone-aware
+- [x] Referral Program — `referral_codes`, `referrals`, бонусы за invite/registration
 - [x] Telegram Bot — acquisition/распространение через Telegram, deep links, Mini App-ready backend
 - [ ] Android App — Kotlin/Jetpack Compose, Clean Architecture, основное клиентское приложение
-- [ ] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
-- [ ] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
+- [x] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
+- [x] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
 
 ---
 
