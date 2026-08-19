@@ -1,8 +1,98 @@
-# Business Logic Security Audit Report
+# Security Gate Assessment
 
-## Audit Methodology
+## Authentication
+**PASS** — JWT-based auth with access/refresh tokens. Refresh tokens are stored as hashes with JTI claims and can be revoked server-side. Login rate limiting (10 attempts/5min per IP). Password complexity enforced (8-128 chars, uppercase+lowercase+digit+special).
 
-Treated the attacker as a legitimate registered user attempting to extract more value than entitled to. Examined all flows: registration, wallet, payments, entitlements, generations, pricing, referrals, file access, and sharing.
+## Authorization
+**PASS** — All endpoints use `get_current_user` dependency which fetches user from DB by JWT `sub` claim. Admin endpoints require `is_admin` flag. Project/generation/asset ownership verified via repository `get_by_id(id, user_id)` checks.
+
+## IDOR/BOLA
+**PASS** — Ownership checks verified in IDOR_AUDIT_REPORT.md. All resource access (generations, projects, assets, payments, deliveries) checks `user_id == owner_user_id`. Share links use unguessable 32-byte tokens.
+
+## Input Validation
+**PASS** — Pydantic schemas validate all inputs. File uploads restricted to allowed extensions. Password complexity enforced. Promo code usage bounded by atomic checks.
+
+## SQL Injection
+**PASS** — SQLAlchemy ORM used throughout with parameterized queries. No raw SQL string interpolation found.
+
+## XSS
+**PASS** — Backend returns JSON only. No HTML rendering from user input. XSS-Protection headers set via SecurityHeadersMiddleware.
+
+## CSRF/CORS
+**PASS** — CSRF Middleware requires `X-Requested-With` header for POST/PUT/PATCH/DELETE. CORS configured to specific origins (not `*`). Auth endpoints exempt from CSRF (public endpoints).
+
+## SSRF
+**UNKNOWN** — `ImagePreflightService.analyze()` stores `image_url` but does not fetch it. However, `generation.input_json["image_url"]` could be consumed by future workers/AI providers. Workers could potentially fetch URLs.
+- **Additional needed:** Runtime test with `image_url=http://169.254.169.254/` to verify no internal fetching occurs. Review all worker code paths for URL fetching.
+
+## File Upload
+**PASS** — `AssetService.get_upload_url()` validates filename (basename only, blocks `..`), file extension whitelist (`.jpg`, `.png`, `.mp4`, etc.), and generates presigned upload URLs. `confirm_upload()` validates object key prefix matches `uploads/{user_id}/`.
+
+## Secrets
+**PASS** — Secrets loaded from environment via Pydantic settings. `validate_production()` enforces all secrets are set in production. No hardcoded secrets in code. GitHub secrets workflow exists.
+
+## JWT
+**PASS** — HS256 algorithm, secrets loaded from env, `validate_production()` enforces non-default in production. Access tokens expire in 60 min, refresh in 30 days. JTI claims enable server-side revocation. Refresh token rotation implemented. Logout endpoints work.
+
+## Password Security
+**PASS** — bcrypt for hashing (not MD5/SHA1). Password complexity enforced: min 8, max 128, requires uppercase+lowercase+digit+special char.
+
+## Rate Limiting
+**PASS** — Login: 10 attempts/5min per IP. Other endpoints: 120 req/60s per IP+path. Redis-backed with in-memory fallback.
+
+## Payment Security
+**PASS** — YooKassa integration with idempotency keys. Webhook signature verification (HMAC-SHA256). Webhook idempotency guard prevents double-credit. Double payment prevention on projects. Bonus balance applied atomically.
+
+## Webhook Security
+**PASS** — HMAC signature verification for YooKassa webhooks. Idempotency guard (`if payment.status != "paid"`). Payment not found returns `{"received": True}` to prevent probing.
+
+## Business Logic
+**PASS** — All 14 BL issues assessed. 10 issues fixed (BL-01 through BL-08 + BL-09 bonus balance + BL-14 double payment prevention). 4 remain PENDING requiring new features.
+
+## Race Conditions
+**PASS** — Wallet debit, promo code usage, referral code uses_count, referral bonus grant, and entitlement consumption all use atomic database UPDATE operations. Webhook idempotency guard prevents double-crediting.
+
+## Storage
+**PASS** — MinIO/S3 with presigned URLs (15-min expiry for uploads). Object keys include user UUID. Storage object access checked via `owner_user_id` on assets. Share links use hashed tokens.
+
+## Admin
+**PASS** — Admin endpoints require `is_admin` flag check. Impersonation endpoint exists but requires admin auth and logs the action via AuditService.
+
+## Docker
+**PASS** — Production Dockerfile runs as non-root user (`daragent`, uid 1001). Security headers set. Health check configured. No sensitive info in Dockerfile.
+
+## Dependencies
+**UNKNOWN** — No `requirements-lock.txt` or `poetry.lock` found. Dependencies specified with `>=` ranges in `pyproject.toml`.
+- **Additional needed:** Generate lock file with pinned versions. Run `pip-audit` or `safety check` to scan for known vulnerabilities. Verify no deprecated packages.
+
+## Logging / Privacy
+**PASS** — Audit middleware logs all POST/PATCH/DELETE/PUT requests with actor ID, target type/ID, IP, user-agent. Errors logged via structlog. Health endpoint doesn't leak sensitive info. No secrets in logs.
+
+## AI Pipeline
+**FAIL** — `GrokTextProvider` sends user prompts to `https://api.x.ai/v1/chat/completions`. No input sanitization or prompt injection prevention. System prompts are user-controllable via `parameters.get("system_prompt", "")`. No content filtering on AI outputs.
+
+```python
+# grok_provider.py:42-43
+"messages": [
+    {"role": "system", "content": parameters.get("system_prompt", "")},  # User-controlled!
+    {"role": "user", "content": prompt},
+],
+```
+
+- **Additional needed:** Audit all AI provider integrations for prompt injection vectors. Add input sanitization, output filtering, and rate limiting on AI API calls.
+
+## OVERALL: **FAIL**
+
+### Critical blocker: AI Pipeline (FAIL)
+- User-controlled system prompts allow prompt injection
+- No content filtering on AI outputs
+- No rate limiting on AI API calls
+
+### Unknown areas requiring runtime verification:
+- **SSRF** — Need runtime test to verify no internal URL fetching
+- **Dependencies** — Need lock file and `pip-audit` scan
+
+### All other gates: PASS
 
 ---
 
