@@ -542,11 +542,11 @@ TARGETED REGENERATION
 - [x] Bonus System Details — пятничный бонус, бонусы за действия, expiry, конфигурируемые через Admin
 - [x] Detailed Admin Panel — Users, Projects, Generations, Payments, Templates, Referrals, Audit
 - [x] Security Events & Audit Log — `audit_logs` + `admin_users` + actions (AuditMiddleware → DB)
-- [ ] Backup Strategy — daily full backup, WAL/PITR, offsite, retention
-- [ ] Production Security — Cloudflare, firewall, SSH, non-root Docker, secrets management
-- [ ] Disaster Recovery — RTO/RPO, recovery runbook, tested restore
-- [ ] Health/Disk Monitoring — Prometheus + alerts on disk/CPU/memory/queue depth
-- [ ] Account Deletion — GDPR export, hard delete, anonymization
+- [x] Backup Strategy — daily full backup, WAL/PITR, offsite, retention
+- [x] Production Security — Cloudflare, firewall, SSH, non-root Docker, secrets management
+- [x] Disaster Recovery — RTO/RPO, recovery runbook, tested restore
+- [x] Health/Disk Monitoring — Prometheus + alerts on disk/CPU/memory/queue depth
+- [x] Account Deletion — GDPR export, hard delete, anonymization
 
 ### Product / Growth
 
