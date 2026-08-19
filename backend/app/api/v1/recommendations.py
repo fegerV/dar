@@ -35,7 +35,7 @@ async def list_recommendations(
     current_user=Depends(get_current_user),
 ):
     service = RecommendationService(db)
-    return await service.list(project_id)
+    return await service.list(project_id, current_user.id)
 
 
 @router.post("/projects/{project_id}/generate-v2", response_model=RecommendationListResponseV2)
@@ -48,6 +48,7 @@ async def generate_recommendations_v2(
     service = RecommendationService(db)
     return await service.generate_v2(
         project_id,
+        current_user.id,
         top_k=body.top_k,
     )
 

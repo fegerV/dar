@@ -78,10 +78,10 @@ class RecommendationService:
         await self.db.commit()
         return RecommendationListResponse(items=recommendations)
 
-    async def generate_v2(self, project_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
+    async def generate_v2(self, project_id: UUID, user_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
         existing = await self.repo.list_by_project(project_id)
         if not existing:
-            await self.generate(project_id)
+            await self.generate(project_id, user_id)
 
         reranked = await self.ai_reranker.rerank(project_id, top_k=top_k)
         diversified = self.diversity_filter.apply(reranked.items, limit=top_k)
@@ -101,7 +101,10 @@ class RecommendationService:
             model_version="ai_rerank_v1",
         )
 
-    async def list(self, project_id: UUID) -> RecommendationListResponse:
+    async def list(self, project_id: UUID, user_id: UUID) -> RecommendationListResponse:
+        project = await self.project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
         items = await self.repo.list_by_project(project_id)
         return RecommendationListResponse(items=items)
 
