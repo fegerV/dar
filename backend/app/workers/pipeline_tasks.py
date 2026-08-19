@@ -16,6 +16,7 @@ from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeSe
 from app.services.intelligence.preflight import ImagePreflightService
 from app.services.intelligence.prompt_repair import PromptRepairService
 from app.services.quality.service import QualityGateService
+from app.workers.utils import estimate_eta, upload_placeholder_video
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +78,23 @@ async def _execute_pipeline(generation_id: str):
 
             generation.progress = int((idx + 1) / total * 100)
             generation.current_step = step.step_code
-            generation.estimated_seconds = _estimate_eta(steps, idx)
+            generation.estimated_seconds = estimate_eta(steps, idx)
             await db.commit()
 
         generation.status = "completed"
         generation.progress = 100
         generation.completed_at = datetime.now(timezone.utc)
+        try:
+            urls = await upload_placeholder_video(generation)
+        except Exception as e:
+            logger.warning("Storage upload failed for %s: %s", generation.id, e)
+            urls = {
+                "video_url": None,
+                "thumbnail_url": None,
+            }
         generation.output_json = {
-            "video_url": "http://localhost:9000/daragent/outputs/final.mp4",
-            "thumbnail_url": "http://localhost:9000/daragent/outputs/thumb.jpg",
+            "video_url": urls["video_url"],
+            "thumbnail_url": urls["thumbnail_url"],
             "duration_sec": 30,
             "resolution": [1920, 1080],
             "fps": 30,
@@ -184,13 +193,3 @@ async def _targeted_regeneration(db, generation: Generation, quality_response) -
     await db.commit()
 
     execute_pipeline.apply_async(args=[str(generation.id)], countdown=10)
-
-
-def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
-    completed = [s for s in steps[: current_idx + 1] if s.started_at and s.completed_at]
-    if not completed:
-        return None
-    durations = [(s.completed_at - s.started_at).total_seconds() for s in completed]
-    avg = sum(durations) / len(durations)
-    remaining = len(steps) - (current_idx + 1)
-    return int(avg * remaining)

@@ -12,6 +12,7 @@ from app.models.generation import Generation, GenerationJob, GenerationStep
 from app.repositories.generations import GenerationRepository
 from app.schemas.quality import QualityCheckRequest
 from app.services.quality.service import QualityGateService
+from app.workers.utils import estimate_eta, upload_placeholder_video
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +65,29 @@ async def _process_generation_job(job_id: str):
 
             generation.progress = int((idx + 1) / total_steps * 100)
             generation.current_step = step.step_code
-            generation.estimated_seconds = _estimate_eta(steps, idx)
+            generation.estimated_seconds = estimate_eta(steps, idx)
             await db.flush()
 
         generation.status = "completed"
         generation.progress = 100
         generation.completed_at = datetime.now(timezone.utc)
+        try:
+            urls = await upload_placeholder_video(generation)
+        except Exception as e:
+            logger.warning("Storage upload failed for %s: %s", generation.id, e)
+            urls = {
+                "video_url": None,
+                "thumbnail_url": None,
+            }
+        generation.output_json = {
+            "video_url": urls["video_url"],
+            "thumbnail_url": urls["thumbnail_url"],
+            "duration_sec": 30,
+            "resolution": [1920, 1080],
+            "fps": 30,
+            "audio_ok": True,
+            "face_count": 1,
+        }
         job.status = "finished"
         job.finished_at = datetime.now(timezone.utc)
         await db.commit()
@@ -88,16 +106,6 @@ async def _process_generation_job(job_id: str):
             generation.status = "completed"
             await GenerationRepository(db).update(generation)
             await db.commit()
-
-
-def _estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
-    completed = [s for s in steps[: current_idx + 1] if s.started_at and s.completed_at]
-    if not completed:
-        return None
-    durations = [(s.completed_at - s.started_at).total_seconds() for s in completed]
-    avg = sum(durations) / len(durations)
-    remaining = len(steps) - (current_idx + 1)
-    return int(avg * remaining)
 
 
 async def _get_steps(db, generation_id: UUID) -> list[GenerationStep]:
