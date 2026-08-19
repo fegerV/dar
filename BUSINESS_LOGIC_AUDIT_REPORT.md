@@ -388,9 +388,9 @@ if payment is None or payment.status != "paid":
 
 | # | Vulnerability | Severity | Entity | Status |
 |---|---|---|---|---|
-| 1 | price_rub always 0 → free generation | 🔴 CRITICAL | Payment/Project | CONFIRMED |
-| 2 | Entitlement code mismatch → free entitlement unusable | 🔴 HIGH | Account/Entitlement | CONFIRMED |
-| 3 | Webhook replay → double wallet credit | 🔴 HIGH | Payment/Wallet | CONFIRMED |
+| 1 | price_rub always 0 → free generation | 🔴 CRITICAL | Payment/Project | ✅ FIXED |
+| 2 | Entitlement code mismatch → free entitlement unusable | 🔴 HIGH | Account/Entitlement | ✅ FIXED |
+| 3 | Webhook replay → double wallet credit | 🔴 HIGH | Payment/Wallet | ✅ FIXED |
 | 4 | Entitlement consumption race condition | ⚠️ MEDIUM | Entitlement | CONFIRMED |
 | 5 | Promo code always valid | 🔴 HIGH | Coupon | CONFIRMED |
 | 6 | Generation never dispatched to worker | 🔴 CRITICAL | Generation | ✅ FIXED |
@@ -406,9 +406,9 @@ if payment is None or payment.status != "paid":
 1. ✅ **Fix generation dispatch** (Vuln #6) — COMPLETED
 2. ✅ **Fix `generation.prompt` crash** (Vuln #7) — COMPLETED
 3. ⏳ **Fix payment enforcement** (Vuln #10) — PENDING
-4. ⏳ **Fix price persistence** (Vuln #1) — PENDING
-5. ⏳ **Fix webhook idempotency** (Vuln #3) — PENDING
-6. ⏳ **Fix entitlement code mismatch** (Vuln #2) — PENDING
+4. ✅ **Fix price persistence** (Vuln #1) — `calculate_price()` now writes to `project.price_rub`
+5. ✅ **Fix webhook idempotency** (Vuln #3) — Added `if payment.status != "paid"` guard
+6. ✅ **Fix entitlement code mismatch** (Vuln #2) — Changed `"free_generation"` → `"welcome_generation"`
 7. ⏳ **Fix promo code validation** (Vuln #5) — PENDING
 8. ✅ **Fix Telegram linking** (Vuln #8) — COMPLETED
 9. ⏳ **Fix referral bonus** (Vuln #9) — PENDING
