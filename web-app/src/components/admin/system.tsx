@@ -12,23 +12,25 @@ import type { AuditLog, SystemSetting } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 
-const initialHealth = [
-  { name: "API", status: "🟢" },
-  { name: "PostgreSQL", status: "🟢" },
-  { name: "Redis", status: "🟢" },
-  { name: "Queue", status: "🟢" },
-  { name: "Workers", status: "🟢" },
-  { name: "Storage", status: "🟢" },
-  { name: "YooKassa", status: "🟠" },
-  { name: "Telegram", status: "🟢" },
-  { name: "AI Provider", status: "🟠" },
-]
+interface HealthStatus {
+  name: string
+  status: "healthy" | "degraded" | "down"
+  detail?: string
+}
+
+const statusEmoji: Record<HealthStatus["status"], string> = {
+  healthy: "🟢",
+  degraded: "🟠",
+  down: "🔴",
+}
 
 export function AdminSystem() {
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<SystemSetting[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const [health, setHealth] = useState<HealthStatus[]>([])
   const [loading, setLoading] = useState(true)
+  const [healthLoading, setHealthLoading] = useState(true)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -49,6 +51,45 @@ export function AdminSystem() {
       setAuditLogs(a)
     }).finally(() => setLoading(false))
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    setHealthLoading(true)
+    apiFetch<{ components: Record<string, { status: string; detail?: string }> } | HealthStatus[] | { services: HealthStatus[] }>(
+      "/health/detailed"
+    ).then((data) => {
+      let statuses: HealthStatus[] = []
+      if (Array.isArray(data)) {
+        statuses = data.map((d) => ({
+          name: d.name,
+          status: mapStatus(d.status),
+          detail: d.detail,
+        }))
+      } else if ("components" in data) {
+        statuses = Object.entries(data.components).map(([name, info]) => ({
+          name,
+          status: mapStatus(info.status),
+          detail: info.detail,
+        }))
+      } else if ("services" in data) {
+        statuses = data.services.map((s) => ({
+          name: s.name,
+          status: mapStatus(s.status),
+          detail: s.detail,
+        }))
+      }
+      setHealth(statuses)
+    }).catch(() => {
+      setHealth([])
+    }).finally(() => setHealthLoading(false))
+  }, [user])
+
+  function mapStatus(s: string): HealthStatus["status"] {
+    const lower = s.toLowerCase()
+    if (lower.includes("down") || lower.includes("fail") || lower.includes("error")) return "down"
+    if (lower.includes("degrad") || lower.includes("warn")) return "degraded"
+    return "healthy"
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -95,14 +136,20 @@ export function AdminSystem() {
               <CardTitle>System Health</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {initialHealth.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between rounded-lg border p-3">
-                    <span className="text-sm font-medium">{item.name}</span>
-                    <span className="text-lg">{item.status}</span>
-                  </div>
-                ))}
-              </div>
+              {healthLoading ? (
+                <p className="text-sm text-muted-foreground">Loading health status...</p>
+              ) : health.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Health endpoint unavailable</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {health.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between rounded-lg border p-3">
+                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-lg">{statusEmoji[item.status] || "❔"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import { apiFetch, clearAuthTokens, getAccessToken } from "@/lib/api"
+import { apiFetch, clearAuthTokens, getClientAccessToken } from "@/lib/api"
 import type { AdminUser } from "@/types/admin"
 
 interface AdminAuthContextValue {
@@ -22,7 +22,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const checkAdmin = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const token = getAccessToken()
+    const token = getClientAccessToken()
     if (!token) {
       setUser(null)
       setLoading(false)

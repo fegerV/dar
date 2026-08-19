@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { getAccessToken } from "@/lib/api"
+import { getClientAccessToken } from "@/lib/api"
 
 export default function AdminInitPage() {
   const router = useRouter()
@@ -17,7 +17,7 @@ export default function AdminInitPage() {
     try {
       const res = await fetch("/api/v1/admin/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken()}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getClientAccessToken()}` },
       })
       if (!res.ok) {
         const data = await res.json()

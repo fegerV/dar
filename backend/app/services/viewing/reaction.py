@@ -84,7 +84,21 @@ class ReactionService:
             negative_count=negative_count,
         )
 
-    async def get_comment_details(self, project_id: UUID) -> list[dict]:
+    async def get_comment_details(
+        self, project_id: UUID, user_id: UUID | None = None
+    ) -> list[dict]:
+        if user_id is not None:
+            project_result = await self.db.execute(
+                select(Project).where(
+                    Project.id == project_id,
+                    Project.owner_user_id == user_id,
+                )
+            )
+            project = project_result.scalar_one_or_none()
+            if project is None:
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException("Project not found")
+
         result = await self.db.execute(
             select(ViewingReaction)
             .where(

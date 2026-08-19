@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import ForbiddenException, ValidationException
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
@@ -15,14 +16,25 @@ from app.schemas.admin import (
     AdminQueueJobResponse,
     AdminReferralCodeResponse,
     AdminReferralResponse,
+    AdminSceneCreate,
+    AdminSceneResponse,
+    AdminSceneUpdate,
+    AdminSetupRequest,
     AdminSystemSettingsResponse,
     AdminSystemSettingsUpdate,
     AdminTemplateCreate,
     AdminTemplateResponse,
+    AdminTemplateUpdate,
+    AdminTemplateVersionCreate,
+    AdminTemplateVersionResponse,
+    AdminTemplateVersionUpdate,
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
     QueueJobAction,
+    QueueJobBulkAction,
+    QueueJobPriorityUpdate,
+    WorkerRestartResponse,
     WorkerStatusUpdate,
 )
 from app.services.admin.service import AdminService
@@ -32,7 +44,6 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 def require_admin(current_user=Depends(get_current_user)):
     if not getattr(current_user, "is_admin", False):
-        from app.core.exceptions import ForbiddenException
         raise ForbiddenException("Admin access required")
     return current_user
 
@@ -45,6 +56,20 @@ async def init_admin(
     service = AdminService(db)
     await service.ensure_single_admin(current_user.id)
     return {"status": "ok"}
+
+
+@router.post("/setup", status_code=201)
+async def setup_first_admin(
+    body: AdminSetupRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    service = AdminService(db)
+    result = await service.setup_first_admin(
+        email=body.email, password=body.password,
+        first_name=body.first_name, last_name=body.last_name,
+        display_name=body.display_name,
+    )
+    return result
 
 
 @router.get("/stats", response_model=AdminDashboardStats)
@@ -220,11 +245,15 @@ async def get_user_wallet(
 @router.post("/users/{user_id}/impersonate")
 async def impersonate_user(
     user_id: UUID,
+    mfa_token: str = Query(default=None, description="MFA confirmation token (required for impersonation)"),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    from app.core.security import create_access_token, create_refresh_token
+    from app.core.security import create_access_token, create_impersonation_token, create_refresh_token
     from app.services.audit.service import AuditService
+
+    if not mfa_token:
+        raise ValidationException("MFA confirmation token is required for impersonation")
 
     service = AdminService(db)
     user = await service.get_user(user_id)
@@ -232,11 +261,12 @@ async def impersonate_user(
     await audit.log(
         actor_user_id=current_user.id, action="impersonate_user",
         target_type="user", target_id=user_id,
+        metadata={"mfa_token_provided": True},
     )
     await db.commit()
-    access_token = create_access_token(user.id)
+    access_token = create_impersonation_token(user.id, current_user.id)
     refresh_token = create_refresh_token(user.id)
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    return {"access_token": access_token, "refresh_token": refresh_token, "impersonation": True, "expires_in": 300}
 
 
 @router.get("/referrals", response_model=list[AdminReferralResponse])
@@ -304,3 +334,139 @@ async def review_gallery_submission(
         "status": submission.status.value,
         "is_public": submission.is_public,
     }
+
+
+@router.patch("/templates/{template_id}", response_model=AdminTemplateResponse)
+async def update_template(
+    template_id: UUID,
+    body: AdminTemplateUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_template(template_id, body)
+
+
+@router.delete("/templates/{template_id}", status_code=204)
+async def delete_template(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    await service.delete_template(template_id)
+
+
+@router.get("/templates/{template_id}/versions", response_model=list[AdminTemplateVersionResponse])
+async def list_template_versions(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_template_versions(template_id)
+
+
+@router.post("/templates/{template_id}/versions", response_model=AdminTemplateVersionResponse, status_code=201)
+async def create_template_version(
+    template_id: UUID,
+    body: AdminTemplateVersionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.create_template_version(template_id, body)
+
+
+@router.patch("/template-versions/{version_id}", response_model=AdminTemplateVersionResponse)
+async def update_template_version(
+    version_id: UUID,
+    body: AdminTemplateVersionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_template_version(version_id, body)
+
+
+@router.get("/templates/{template_id}/scenes", response_model=list[AdminSceneResponse])
+async def list_template_scenes(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_template_scenes(template_id)
+
+
+@router.post("/templates/{template_id}/scenes", response_model=AdminSceneResponse, status_code=201)
+async def create_template_scene(
+    template_id: UUID,
+    body: AdminSceneCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.create_template_scene(template_id, body)
+
+
+@router.patch("/scenes/{scene_id}", response_model=AdminSceneResponse)
+async def update_scene(
+    scene_id: UUID,
+    body: AdminSceneUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_template_scene(scene_id, body)
+
+
+@router.delete("/scenes/{scene_id}", status_code=204)
+async def delete_scene(
+    scene_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    await service.delete_template_scene(scene_id)
+
+
+@router.post("/workers/{worker_id}/restart", response_model=WorkerRestartResponse)
+async def restart_worker(
+    worker_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.worker_restart(worker_id)
+
+
+@router.post("/workers/{worker_id}/shutdown", response_model=WorkerRestartResponse)
+async def shutdown_worker(
+    worker_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.worker_shutdown(worker_id)
+
+
+@router.post("/queue/bulk-action", response_model=list[AdminQueueJobResponse])
+async def bulk_queue_action(
+    body: QueueJobBulkAction,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.bulk_queue_action(body.action, body.job_ids)
+
+
+@router.patch("/queue/{job_id}/priority", response_model=AdminQueueJobResponse)
+async def update_queue_job_priority(
+    job_id: UUID,
+    body: QueueJobPriorityUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_queue_job_priority(job_id, body.priority)

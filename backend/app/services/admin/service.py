@@ -1,17 +1,18 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import ConflictException, NotFoundException, ValidationException
 from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
 from app.models.payment import Payment, Wallet
 from app.models.project import Project
 from app.models.referral import Referral, ReferralCode
-from app.models.template import Template, TemplateVersion
-from app.models.user import User
+from app.models.template import Template, TemplateVersion, Scene
+from app.models.user import User, UserAuthIdentity
 from app.repositories.recommendations import TemplateRepository
 from app.schemas.admin import (
     AdminAuditLogResponse,
@@ -23,14 +24,39 @@ from app.schemas.admin import (
     AdminQueueJobResponse,
     AdminReferralCodeResponse,
     AdminReferralResponse,
+    AdminSceneResponse,
+    AdminSceneCreate,
+    AdminSceneUpdate,
+    AdminSetupRequest,
     AdminSystemSettingsResponse,
     AdminSystemSettingsUpdate,
     AdminTemplateCreate,
     AdminTemplateResponse,
+    AdminTemplateUpdate,
+    AdminTemplateVersionCreate,
+    AdminTemplateVersionResponse,
+    AdminTemplateVersionUpdate,
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
+    WorkerRestartResponse,
 )
+
+
+SYSTEM_SETTING_SCHEMAS: dict[str, type[BaseModel]] = {}
+
+
+def register_system_setting_schema(key: str, schema_cls: type[BaseModel]):
+    SYSTEM_SETTING_SCHEMAS[key] = schema_cls
+
+
+def _validate_system_setting(key: str, value: dict) -> None:
+    schema_cls = SYSTEM_SETTING_SCHEMAS.get(key)
+    if schema_cls:
+        try:
+            schema_cls.model_validate(value)
+        except ValidationError as e:
+            raise ValidationException(f"Invalid value for setting '{key}': {e}")
 
 
 class AdminService:
@@ -48,7 +74,8 @@ class AdminService:
             return admin
 
         count_result = await self.db.execute(select(func.count()).select_from(AdminUser))
-        if (count_result.scalar() or 0) > 0:
+        count = count_result.scalar() or 0
+        if count > 0 and not admin:
             raise ConflictException("Admin already exists")
 
         admin_user = AdminUser(
@@ -59,6 +86,60 @@ class AdminService:
         self.db.add(admin_user)
         await self.db.flush()
         return admin_user
+
+    async def setup_first_admin(
+        self, email: str, password: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        display_name: str | None = None,
+    ) -> dict:
+        from app.core.security import hash_password
+
+        existing_admin = await self.db.execute(select(AdminUser))
+        admin_exists = (await self.db.execute(select(func.count()).select_from(AdminUser))).scalar() or 0
+        if admin_exists > 0:
+            raise ConflictException("Admin already exists; setup is only allowed for first admin")
+
+        existing_user = await self.db.execute(select(User).where(User.email == email))
+        user = existing_user.scalar_one_or_none()
+
+        if user:
+            user.is_admin = True
+            user.display_name = display_name or user.display_name or email
+            if first_name:
+                user.first_name = first_name
+            if last_name:
+                user.last_name = last_name
+        else:
+            from app.core.config import settings
+            user = User(
+                email=email,
+                display_name=display_name or email,
+                first_name=first_name,
+                last_name=last_name,
+                status="active",
+                is_admin=True,
+            )
+            self.db.add(user)
+            await self.db.flush()
+
+            identity = UserAuthIdentity(
+                user_id=user.id,
+                provider="email",
+                provider_user_id=email,
+                email=email,
+                credentials_json={"password_hash": hash_password(password)},
+            )
+            self.db.add(identity)
+
+        admin_user = AdminUser(user_id=user.id, role="admin", is_active=True)
+        self.db.add(admin_user)
+        await self.db.commit()
+        return {
+            "status": "created",
+            "user_id": str(user.id),
+            "admin_id": str(admin_user.id),
+        }
 
     async def get_dashboard_stats(self) -> AdminDashboardStats:
         users_count = await self.db.execute(select(func.count()).select_from(User))
@@ -233,6 +314,8 @@ class AdminService:
         setting = await self.db.get(SystemSettings, key)
         if setting is None:
             raise NotFoundException("Setting not found")
+
+        _validate_system_setting(key, body.value)
         setting.value = body.value
         await self.db.flush()
         return AdminSystemSettingsResponse.model_validate(setting)
@@ -322,5 +405,159 @@ class AdminService:
             job.priority = max((job.priority or 0) + 10, 0)
         elif action == "deprioritize":
             job.priority = min((job.priority or 0) - 10, 0)
+        await self.db.flush()
+        return AdminQueueJobResponse.model_validate(job)
+
+    async def update_template(
+        self, template_id: UUID, body: AdminTemplateUpdate
+    ) -> AdminTemplateResponse:
+
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+
+        update_data = body.model_dump(exclude_unset=True, by_alias=True, exclude={"metadata": True})
+        if body.metadata_ is not None:
+            update_data["metadata_"] = body.metadata_
+
+        for key, value in update_data.items():
+            setattr(template, key, value)
+
+        await self.db.flush()
+        return AdminTemplateResponse.model_validate(template)
+
+    async def delete_template(self, template_id: UUID) -> None:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+        await self.db.delete(template)
+        await self.db.flush()
+
+    async def list_template_versions(self, template_id: UUID) -> list[AdminTemplateVersionResponse]:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+        result = await self.db.execute(
+            select(TemplateVersion).where(TemplateVersion.template_id == template_id)
+            .order_by(TemplateVersion.version.desc())
+        )
+        return [AdminTemplateVersionResponse.model_validate(v) for v in result.scalars().all()]
+
+    async def create_template_version(
+        self, template_id: UUID, body: AdminTemplateVersionCreate
+    ) -> AdminTemplateVersionResponse:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+
+        version = TemplateVersion(
+            template_id=template_id,
+            **body.model_dump(exclude_unset=True),
+        )
+        self.db.add(version)
+        await self.db.flush()
+        return AdminTemplateVersionResponse.model_validate(version)
+
+    async def update_template_version(
+        self, version_id: UUID, body: AdminTemplateVersionUpdate
+    ) -> AdminTemplateVersionResponse:
+        version = await self.db.get(TemplateVersion, version_id)
+        if version is None:
+            raise NotFoundException("Template version not found")
+
+        update_data = body.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(version, key, value)
+
+        await self.db.flush()
+        return AdminTemplateVersionResponse.model_validate(version)
+
+    async def list_template_scenes(self, template_id: UUID) -> list[AdminSceneResponse]:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+        result = await self.db.execute(
+            select(Scene).where(Scene.template_id == template_id)
+            .order_by(Scene.created_at.asc())
+        )
+        return [AdminSceneResponse.model_validate(s) for s in result.scalars().all()]
+
+    async def create_template_scene(
+        self, template_id: UUID, body: AdminSceneCreate
+    ) -> AdminSceneResponse:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+
+        scene = Scene(
+            template_id=template_id,
+            **body.model_dump(exclude_unset=True),
+        )
+        self.db.add(scene)
+        await self.db.flush()
+        return AdminSceneResponse.model_validate(scene)
+
+    async def update_template_scene(
+        self, scene_id: UUID, body: AdminSceneUpdate
+    ) -> AdminSceneResponse:
+        scene = await self.db.get(Scene, scene_id)
+        if scene is None:
+            raise NotFoundException("Scene not found")
+
+        update_data = body.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(scene, key, value)
+
+        await self.db.flush()
+        return AdminSceneResponse.model_validate(scene)
+
+    async def delete_template_scene(self, scene_id: UUID) -> None:
+        scene = await self.db.get(Scene, scene_id)
+        if scene is None:
+            raise NotFoundException("Scene not found")
+        await self.db.delete(scene)
+        await self.db.flush()
+
+    async def worker_restart(self, worker_id: UUID) -> WorkerRestartResponse:
+        worker = await self.db.get(Worker, worker_id)
+        if worker is None:
+            raise NotFoundException("Worker not found")
+        worker.status = "restarting"
+        await self.db.flush()
+        return WorkerRestartResponse(success=True, message=f"Restart signal sent to worker {worker.name}", worker_id=worker_id)
+
+    async def worker_shutdown(self, worker_id: UUID) -> WorkerRestartResponse:
+        worker = await self.db.get(Worker, worker_id)
+        if worker is None:
+            raise NotFoundException("Worker not found")
+        worker.status = "offline"
+        await self.db.flush()
+        return WorkerRestartResponse(success=True, message=f"Shutdown signal sent to worker {worker.name}", worker_id=worker_id)
+
+    async def bulk_queue_action(self, action: str, job_ids: list[UUID]) -> list[AdminQueueJobResponse]:
+        result = await self.db.execute(
+            select(QueueJob).where(QueueJob.id.in_(job_ids))
+        )
+        jobs = list(result.scalars().all())
+        results = []
+        for job in jobs:
+            if action == "cancel":
+                job.status = "canceled"
+            elif action == "retry":
+                job.status = "pending"
+                job.retry_count = 0
+            elif action == "prioritize":
+                job.priority = max((job.priority or 0) + 10, 0)
+            elif action == "deprioritize":
+                job.priority = min((job.priority or 0) - 10, 0)
+            results.append(AdminQueueJobResponse.model_validate(job))
+        await self.db.flush()
+        return results
+
+    async def update_queue_job_priority(self, job_id: UUID, priority: int) -> AdminQueueJobResponse:
+        job = await self.db.get(QueueJob, job_id)
+        if job is None:
+            raise NotFoundException("Job not found")
+        job.priority = priority
         await self.db.flush()
         return AdminQueueJobResponse.model_validate(job)

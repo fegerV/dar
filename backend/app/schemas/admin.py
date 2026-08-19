@@ -224,5 +224,146 @@ class WorkerStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(idle|offline|active|maintenance)$")
 
 
+class WorkerRestartResponse(BaseModel):
+    success: bool
+    message: str = ""
+    worker_id: UUID
+
+
 class QueueJobAction(BaseModel):
     action: str = Field(..., pattern="^(cancel|retry|prioritize|deprioritize)$")
+
+
+class QueueJobBulkAction(BaseModel):
+    action: str = Field(..., pattern="^(cancel|retry|prioritize|deprioritize)$")
+    job_ids: list[UUID] = Field(..., min_length=1)
+
+
+class QueueJobPriorityUpdate(BaseModel):
+    priority: int = Field(..., ge=0, le=1000)
+
+
+class AdminSetupRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., min_length=8)
+    first_name: str | None = None
+    last_name: str | None = None
+    display_name: str | None = None
+
+
+class AdminTemplateUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    kind: str | None = None
+    status: str | None = None
+    category: str | None = None
+    occasion_codes: list[str] | None = None
+    relationship_types: list[str] | None = None
+    moods: list[str] | None = None
+    base_price_rub: float | None = None
+    min_price_rub: float | None = None
+    estimated_duration_sec: int | None = None
+    difficulty: int | None = None
+    personalization_score: int | None = None
+    metadata_: dict | None = Field(default=None, alias="metadata")
+
+    model_config = {"populate_by_name": True}
+
+
+class AdminTemplateVersionResponse(BaseModel):
+    id: UUID
+    template_id: UUID
+    version: int
+    status: str
+    schema_version: str
+    prompt_config: dict
+    render_config: dict
+    personalization_config: dict
+    validation_config: dict
+    max_duration_sec: int | None = None
+    created_at: datetime
+    published_at: datetime | None = None
+    retired_at: datetime | None = None
+    variant_group: str | None = None
+    variant_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminTemplateVersionCreate(BaseModel):
+    version: int = 1
+    status: str = "draft"
+    schema_version: str = "1.0"
+    prompt_config: dict = {}
+    render_config: dict = {}
+    personalization_config: dict = {}
+    validation_config: dict = {}
+    max_duration_sec: int | None = None
+    qa_checklist: dict | None = None
+    variant_group: str | None = None
+    variant_name: str | None = None
+
+
+class AdminTemplateVersionUpdate(BaseModel):
+    status: str | None = None
+    schema_version: str | None = None
+    prompt_config: dict | None = None
+    render_config: dict | None = None
+    personalization_config: dict | None = None
+    validation_config: dict | None = None
+    max_duration_sec: int | None = None
+    published_at: datetime | None = None
+    retired_at: datetime | None = None
+    variant_group: str | None = None
+    variant_name: str | None = None
+    qa_checklist: dict | None = None
+
+
+class AdminSceneResponse(BaseModel):
+    id: UUID
+    template_id: UUID
+    code: str
+    title: str
+    description: str | None = None
+    source_type: str | None = None
+    source_reference: str | None = None
+    rights_status: str | None = None
+    duration_sec: int | None = None
+    source_asset_id: UUID | None = None
+    preview_asset_id: UUID | None = None
+    scene_config: dict
+    condition: dict | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminSceneCreate(BaseModel):
+    code: str
+    title: str
+    description: str | None = None
+    source_type: str | None = None
+    source_reference: str | None = None
+    rights_status: str | None = None
+    duration_sec: int | None = None
+    source_asset_id: UUID | None = None
+    preview_asset_id: UUID | None = None
+    scene_config: dict = {}
+    condition: dict | None = None
+
+
+class AdminSceneUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    source_type: str | None = None
+    source_reference: str | None = None
+    rights_status: str | None = None
+    duration_sec: int | None = None
+    source_asset_id: UUID | None = None
+    preview_asset_id: UUID | None = None
+    scene_config: dict | None = None
+    condition: dict | None = None
+
+
+class AdminSystemSettingsUpdate(BaseModel):
+    value: dict

@@ -83,7 +83,7 @@ class RecommendationService:
         if not existing:
             await self.generate(project_id, user_id)
 
-        reranked = await self.ai_reranker.rerank(project_id, top_k=top_k)
+        reranked = await self.ai_reranker.rerank(project_id, user_id, top_k=top_k)
         diversified = self.diversity_filter.apply(reranked.items, limit=top_k)
 
         for idx, item in enumerate(diversified, start=1):

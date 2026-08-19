@@ -26,12 +26,12 @@ class AIReranker:
         self.project_repo = ProjectRepository(db)
         self.recipient_repo = RecipientRepository(db)
 
-    async def rerank(self, project_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
+    async def rerank(self, project_id: UUID, user_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
         candidates = await self.repo.list_by_project(project_id)
         if not candidates:
             return RecommendationListResponseV2(items=[], generated_at=datetime.now(timezone.utc))
 
-        project = await self.project_repo.get_by_id(project_id, project_id)
+        project = await self.project_repo.get_by_id(project_id, user_id)
         if project is None:
             return RecommendationListResponseV2(items=[], generated_at=datetime.now(timezone.utc))
 

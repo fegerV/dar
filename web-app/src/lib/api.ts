@@ -1,37 +1,52 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
 
-const TOKEN_STORAGE_KEY = "daragent_admin_token"
-const REFRESH_STORAGE_KEY = "daragent_admin_refresh"
+const ACCESS_COOKIE_NAME = "daragent_admin_access"
+const REFRESH_COOKIE_NAME = "daragent_admin_refresh"
 
 interface Tokens {
   access: string
   refresh: string
 }
 
-function getTokens(): Tokens | null {
+function getCookie(name: string): string | null {
   if (typeof window === "undefined") return null
-  const access = localStorage.getItem(TOKEN_STORAGE_KEY)
-  const refresh = localStorage.getItem(REFRESH_STORAGE_KEY)
-  if (!access || !refresh) return null
-  return { access, refresh }
+  const cookies = document.cookie.split("; ")
+  for (const cookie of cookies) {
+    const [key, ...parts] = cookie.split("=")
+    if (key === name) return decodeURIComponent(parts.join("="))
+  }
+  return null
+}
+
+function setCookie(name: string, value: string, maxAgeSec: number): void {
+  if (typeof window === "undefined") return
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSec}; SameSite=Lax; Secure=${location.protocol === "https:"}`
+}
+
+function clearCookie(name: string): void {
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax; Secure=${location.protocol === "https:"}`
+}
+
+function getAccessToken(): string | null {
+  return getCookie(ACCESS_COOKIE_NAME)
+}
+
+function getRefreshToken(): string | null {
+  return getCookie(REFRESH_COOKIE_NAME)
 }
 
 function setTokens(tokens: Tokens): void {
-  if (typeof window === "undefined") return
-  localStorage.setItem(TOKEN_STORAGE_KEY, tokens.access)
-  localStorage.setItem(REFRESH_STORAGE_KEY, tokens.refresh)
-  document.cookie = `${TOKEN_STORAGE_KEY}=${tokens.access}; path=/; max-age=3600`
+  setCookie(ACCESS_COOKIE_NAME, tokens.access, 3600)
+  setCookie(REFRESH_COOKIE_NAME, tokens.refresh, 86400)
 }
 
 function clearTokens(): void {
-  if (typeof window === "undefined") return
-  localStorage.removeItem(TOKEN_STORAGE_KEY)
-  localStorage.removeItem(REFRESH_STORAGE_KEY)
-  document.cookie = `${TOKEN_STORAGE_KEY}=; path=/; max-age=0`
+  clearCookie(ACCESS_COOKIE_NAME)
+  clearCookie(REFRESH_COOKIE_NAME)
 }
 
-export function getAccessToken(): string | null {
-  return typeof window !== "undefined" ? localStorage.getItem(TOKEN_STORAGE_KEY) : null
+function getClientAccessToken(): string | null {
+  return getAccessToken()
 }
 
 export function setAuthTokens(access: string, refresh: string): void {
@@ -46,6 +61,7 @@ export async function login(email: string, password: string): Promise<Tokens> {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ email, password }),
   })
   if (!res.ok) {
@@ -72,8 +88,8 @@ let pendingRequests: Array<{
 }> = []
 
 async function refreshAccessToken(): Promise<string> {
-  const tokens = getTokens()
-  if (!tokens?.refresh) throw new Error("No refresh token")
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) throw new Error("No refresh token")
 
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
@@ -86,12 +102,13 @@ async function refreshAccessToken(): Promise<string> {
     const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: tokens.refresh }),
+      credentials: "include",
+      body: JSON.stringify({ refresh_token: refreshToken }),
     })
     if (!res.ok) throw new Error("Token refresh failed")
     const data = await res.json()
     const newAccess = data.access_token
-    const newRefresh = data.refresh_token || tokens.refresh
+    const newRefresh = data.refresh_token || refreshToken
     setTokens({ access: newAccess, refresh: newRefresh })
 
     pendingRequests.forEach((req) => req.resolve(newAccess))
@@ -107,24 +124,24 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const tokens = getTokens()
+  const accessToken = getAccessToken()
   const headers = new Headers(options.headers)
 
-  if (tokens?.access) {
-    headers.set("Authorization", `Bearer ${tokens.access}`)
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`)
   }
 
   if (["POST", "PUT", "PATCH", "DELETE"].includes(options.method || "GET")) {
     headers.set("X-Requested-With", "XMLHttpRequest")
   }
 
-  let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+  let res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, credentials: "include" })
 
-  if (res.status === 401 && tokens?.refresh) {
+  if (res.status === 401 && getRefreshToken()) {
     const newAccess = await refreshAccessToken().catch(() => null)
     if (newAccess) {
       headers.set("Authorization", `Bearer ${newAccess}`)
-      res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+      res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, credentials: "include" })
     }
   }
 
@@ -137,4 +154,4 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 }
 
 export type { Tokens }
-export { API_BASE_URL }
+export { API_BASE_URL, getClientAccessToken }

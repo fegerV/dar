@@ -45,3 +45,15 @@ def decode_token(token: str) -> dict | None:
         return payload
     except JWTError:
         return None
+
+
+def create_impersonation_token(user_id: UUID, actor_id: UUID) -> str:
+    expire = datetime.now(UTC) + timedelta(minutes=5)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "type": "impersonation",
+        "actor_id": str(actor_id),
+        "watermark": True,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)

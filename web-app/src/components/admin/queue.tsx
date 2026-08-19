@@ -5,7 +5,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { X, RotateCcw } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { X, RotateCcw, MoveUp, MoveDown, Trash2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import type { AdminQueueJob } from "@/types/admin"
 import { useRouter } from "next/navigation"
@@ -15,6 +17,7 @@ export function AdminQueue() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [jobs, setJobs] = useState<AdminQueueJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -114,19 +117,77 @@ export function AdminQueue() {
           </CardContent>
         </Card>
 
-        <Card>
+         <Card>
           <CardHeader>
             <CardTitle>Pending</CardTitle>
+            {selectedJobs.size > 0 && (
+              <div className="flex gap-2 mt-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!confirm(`Cancel ${selectedJobs.size} selected jobs?`)) return
+                    try {
+                      await apiFetch("/admin/queue/bulk-action", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "cancel", job_ids: Array.from(selectedJobs) }),
+                      })
+                      setJobs(jobs.filter(j => !selectedJobs.has(j.id)))
+                      setSelectedJobs(new Set())
+                    } catch (e: unknown) {
+                      alert((e as Error)?.message || "Bulk cancel failed")
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
+                  Cancel Selected ({selectedJobs.size})
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {pendingJobs.map((job) => (
                 <div key={job.id} className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedJobs.has(job.id)}
+                      onCheckedChange={(checked) => {
+                        const newSet = new Set(selectedJobs)
+                        if (checked) newSet.add(job.id)
+                        else newSet.delete(job.id)
+                        setSelectedJobs(newSet)
+                      }}
+                      aria-label={`Select job ${job.id}`}
+                    />
                     <span className="font-mono font-medium">#{job.id}</span>
                     <span className="ml-3 text-sm text-muted-foreground">Gen: {job.generation_id?.slice(0, 8)}…</span>
+                    <span className="text-xs text-muted-foreground">Priority: {job.priority}</span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 items-center">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      defaultValue={job.priority}
+                      className="w-16 h-8 text-xs"
+                      aria-label={`Set priority for job ${job.id}`}
+                      onBlur={async (e) => {
+                        const val = parseInt(e.target.value)
+                        if (isNaN(val) || val < 0 || val > 1000) return
+                        try {
+                          await apiFetch<AdminQueueJob>(`/admin/queue/${job.id}/priority`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ priority: val }),
+                          })
+                          setJobs(jobs.map(j => j.id === job.id ? { ...j, priority: val } : j))
+                        } catch (e: unknown) {
+                          alert((e as Error)?.message || "Priority update failed")
+                        }
+                      }}
+                    />
                     <Button
                       size="sm"
                       variant="ghost"
@@ -138,6 +199,18 @@ export function AdminQueue() {
                       }).then(() => setJobs(jobs.map(j => j.id === job.id ? { ...j, status: "pending", retry_count: 0 } : j))).catch(() => {})}
                     >
                       <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Cancel job ${job.id}`}
+                      onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "cancel" }),
+                      }).then(() => setJobs(jobs.filter(j => j.id !== job.id))).catch(() => {})}
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 </div>

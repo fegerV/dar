@@ -196,9 +196,30 @@ export function AdminTemplates() {
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-right">{tmpl.base_price_rub} RUB</td>
-                    <td className="py-3 px-4 text-right">
-                      <Button size="sm" variant="ghost" aria-label={`Edit template ${tmpl.id}`}>
+                     <td className="py-3 px-4 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Edit template ${tmpl.id}`}
+                        onClick={() => router.push(`/admin/templates/${tmpl.id}`)}
+                      >
                         <Edit className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Delete template ${tmpl.id}`}
+                        onClick={async () => {
+                          if (!confirm(`Delete template ${tmpl.code}?`)) return
+                          try {
+                            await apiFetch(`/admin/templates/${tmpl.id}`, { method: "DELETE" })
+                            loadTemplates()
+                          } catch (e: unknown) {
+                            alert((e as Error)?.message || "Delete failed")
+                          }
+                        }}
+                      >
+                        Delete
                       </Button>
                     </td>
                   </tr>

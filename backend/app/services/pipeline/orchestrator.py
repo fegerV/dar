@@ -1,16 +1,19 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import ConflictException, NotFoundException, ValidationException
 from app.models.generation import Generation, GenerationJob, GenerationStep
+from app.models.payment import Payment
 from app.models.project import Project
 from app.repositories.generations import GenerationRepository
 from app.repositories.projects import ProjectRepository
 from app.schemas.pipeline import PipelineRunRequest, PipelineRunResponse, PipelineStepResponse
 from app.services.ai.orchestrator import AIOrchestrator
+from app.services.generations.service import GenerationService
 from app.services.prompt_compiler.service import PromptCompilerService
 
 
@@ -36,7 +39,11 @@ class PipelineOrchestrator:
 
         if existing and existing.status in ("queued", "processing") and body.force_restart:
             existing.status = "cancelled"
+            await self.generation_repo.update(existing)
             await self.db.commit()
+
+        gen_service = GenerationService(self.db)
+        await gen_service._verify_payment_or_entitlement(body.project_id, user_id, project)
 
         generation = Generation(
             project_id=body.project_id,

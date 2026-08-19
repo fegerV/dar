@@ -92,13 +92,32 @@ export function AdminWorkers() {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => apiFetch(`/admin/workers/${worker.id}/status`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "maintenance" }),
-                  }).then(() => setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "maintenance" } : w))).catch(() => {})}
+                  onClick={async () => {
+                    try {
+                      await apiFetch(`/admin/workers/${worker.id}/restart`, { method: "POST" })
+                      setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "restarting" } : w))
+                    } catch (e: unknown) {
+                      alert((e as Error)?.message || "Restart failed")
+                    }
+                  }}
                 >
                   Restart
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={async () => {
+                    if (!confirm(`Shutdown worker ${worker.name}?`)) return
+                    try {
+                      await apiFetch(`/admin/workers/${worker.id}/shutdown`, { method: "POST" })
+                      setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "offline" } : w))
+                    } catch (e: unknown) {
+                      alert((e as Error)?.message || "Shutdown failed")
+                    }
+                  }}
+                >
+                  Shutdown
                 </Button>
               </div>
             </CardContent>
