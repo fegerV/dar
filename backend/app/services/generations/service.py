@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -9,6 +10,8 @@ from app.models.project import Project
 from app.repositories.generations import GenerationRepository
 from app.repositories.projects import ProjectRepository
 from app.schemas.generation import GenerationStartRequest, GenerationResponse, GenerationStepResponse
+
+logger = logging.getLogger(__name__)
 
 
 class GenerationService:
@@ -76,9 +79,12 @@ class GenerationService:
 
         await self.db.commit()
 
-        from app.workers.generation_tasks import process_generation_job
+        try:
+            from app.workers.generation_tasks import process_generation_job
 
-        process_generation_job.apply_async(args=[str(job.id)], countdown=5)
+            process_generation_job.apply_async(args=[str(job.id)], countdown=5)
+        except ImportError:
+            logger.warning("Celery not available — job %s queued but not dispatched", job.id)
 
         return GenerationResponse.model_validate(generation)
 
