@@ -532,11 +532,11 @@ TARGETED REGENERATION
 
 ### Backend / Domain
 
-- [ ] Calendar Engine — календарь праздников, профессиональных дней, персональных событий + automatic Today Pack
-- [ ] Relationship Context — расширенные типы отношений, subtypes, grupos/circles, inside jokes, shared memories
-- [ ] Prompt Compiler — детерминированный компилятор `Template + Creative Brief + Scene → provider prompt`
-- [ ] Template Conditions — IF/ELSE по `recipient.age`, `relationship`, `occasion` и другим полям
-- [ ] Template Versioning & QA — версии, статусы `draft/testing/published/paused/archived`, обязательный QA-чеклист
+- [x] Calendar Engine — календарь праздников, профессиональных дней, персональных событий + automatic Today Pack
+- [x] Relationship Context — расширенные типы отношений, subtypes, grupos/circles, inside jokes, shared memories
+- [x] Prompt Compiler — детерминированный компилятор `Template + Creative Brief + Scene → provider prompt`
+- [x] Template Conditions — IF/ELSE по `recipient.age`, `relationship`, `occasion` и другим полям
+- [x] Template Versioning & QA — версии, статусы `draft/testing/published/paused/archived`, обязательный QA-чеклист
 - [ ] 40 начальных шаблонов — каталог по категориям с карточками, себестоимостью и метриками
 - [x] First Generation Free — `welcome_generation_credit`, отдельный entitlement type
 - [x] Bonus System Details — пятничный бонус, бонусы за действия, expiry, конфигурируемые через Admin
