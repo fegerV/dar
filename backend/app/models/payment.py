@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,21 @@ class Entitlement(Base, UUIDPrimaryKeyMixin):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source: Mapped[str | None] = mapped_column(Text)
     source_reference: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PromoCode(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "promo_codes"
+
+    code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    discount_type: Mapped[str] = mapped_column(String(20), nullable=False, default="fixed")
+    discount_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    max_uses: Mapped[int | None] = mapped_column(Integer)
+    used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

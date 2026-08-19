@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException, ValidationException
 from app.models.payment import Entitlement
 from app.repositories.pricing import PricingRepository
-from app.schemas.pricing import PriceResponse, PromoCodeValidateRequest, PromoCodeValidateResponse
+from app.schemas.pricing import PriceRequest, PriceResponse, PromoCodeValidateRequest, PromoCodeValidateResponse
 
 
 class PricingService:
@@ -91,11 +91,15 @@ class PricingService:
         )
 
     async def validate_promo_code(self, body: PromoCodeValidateRequest) -> PromoCodeValidateResponse:
+        promo = await self.repo.get_promo_code(body.code)
+        if promo is None:
+            return PromoCodeValidateResponse(valid=False, discount_rub=Decimal("0.00"))
         return PromoCodeValidateResponse(
             valid=True,
-            discount_type="fixed",
-            discount_value=Decimal("100.00"),
-            discount_rub=Decimal("100.00"),
+            discount_type=promo.discount_type,
+            discount_value=promo.discount_value,
+            discount_rub=Decimal(str(promo.discount_value)),
+            expires_at=promo.expires_at,
         )
 
     def _get_duration_multiplier(self, duration_sec: int) -> Decimal:
@@ -113,11 +117,20 @@ class PricingService:
     async def _apply_promo_code(
         self, project_id: UUID, code: str, price: Decimal
     ) -> PromoCodeValidateResponse:
+        promo = await self.repo.get_promo_code(code)
+        if promo is None:
+            return PromoCodeValidateResponse(valid=False, discount_rub=Decimal("0.00"))
+        discount = Decimal(str(promo.discount_value))
+        if promo.discount_type == "percent":
+            discount = (price * discount / 100).quantize(Decimal("0.01"))
+        discount = min(discount, price)
+        await self.repo.increment_promo_usage(promo.id)
         return PromoCodeValidateResponse(
             valid=True,
-            discount_type="fixed",
-            discount_value=Decimal("100.00"),
-            discount_rub=min(Decimal("100.00"), price),
+            discount_type=promo.discount_type,
+            discount_value=Decimal(str(promo.discount_value)),
+            discount_rub=discount,
+            expires_at=promo.expires_at,
         )
 
     async def _apply_bundle_discount(self, user_id: UUID, price: Decimal) -> Decimal:

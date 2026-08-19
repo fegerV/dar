@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -37,4 +38,5 @@ class PromoCodeValidateResponse(BaseModel):
     discount_type: str | None = None
     discount_value: Decimal | None = None
     discount_rub: Decimal | None = None
+    expires_at: datetime | None = None
     error: str | None = None
