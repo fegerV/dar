@@ -5,6 +5,8 @@ import com.daragent.data.network.dto.AuthResponse
 import com.daragent.data.network.dto.BriefResponseDto
 import com.daragent.data.network.dto.BriefUpdateRequest
 import com.daragent.data.network.dto.ConsumeEntitlementRequest
+import com.daragent.data.network.dto.ContactImportRequestDto
+import com.daragent.data.network.dto.ContactImportResponseDto
 import com.daragent.data.network.dto.CreatePersonRequest
 import com.daragent.data.network.dto.DeliveryListResponse
 import com.daragent.data.network.dto.EntitlementResponse
@@ -129,6 +131,33 @@ interface DeliveriesApi {
     suspend fun byProject(@Path("project_id") projectId: String): Response<DeliveryListResponse>
 }
 
+interface ContactsApi {
+    @POST("contacts/import")
+    suspend fun import(@Body request: ContactImportRequestDto): Response<ContactImportResponseDto>
+}
+
+interface ReferralsApi {
+    @GET("referrals/me/code")
+    suspend fun getMyCode(): Response<ReferralCodeResponseDto>
+
+    @POST("referrals/apply")
+    suspend fun applyCode(@Body body: Map<String, String>): Response<ReferralResponseDto>
+
+    @GET("referrals/me/stats")
+    suspend fun getStats(): Response<ReferralStatsResponseDto>
+}
+
+interface FeedbackApi {
+    @POST("viewing/projects/{project_id}/reaction")
+    suspend fun addReaction(
+        projectId: String,
+        @Body request: ReactionRequestDto,
+    ): Response<Unit>
+
+    @GET("viewing/projects/{project_id}/reactions/stats")
+    suspend fun getStats(projectId: String): Response<ReactionStatsResponseDto>
+}
+
 object ApiModule {
     val authApi: AuthApi by lazy { NetworkModule.provideRetrofit().create(AuthApi::class.java) }
     val peopleApi: PeopleApi by lazy { NetworkModule.provideRetrofit().create(PeopleApi::class.java) }
@@ -140,4 +169,7 @@ object ApiModule {
     val paymentsApi: PaymentsApi by lazy { NetworkModule.provideRetrofit().create(PaymentsApi::class.java) }
     val holidaysApi: HolidaysApi by lazy { NetworkModule.provideRetrofit().create(HolidaysApi::class.java) }
     val deliveriesApi: DeliveriesApi by lazy { NetworkModule.provideRetrofit().create(DeliveriesApi::class.java) }
+    val contactsApi: ContactsApi by lazy { NetworkModule.provideRetrofit().create(ContactsApi::class.java) }
+    val referralsApi: ReferralsApi by lazy { NetworkModule.provideRetrofit().create(ReferralsApi::class.java) }
+    val feedbackApi: FeedbackApi by lazy { NetworkModule.provideRetrofit().create(FeedbackApi::class.java) }
 }

@@ -64,6 +64,16 @@ fun GenerationProgressScreen(
             }
         }
         state.error?.let { Text(text = it, modifier = Modifier.padding(16.dp)) }
+        if (state.generation?.status == "completed") {
+            Button(
+                onClick = {
+                    navController?.navigate("feedback/${viewModel.projectId ?: ""}")
+                },
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text("Оценить поздравление")
+            }
+        }
         Button(onClick = onBack, modifier = Modifier.padding(16.dp)) {
             Text("Назад")
         }

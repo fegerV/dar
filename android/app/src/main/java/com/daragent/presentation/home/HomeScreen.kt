@@ -45,5 +45,17 @@ fun HomeScreen(
         Button(onClick = onNewGreeting, modifier = Modifier.padding(16.dp)) {
             Text("+ Новое поздравление")
         }
+        Button(
+            onClick = { navController?.navigate("referral") },
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Text("Реферальная программа")
+        }
+        Button(
+            onClick = { navController?.navigate("settings") },
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Text("Настройки")
+        }
     }
 }

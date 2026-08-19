@@ -7,18 +7,23 @@ import com.daragent.data.repository.DeliveryRepositoryImpl
 import com.daragent.data.repository.PeopleRepositoryImpl
 import com.daragent.data.repository.PaymentRepositoryImpl
 import com.daragent.data.repository.ProjectRepositoryImpl
+import com.daragent.data.repository.ReferralRepositoryImpl
+import com.daragent.data.repository.FeedbackRepositoryImpl
 import com.daragent.data.repository.TemplateRepositoryImpl
 import com.daragent.data.repository.local.LocalCacheRepository
 import com.daragent.data.network.api.ApiModule
 import com.daragent.domain.repository.AuthRepository
 import com.daragent.domain.repository.DeliveryRepository
+import com.daragent.domain.repository.FeedbackRepository
 import com.daragent.domain.repository.PeopleRepository
 import com.daragent.domain.repository.PaymentRepository
 import com.daragent.domain.repository.ProjectRepository
+import com.daragent.domain.repository.ReferralRepository
 import com.daragent.domain.repository.TemplateRepository
 import com.daragent.presentation.creategreeting.CreateGreetingViewModel
 import com.daragent.presentation.history.HistoryViewModel
 import com.daragent.presentation.home.HomeViewModel
+import com.daragent.presentation.mascot.MascotRepository
 import com.daragent.presentation.payment.PaymentViewModel
 import com.daragent.presentation.profile.ProfileViewModel
 
@@ -31,6 +36,9 @@ object ServiceLocator {
     val deliveryRepository: DeliveryRepository by lazy { DeliveryRepositoryImpl(ApiModule.deliveriesApi) }
     val authRepository: AuthRepository by lazy { AuthRepositoryImpl(ApiModule.authApi, AuthTokenManager) }
     val localCacheRepository: LocalCacheRepository by lazy { LocalCacheRepository(database) }
+    val referralRepository: ReferralRepository by lazy { ReferralRepositoryImpl(ApiModule.referralsApi) }
+    val feedbackRepository: FeedbackRepository by lazy { FeedbackRepositoryImpl(ApiModule.feedbackApi) }
+    val mascotRepository: MascotRepository by lazy { MascotRepository() }
 
     fun provideHomeViewModel(): HomeViewModel {
         return HomeViewModel(peopleRepository, templateRepository, authRepository)

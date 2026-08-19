@@ -14,11 +14,15 @@ import com.daragent.presentation.creategreeting.SelectOccasionScreen
 import com.daragent.presentation.creategreeting.SelectPersonScreen
 import com.daragent.presentation.creategreeting.SelectTemplateScreen
 import com.daragent.presentation.delivery.DeliveryScreen
+import com.daragent.presentation.feedback.FeedbackScreen
 import com.daragent.presentation.generationprogress.GenerationProgressScreen
 import com.daragent.presentation.home.HomeScreen
 import com.daragent.presentation.history.HistoryScreen
+import com.daragent.presentation.mascot.MascotOnboardingScreen
 import com.daragent.presentation.payment.PaymentScreen
 import com.daragent.presentation.profile.ProfileScreen
+import com.daragent.presentation.referral.ReferralScreen
+import com.daragent.presentation.settings.SettingsScreen
 
 object DarAgentDestinations {
     const val HOME_ROUTE = "home"
@@ -33,6 +37,10 @@ object DarAgentDestinations {
     const val DELIVERY_ROUTE = "delivery"
     const val PROFILE_ROUTE = "profile"
     const val HISTORY_ROUTE = "history"
+    const val FEEDBACK_ROUTE = "feedback/{projectId}"
+    const val REFERRAL_ROUTE = "referral"
+    const val SETTINGS_ROUTE = "settings"
+    const val ONBOARDING_ROUTE = "onboarding"
 }
 
 @Composable
@@ -141,6 +149,38 @@ fun DarAgentNavHost(
                     navController.navigate("${DarAgentDestinations.GENERATION_PROGRESS_ROUTE}/$genId?projectId=$projectId")
                 },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(DarAgentDestinations.ONBOARDING_ROUTE) {
+            MascotOnboardingScreen(
+                onNext = {
+                    navController.navigate(DarAgentDestinations.HOME_ROUTE) {
+                        popUpTo(DarAgentDestinations.ONBOARDING_ROUTE) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable(DarAgentDestinations.FEEDBACK_ROUTE) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            FeedbackScreen(
+                projectId = projectId,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(DarAgentDestinations.REFERRAL_ROUTE) {
+            ReferralScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(DarAgentDestinations.SETTINGS_ROUTE) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onExportData = { },
+                onDeleteAccount = { },
             )
         }
     }
