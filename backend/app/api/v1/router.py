@@ -5,6 +5,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.account import router as account_router
+from app.api.v1.calendar import router as calendar_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.feedback import router as feedback_router
@@ -23,8 +24,10 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.share import router as share_router
 from app.api.v1.templates import router as templates_router
+from app.api.v1.template_versions import router as template_versions_router
 from app.api.v1.telegram import router as telegram_router
 from app.api.v1.ab_tests import router as ab_tests_router
+from app.api.v1.relationship_context import router as relationship_context_router
 
 v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(auth_router)
@@ -32,6 +35,7 @@ v1_router.include_router(recipients_router)
 v1_router.include_router(projects_router)
 v1_router.include_router(recommendations_router)
 v1_router.include_router(templates_router)
+v1_router.include_router(template_versions_router)
 v1_router.include_router(ab_tests_router)
 v1_router.include_router(telegram_router)
 v1_router.include_router(assets_router)
@@ -51,4 +55,6 @@ v1_router.include_router(pricing_router)
 v1_router.include_router(analytics_router)
 v1_router.include_router(admin_router)
 v1_router.include_router(account_router)
+v1_router.include_router(calendar_router)
 v1_router.include_router(contacts_router)
+v1_router.include_router(relationship_context_router)
