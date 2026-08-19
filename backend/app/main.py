@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import engine, async_session_factory
 from app.core.lifespan import lifespan
 from app.middleware.csrf import CSRFMiddleware
 from app.middleware.audit import AuditMiddleware
@@ -80,12 +80,38 @@ async def health_detailed():
         db_ok = False
 
     disk = shutil.disk_usage("/")
+
+    monitoring_ok = True
+    redis_ok = True
+    try:
+        async with async_session_factory() as session:
+            from app.services.monitoring.service import MonitoringService
+            monitor = MonitoringService(session)
+            metrics = await monitor.collect_system_metrics()
+    except Exception:
+        monitoring_ok = False
+        metrics = {}
+
     return {
-        "status": "ok" if db_ok else "degraded",
+        "status": "ok" if (db_ok and monitoring_ok) else "degraded",
         "database": db_ok,
+        "redis": metrics.get("components", {}).get("redis", False),
         "disk": {
             "total": disk.total,
             "used": disk.used,
             "free": disk.free,
+            "used_percent": metrics.get("disk", {}).get("used_percent", 0),
         },
+        "queue_depth": metrics.get("queue_depth", {}),
+        "user_count": metrics.get("user_count", 0),
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    from app.services.monitoring.service import MonitoringService
+
+    async with async_session_factory() as session:
+        monitor = MonitoringService(session)
+        await monitor.collect_system_metrics()
+        return Response(content=monitor.get_metrics(), media_type=MonitoringService.CONTENT_TYPE)

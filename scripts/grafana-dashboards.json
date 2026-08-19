@@ -1,0 +1,53 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "DarAgent Production Monitoring",
+    "tags": ["daragent", "production"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 8, "h": 4},
+        "targets": [
+          {"expr": "daragent_system_health{component='overall'}", "refId": "A", "legendFormat": "Overall Health"}
+        ],
+        "fieldConfig": {"defaults": {"unit": "none", "mappings": [{"type": "value", "options": {"1": {"text": "Healthy"}, "0": {"text": "Degraded"}}}]}}
+      },
+      {
+        "id": 2,
+        "title": "Disk Usage",
+        "type": "gauge",
+        "gridPos": {"x": 8, "y": 0, "w": 8, "h": 4},
+        "targets": [
+          {"expr": "daragent_disk_usage_bytes{type='used'} / daragent_disk_usage_bytes{type='total'} * 100", "refId": "A", "legendFormat": "Used %"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Queue Depth",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {"expr": "daragent_queue_depth{queue_name='generation'}", "refId": "A", "legendFormat": "Generation Queue"},
+          {"expr": "daragent_queue_depth{queue_name='payments'}", "refId": "B", "legendFormat": "Payment Queue"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "DB Query Duration",
+        "type": "heatmap",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {"expr": "rate(daragent_db_query_duration_seconds_sum[5m]) / rate(daragent_db_query_duration_seconds_count[5m])", "refId": "A", "legendFormat": "Avg Duration"}
+        ]
+      }
+    ],
+    "schemaVersion": 38,
+    "version": 1
+  },
+  "folderId": 0,
+  "message": "Added DarAgent production dashboard",
+  "overwrite": true
+}

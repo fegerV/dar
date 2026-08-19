@@ -1,0 +1,56 @@
+groups:
+  - name: daragent_alerts
+    rules:
+      - alert: HighDiskUsage
+        expr: daragent_disk_usage_bytes{type="used"} / daragent_disk_usage_bytes{type="total"} > 0.90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk usage exceeds 90%"
+          description: "Disk usage is above 90% for more than 2 minutes"
+
+      - alert: QueueDepthCritical
+        expr: daragent_queue_depth > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Generation queue depth critical"
+          description: "More than 100 jobs in the queue for 5 minutes"
+
+      - alert: DatabaseDown
+        expr: daragent_system_health{component="database"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failed"
+          description: "Unable to connect to the database"
+
+      - alert: RedisDown
+        expr: daragent_system_health{component="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection failed"
+          description: "Unable to connect to Redis"
+
+      - alert: ServiceDegraded
+        expr: daragent_system_health{component="overall"} == 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service is degraded"
+          description: "One or more system components are unhealthy"
+
+      - alert: BackupFailed
+        expr: time() - daragent_last_backup_timestamp > 86400
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup has not run in 24 hours"
+          description: "No successful backup detected in the last 24 hours"
