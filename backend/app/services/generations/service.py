@@ -75,6 +75,11 @@ class GenerationService:
         await self.repo.create_job(job)
 
         await self.db.commit()
+
+        from app.workers.generation_tasks import process_generation_job
+
+        process_generation_job.apply_async(args=[str(job.id)], countdown=5)
+
         return GenerationResponse.model_validate(generation)
 
     async def get_generation(self, generation_id: UUID, user_id: UUID | None = None) -> GenerationResponse:
