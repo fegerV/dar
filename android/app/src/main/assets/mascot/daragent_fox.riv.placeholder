@@ -1,0 +1,7 @@
+Rive placeholder for DarAgent Fox mascot.
+Replace with the actual .riv file designed per the Mascot Engine TЗ.
+
+The Rive file should contain state machines matching MascotState.riveStateName:
+- idle, hello, listen, think, write, read, look_up
+- happy, surprised, wink, point, celebrate
+- working, success, error, sorry, goodbye
