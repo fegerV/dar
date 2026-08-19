@@ -2,23 +2,26 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, Gavel } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, Gavel, HardDrive, Webhook } from "lucide-react"
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/generations", label: "Generations", icon: Sparkles },
-  { href: "/admin/queue", label: "Queue", icon: GitBranch },
   { href: "/admin/errors", label: "Errors", icon: AlertCircle },
+  { href: "/admin/queue", label: "Queue", icon: GitBranch },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
+  { href: "/admin/moderation", label: "Moderation", icon: Gavel },
   { href: "/admin/templates", label: "Templates", icon: FileText },
   { href: "/admin/prompts", label: "Prompt Library", icon: Edit3 },
-  { href: "/admin/workers", label: "AI / Workers", icon: Bot },
+  { href: "/admin/ai", label: "AI Models", icon: Bot },
+  { href: "/admin/workers", label: "Workers", icon: Bot },
   { href: "/admin/rbac", label: "RBAC", icon: ShieldCheck },
   { href: "/admin/promo", label: "Promo Codes", icon: Percent },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/support", label: "Support", icon: LifeBuoy },
-  { href: "/admin/moderation", label: "Moderation", icon: Gavel },
+  { href: "/admin/storage", label: "Storage", icon: HardDrive },
+  { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/referrals", label: "Referrals", icon: ClipboardList },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: Shield },

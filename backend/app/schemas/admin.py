@@ -347,6 +347,10 @@ class AdminSetupRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     display_name: str | None = None
+    password: str = Field(..., min_length=8)
+    first_name: str | None = None
+    last_name: str | None = None
+    display_name: str | None = None
 
 
 class AdminTemplateUpdate(BaseModel):
@@ -465,6 +469,36 @@ class AdminSceneUpdate(BaseModel):
 
 class AdminSystemSettingsUpdate(BaseModel):
     value: dict
+
+
+class AdminPromoCodeResponse(BaseModel):
+    id: UUID
+    code: str
+    discount_type: str
+    discount_value: float
+    max_uses: int | None = None
+    used_count: int
+    expires_at: datetime | None = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminPromoCodeCreate(BaseModel):
+    code: str
+    discount_type: str = Field(..., pattern="^(fixed|percentage|bonus|free)$")
+    discount_value: float = Field(..., gt=0)
+    max_uses: int | None = None
+    expires_at: datetime | None = None
+    is_active: bool = True
+
+
+class AdminPromoCodeUpdate(BaseModel):
+    discount_value: float | None = None
+    max_uses: int | None = None
+    expires_at: datetime | None = None
+    is_active: bool | None = None
 
 
 class AdminPromptTemplateResponse(BaseModel):

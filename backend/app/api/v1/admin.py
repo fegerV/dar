@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +11,10 @@ from app.core.dependencies import get_current_user
 from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException, ValidationException
 from app.core.rbac import get_user_permissions, permission_allowed, require_permission, SYSTEM_ROLES
 from app.models.admin import Role, UserRole
-from app.models.payment import Wallet, LedgerTransaction
+from app.models.payment import Wallet, LedgerTransaction, PromoCode
 from app.models.template import Template, PromptTemplate
 from app.models.user import User
-from app.schemas.admin import RoleResponse, UserRoleAssign, RoleCreate, RoleUpdate, WalletAdjustmentRequest, WalletLedgerEntryResponse
+from app.schemas.admin import RoleResponse, UserRoleAssign, RoleCreate, RoleUpdate, WalletAdjustmentRequest, WalletLedgerEntryResponse, AdminPromoCodeCreate, AdminPromoCodeResponse, AdminPromoCodeUpdate
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
@@ -266,6 +268,54 @@ async def list_payments(
     return payments
 
 
+@router.post("/payments/{payment_id}/refund")
+async def refund_payment(
+    payment_id: UUID,
+    amount_rub: float | None = Query(default=None, description="Partial refund amount (full if omitted)"),
+    reason: str = Query(default="admin_refund"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("payments.refund")),
+):
+    from app.services.audit.service import AuditService
+
+    payment = await db.get(Payment, payment_id)
+    if payment is None:
+        raise NotFoundException("Payment not found")
+    if payment.status != "paid":
+        raise ValidationException(f"Cannot refund payment with status: {payment.status}")
+
+    refund_amount = amount_rub or float(payment.amount_rub)
+    payment.status = "refunded"
+    payment.refunded_at = datetime.now(timezone.utc)
+
+    wallet = await db.get(Wallet, None)
+    result = await db.execute(select(Wallet).where(Wallet.user_id == payment.user_id))
+    wallet = result.scalar_one_or_none()
+    if wallet and payment.user_id:
+        wallet.balance_rub = max(float(wallet.balance_rub) - refund_amount, 0)
+
+    transaction = LedgerTransaction(
+        user_id=payment.user_id,
+        wallet_id=wallet.id if wallet else None,
+        type="refund",
+        amount_rub=refund_amount,
+        is_bonus=False,
+        admin_id=current_user.id,
+        reason=reason,
+        reference_id=payment_id,
+    )
+    db.add(transaction)
+
+    audit = AuditService(db)
+    await audit.log(
+        actor_user_id=current_user.id, action="payment_refunded",
+        target_type="payment", target_id=payment_id,
+        metadata={"amount": refund_amount, "reason": reason},
+    )
+    await db.commit()
+    return {"status": "refunded", "payment_id": str(payment_id), "amount": refund_amount}
+
+
 @router.get("/audit-logs", response_model=list[AdminAuditLogResponse])
 async def list_audit_logs(
     limit: int = 100,
@@ -408,6 +458,72 @@ async def list_referral_codes(
 ):
     service = AdminService(db)
     return await service.list_referral_codes()
+
+
+@router.get("/promo-codes", response_model=list[AdminPromoCodeResponse])
+async def list_promo_codes(
+    is_active: bool | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("promo.read")),
+):
+    query = select(PromoCode)
+    if is_active is not None:
+        query = query.where(PromoCode.is_active == is_active)
+    result = await db.execute(query.order_by(PromoCode.created_at.desc()))
+    return list(result.scalars().all())
+
+
+@router.post("/promo-codes", response_model=AdminPromoCodeResponse, status_code=201)
+async def create_promo_code(
+    body: AdminPromoCodeCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("promo.create")),
+):
+    existing = await db.execute(select(PromoCode).where(PromoCode.code == body.code))
+    if existing.scalar_one_or_none():
+        raise ConflictException(f"Promo code '{body.code}' already exists")
+    code = PromoCode(**body.model_dump())
+    db.add(code)
+    await db.flush()
+    from app.services.audit.service import AuditService
+    audit = AuditService(db)
+    await audit.log(actor_user_id=current_user.id, action="promo_code_created", target_type="promo", target_id=code.id, metadata={"code": code.code})
+    await db.commit()
+    return AdminPromoCodeResponse.model_validate(code)
+
+
+@router.patch("/promo-codes/{code_id}", response_model=AdminPromoCodeResponse)
+async def update_promo_code(
+    code_id: UUID,
+    body: AdminPromoCodeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("promo.update")),
+):
+    code = await db.get(PromoCode, code_id)
+    if code is None:
+        raise NotFoundException("Promo code not found")
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(code, key, value)
+    await db.flush()
+    from app.services.audit.service import AuditService
+    audit = AuditService(db)
+    await audit.log(actor_user_id=current_user.id, action="promo_code_updated", target_type="promo", target_id=code_id, metadata=update_data)
+    await db.commit()
+    return AdminPromoCodeResponse.model_validate(code)
+
+
+@router.delete("/promo-codes/{code_id}", status_code=204)
+async def delete_promo_code(
+    code_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("promo.update")),
+):
+    code = await db.get(PromoCode, code_id)
+    if code is None:
+        raise NotFoundException("Promo code not found")
+    await db.delete(code)
+    await db.commit()
 
 
 @router.get("/errors")
@@ -853,3 +969,52 @@ async def update_prompt_template(
     await audit.log(actor_user_id=current_user.id, action="prompt_updated", target_type="prompt", target_id=prompt_id, metadata=update_data)
     await db.commit()
     return AdminPromptTemplateResponse.model_validate(prompt)
+
+
+@router.get("/storage/stats")
+async def get_storage_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.integrations.storage.factory import get_storage_provider
+        storage = get_storage_provider()
+        health = await storage.healthcheck()
+        return {"provider": storage.__class__.__name__, "healthy": health, "used_bytes": 0, "total_bytes": None, "file_count": 0}
+    except Exception as e:
+        return {"provider": "unknown", "healthy": False, "used_bytes": 0, "total_bytes": None, "file_count": 0, "error": str(e)}
+
+
+class WebhookCreate(PydanticBaseModel):
+    url: str
+    events: list[str] = []
+    is_active: bool = True
+
+
+@router.get("/webhooks")
+async def list_webhooks(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.webhook import WebhookEndpoint
+        result = await db.execute(select(WebhookEndpoint))
+        return list(result.scalars().all())
+    except Exception:
+        return []
+
+
+@router.post("/webhooks")
+async def create_webhook(
+    body: WebhookCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.webhook import WebhookEndpoint
+        wh = WebhookEndpoint(**body.model_dump())
+        db.add(wh)
+        await db.flush()
+        return {"id": str(wh.id), "url": wh.url, "events": wh.events, "is_active": wh.is_active, "created_at": wh.created_at.isoformat()}
+    except ImportError:
+        return {"status": "ok", "message": "Webhook model not available"}

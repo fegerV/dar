@@ -62,12 +62,20 @@ export function AdminUsers() {
   }
 
   const handleImpersonate = async (userId: string) => {
+    const mfaToken = prompt("Enter MFA token for impersonation:")
+    if (!mfaToken) return
     try {
-      const data = await apiFetch<{ access_token: string; refresh_token: string }>(`/admin/users/${userId}/impersonate`)
-      localStorage.setItem("daragent_admin_token", data.access_token)
-      localStorage.setItem("daragent_admin_refresh", data.refresh_token)
-      document.cookie = `daragent_admin_token=${data.access_token}; path=/; max-age=3600`
-      window.location.href = "/admin/dashboard"
+      const data = await apiFetch<{ access_token: string; refresh_token: string; impersonation: boolean }>(
+        `/admin/users/${userId}/impersonate?${new URLSearchParams({ mfa_token: mfaToken })}`
+      )
+      if (data.impersonation) {
+        localStorage.setItem("impersonate_token", data.access_token)
+        alert("Impersonation started (5-min TTL)")
+      } else {
+        localStorage.setItem("daragent_admin_access", data.access_token)
+        document.cookie = `daragent_admin_access=${data.access_token}; path=/; max-age=300; SameSite=Lax; Secure`
+        window.location.href = "/admin/dashboard"
+      }
     } catch (err: unknown) {
       console.error("Impersonate failed:", (err as Error)?.message)
     }
@@ -150,9 +158,9 @@ export function AdminUsers() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" aria-label={`View user ${u.id}`}>
-                          <Eye className="h-4 w-4" aria-hidden="true" />
-                        </Button>
+                      <Button size="sm" variant="ghost" aria-label={`View user ${u.id}`} onClick={() => router.push(`/admin/users/${u.id}`)}>
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                      </Button>
                         <Button
                           size="sm"
                           variant="ghost"
