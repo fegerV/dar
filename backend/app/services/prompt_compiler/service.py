@@ -42,11 +42,15 @@ class PromptCompilerService:
             sections.append("NEGATIVE:\n" + negative)
         return "\n\n".join(sections)
 
-    async def compile_prompt(self, body: CompilePromptRequest) -> PromptPlanResponse:
-        project = await self.project_repo.get_by_id(body.project_id, body.project_id)  # type: ignore
-        brief = await self.project_repo.get_brief(body.project_id)
+    async def compile_prompt(self, body: CompilePromptRequest, user_id: UUID | None = None) -> PromptPlanResponse:
+        if user_id is not None:
+            project = await self.project_repo.get_by_id(body.project_id, user_id)
+        else:
+            project = await self.project_repo.get_by_id(body.project_id)
         if project is None:
             raise NotFoundException("Проект не найден")
+
+        brief = await self.project_repo.get_brief(body.project_id)
 
         template_version: TemplateVersion | None = None
         if body.template_version_id:

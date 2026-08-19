@@ -36,10 +36,9 @@ class EntitlementService:
     async def consume_entitlement(
         self, user_id: UUID, entitlement_id: UUID, quantity: int = 1
     ) -> EntitlementResponse:
-        entitlement = await self.repo.consume(entitlement_id, user_id, quantity)
-        if entitlement is None:
-            raise NotFoundException("Entitlement not found")
-        if entitlement.consumed > entitlement.quantity:
-            raise ValidationException("Entitlement exhausted")
+        result = await self.repo.consume(entitlement_id, user_id, quantity)
+        if not result:
+            raise NotFoundException("Entitlement not found or exhausted")
         await self.db.commit()
+        entitlement = await self.repo.get_by_id(entitlement_id)
         return EntitlementResponse.model_validate(entitlement)

@@ -1,5 +1,7 @@
+import html
 import logging
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from uuid import UUID
 
 import aiosmtplib
@@ -77,18 +79,32 @@ class EmailDeliveryService:
             await self.repo.create_delivery(delivery)
 
     def _render_html(self, recipient: str, video_url: str | None, thumbnail_url: str | None, title: str, tracking_url: str) -> str:
-        thumbnail = f'<img src="{thumbnail_url}" alt="preview" style="max-width:100%;height:auto;" />' if thumbnail_url else ""
+        safe_title = html.escape(title or "")
+        safe_video_url = self._sanitize_url(video_url)
+        safe_thumbnail_url = self._sanitize_url(thumbnail_url)
+        thumbnail = f'<img src="{safe_thumbnail_url}" alt="preview" style="max-width:100%;height:auto;" />' if safe_thumbnail_url else ""
         return f"""
         <html>
           <body style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
-            <h1>{title}</h1>
+            <h1>{safe_title}</h1>
             <p>Привет! Для тебя подготовили видеопоздравление.</p>
             {thumbnail}
-            <p><a href="{video_url}">Смотреть видео</a></p>
-            {self.TRACKING_PIXEL.format(track_url=tracking_url)}
+            <p><a href="{safe_video_url}">Смотреть видео</a></p>
+            {self.TRACKING_PIXEL.format(track_url=html.escape(tracking_url, quote=True))}
           </body>
         </html>
         """
 
     def _render_text(self, recipient: str, video_url: str | None, title: str) -> str:
-        return f"{title}\n\nПривет! Для тебя подготовили видеопоздравление.\n\nСмотреть: {video_url}\n"
+        safe_video_url = video_url or ""
+        safe_title = title or ""
+        return f"{safe_title}\n\nПривет! Для тебя подготовили видеопоздравление.\n\nСмотреть: {safe_video_url}\n"
+
+    @staticmethod
+    def _sanitize_url(url: str | None) -> str:
+        if not url:
+            return ""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return ""
+        return html.escape(url, quote=True)

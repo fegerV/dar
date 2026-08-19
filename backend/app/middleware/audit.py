@@ -57,5 +57,5 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     await session.execute(stmt)
                     await session.commit()
         except Exception as exc:
-            logger.debug("Audit middleware skipped: %s", exc)
+            logger.warning("Audit middleware failed (not silently skipped): %s", exc)
         return response

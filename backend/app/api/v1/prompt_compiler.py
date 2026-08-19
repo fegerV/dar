@@ -22,7 +22,7 @@ async def compile_prompt(
     current_user=Depends(get_current_user),
 ):
     service = PromptCompilerService(db)
-    return await service.compile_prompt(body)
+    return await service.compile_prompt(body, current_user.id)
 
 
 @router.post("/variables/resolve", response_model=VariableResolutionResponse)

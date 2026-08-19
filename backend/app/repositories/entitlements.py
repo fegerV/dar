@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment import Entitlement
@@ -22,16 +22,22 @@ class EntitlementRepository:
         await self.db.flush()
         return entitlement
 
-    async def consume(self, entitlement_id: UUID, user_id: UUID, quantity: int = 1) -> Entitlement | None:
+    async def get_by_id(self, entitlement_id: UUID, user_id: UUID | None = None) -> Entitlement | None:
+        query = select(Entitlement).where(Entitlement.id == entitlement_id)
+        if user_id is not None:
+            query = query.where(Entitlement.user_id == user_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def consume(self, entitlement_id: UUID, user_id: UUID, quantity: int = 1) -> bool:
         result = await self.db.execute(
-            select(Entitlement).where(
+            update(Entitlement)
+            .where(
                 Entitlement.id == entitlement_id,
                 Entitlement.user_id == user_id,
+                Entitlement.consumed + quantity <= Entitlement.quantity,
             )
+            .values(consumed=Entitlement.consumed + quantity)
+            .returning(Entitlement.id)
         )
-        entitlement = result.scalar_one_or_none()
-        if entitlement is None:
-            return None
-        entitlement.consumed += quantity
-        await self.db.flush()
-        return entitlement
+        return result.rowcount > 0
