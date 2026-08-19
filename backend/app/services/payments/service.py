@@ -1,6 +1,8 @@
+import asyncio
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -12,6 +14,10 @@ from app.core.exceptions import NotFoundException, ValidationException
 from app.models.payment import Payment, Wallet
 from app.repositories.storage import PaymentRepository, WalletRepository
 from app.schemas.payment import PaymentResponse, WalletResponse
+
+logger = logging.getLogger(__name__)
+MAX_RETRIES = 3
+RETRY_BASE_DELAY = 1.0
 
 
 class YooKassaClient:
@@ -40,25 +46,37 @@ class YooKassaClient:
             }
 
         async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/payments",
-                auth=(self.shop_id, self.secret_key),
-                headers={
-                    "Content-Type": "application/json",
-                    "Idempotence-Key": idempotency_key or f"payment_{datetime.now(timezone.utc).timestamp()}",
-                },
-                json={
-                    "amount": {"value": f"{amount:.2f}", "currency": currency},
-                    "description": description,
-                    "confirmation": {"type": "redirect", "return_url": self.return_url},
-                    "capture": True,
-                    "metadata": metadata or {},
-                },
-            )
-            data = response.json()
-            if response.status_code >= 400:
-                raise ValidationException(f"YooKassa error: {data}")
-            return data
+            last_error: Exception | None = None
+            for attempt in range(MAX_RETRIES):
+                try:
+                    response = await client.post(
+                        f"{self.BASE_URL}/payments",
+                        auth=(self.shop_id, self.secret_key),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Idempotence-Key": idempotency_key or f"payment_{datetime.now(timezone.utc).timestamp()}",
+                        },
+                        json={
+                            "amount": {"value": f"{amount:.2f}", "currency": currency},
+                            "description": description,
+                            "confirmation": {"type": "redirect", "return_url": self.return_url},
+                            "capture": True,
+                            "metadata": metadata or {},
+                        },
+                    )
+                    data = response.json()
+                    if response.status_code >= 400:
+                        raise ValidationException(f"YooKassa error: {data}")
+                    return data
+                except (httpx.HTTPError, httpx.TimeoutException) as e:
+                    last_error = e
+                    if attempt < MAX_RETRIES - 1:
+                        delay = RETRY_BASE_DELAY * (2 ** attempt)
+                        logger.warning("YooKassa create_payment retry %d/%d after %s: %s", attempt + 1, MAX_RETRIES, delay, e)
+                        await asyncio.sleep(delay)
+                    else:
+                        raise ValidationException(f"YooKassa API failed after {MAX_RETRIES} retries: {e}") from e
+            raise ValidationException(f"YooKassa API failed: {last_error}") from last_error
 
     async def get_payment(self, payment_id: str) -> dict:
         async with httpx.AsyncClient(timeout=30) as client:

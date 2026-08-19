@@ -58,9 +58,12 @@ class Settings(BaseSettings):
                 ("MINIO_ACCESS_KEY", self.MINIO_ACCESS_KEY),
                 ("MINIO_SECRET_KEY", self.MINIO_SECRET_KEY),
                 ("YOOKASSA_WEBHOOK_SECRET", self.YOOKASSA_WEBHOOK_SECRET),
+                ("YOOKASSA_SHOP_ID", self.YOOKASSA_SHOP_ID),
+                ("YOOKASSA_SECRET_KEY", self.YOOKASSA_SECRET_KEY),
+                ("DATABASE_URL", self.DATABASE_URL),
             ]
             for name, value in required:
-                if value in ("", "change-me", "change-me-jwt", "minioadmin"):
+                if not value or value in ("change-me", "change-me-jwt", "minioadmin"):
                     raise RuntimeError(
                         f"Missing required secret: {name}. "
                         f"Set it in the environment or .env file for production."
