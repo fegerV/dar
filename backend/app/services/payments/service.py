@@ -1,9 +1,8 @@
 import asyncio
 import hashlib
 import hmac
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
@@ -54,7 +53,7 @@ class YooKassaClient:
                         auth=(self.shop_id, self.secret_key),
                         headers={
                             "Content-Type": "application/json",
-                            "Idempotence-Key": idempotency_key or f"payment_{datetime.now(timezone.utc).timestamp()}",
+                            "Idempotence-Key": idempotency_key or f"payment_{datetime.now(UTC).timestamp()}",
                         },
                         json={
                             "amount": {"value": f"{amount:.2f}", "currency": currency},
@@ -125,18 +124,41 @@ class WalletService:
             wallet.bonus_balance = (wallet.bonus_balance or 0) + amount
         else:
             wallet.balance_rub = (wallet.balance_rub or 0) + amount
-        wallet.updated_at = datetime.now(timezone.utc)
+        wallet.updated_at = datetime.now(UTC)
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
 
     async def debit(self, user_id: UUID, amount: float) -> WalletResponse:
-        wallet = await self.get_or_create_wallet(user_id)
-        if (wallet.balance_rub or 0) < amount:
+        from app.models.payment import Wallet
+
+        result = await self.db.execute(
+            Wallet.__table__.update()
+            .where(Wallet.user_id == user_id, Wallet.balance_rub >= amount)
+            .values(balance_rub=Wallet.balance_rub - amount)
+            .returning(Wallet)
+        )
+        updated = result.one_or_none()
+        if updated is None:
             raise ValidationException("Недостаточно средств на кошельке")
-        wallet.balance_rub = (wallet.balance_rub or 0) - amount
-        wallet.updated_at = datetime.now(timezone.utc)
-        await self.db.commit()
-        return WalletResponse.model_validate(wallet)
+        return WalletResponse.model_validate(updated)
+
+    async def debit_bonus(self, user_id: UUID, amount: float) -> WalletResponse:
+        from app.models.payment import Wallet
+
+        result = await self.db.execute(
+            Wallet.__table__.update()
+            .where(
+                Wallet.user_id == user_id,
+                Wallet.bonus_balance >= amount,
+            )
+            .values(bonus_balance=Wallet.bonus_balance - amount)
+            .execution_options(synchronize_session="fetch")
+            .returning(Wallet)
+        )
+        updated = result.one_or_none()
+        if updated is None:
+            raise ValidationException("Недостаточно бонусных средств на кошельке")
+        return WalletResponse.model_validate(updated)
 
 
 class PaymentService:
@@ -209,7 +231,7 @@ class PaymentService:
         if event == "payment.succeeded" or status == "succeeded":
             if payment.status != "paid":
                 payment.status = "paid"
-                paid_at = datetime.now(timezone.utc)
+                paid_at = datetime.now(UTC)
                 payment.paid_at = paid_at
                 await self.wallet_service.credit(payment.user_id, payment.amount_rub)
 

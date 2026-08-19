@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.referral import Referral, ReferralCode
@@ -22,6 +23,15 @@ class ReferralRepository:
         self.db.add(code)
         await self.db.flush()
         return code
+
+    async def increment_code_uses(self, code_id: UUID, max_uses: int | None = None) -> bool:
+        """Atomically increment uses_count if under max_uses. Returns True if incremented."""
+        stmt = sa_update(ReferralCode).where(ReferralCode.id == code_id)
+        if max_uses is not None:
+            stmt = stmt.where(ReferralCode.uses_count < max_uses)
+        stmt = stmt.values(uses_count=ReferralCode.uses_count + 1).returning(ReferralCode.id)
+        result = await self.db.execute(stmt)
+        return result.one_or_none() is not None
 
     async def get_referral_by_referee(self, referee_id) -> Referral | None:
         result = await self.db.execute(

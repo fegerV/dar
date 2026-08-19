@@ -1,7 +1,8 @@
-from decimal import Decimal
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, update as sa_update
+from sqlalchemy import select
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment import Entitlement, PromoCode
@@ -40,8 +41,6 @@ class PricingRepository:
         return project
 
     async def get_promo_code(self, code: str) -> PromoCode | None:
-        from datetime import datetime, timezone
-
         result = await self.db.execute(
             select(PromoCode).where(
                 PromoCode.code == code,
@@ -51,17 +50,16 @@ class PricingRepository:
         promo = result.scalar_one_or_none()
         if promo is None:
             return None
-        if promo.expires_at and promo.expires_at < datetime.now(timezone.utc):
+        if promo.expires_at and promo.expires_at < datetime.now(UTC):
             return None
         if promo.max_uses is not None and promo.used_count >= promo.max_uses:
             return None
         return promo
 
-    async def increment_promo_usage(self, promo_id: UUID) -> None:
-        from sqlalchemy import func
-
-        await self.db.execute(
-            sa_update(PromoCode)
-            .where(PromoCode.id == promo_id)
-            .values(used_count=PromoCode.used_count + 1)
-        )
+    async def increment_promo_usage(self, promo_id: UUID, max_uses: int | None = None) -> bool:
+        stmt = sa_update(PromoCode).where(PromoCode.id == promo_id)
+        if max_uses is not None:
+            stmt = stmt.where(PromoCode.used_count < max_uses)
+        stmt = stmt.values(used_count=PromoCode.used_count + 1).returning(PromoCode.id)
+        result = await self.db.execute(stmt)
+        return result.one_or_none() is not None

@@ -4,7 +4,6 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.payment import Entitlement
-from app.repositories.storage import PaymentRepository
 
 
 class EntitlementRepository:
@@ -40,4 +39,4 @@ class EntitlementRepository:
             .values(consumed=Entitlement.consumed + quantity)
             .returning(Entitlement.id)
         )
-        return result.rowcount > 0
+        return result.one_or_none() is not None

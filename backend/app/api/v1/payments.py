@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import ConflictException, NotFoundException, ValidationException
+from app.models.payment import Payment
 from app.repositories.projects import ProjectRepository
 from app.schemas.payment import (
     EntitlementResponse,
@@ -40,10 +43,46 @@ async def create_payment(
     if project is None:
         raise NotFoundException("Проект не найден")
 
+    if project.paid_rub and project.paid_rub > 0:
+        raise ConflictException("Оплата для этого проекта уже существует")
+
+    existing_paid = await db.execute(
+        select(Payment).where(
+            Payment.project_id == project_id,
+            Payment.user_id == current_user.id,
+            Payment.status == "paid",
+        )
+    )
+    if existing_paid.scalar_one_or_none() is not None:
+        raise ConflictException("Оплата для этого проекта уже существует")
+
     service = PaymentService(db)
     amount = float(project.price_rub)
+
+    if amount <= 0:
+        raise NotFoundException("Сумма оплаты должна быть больше нуля")
+
+    wallet = await service.wallet_service.get_or_create_wallet(current_user.id)
+    bonus_available = float(wallet.bonus_balance or 0)
+    bonus_to_use = min(bonus_available, amount)
+    remaining = amount - bonus_to_use
+
+    if bonus_to_use > 0:
+        try:
+            await service.wallet_service.debit_bonus(current_user.id, bonus_to_use)
+        except ValidationException:
+            remaining = amount
+
+    if remaining <= 0:
+        project.paid_rub = float(project.price_rub)
+        await project_repo.update(project)
+        await db.commit()
+        return await service.create_payment(
+            current_user.id, project_id, amount=0.0, method=body.method
+        )
+
     return await service.create_payment(
-        current_user.id, project_id, amount=amount, method=body.method
+        current_user.id, project_id, amount=remaining, method=body.method
     )
 
 

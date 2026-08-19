@@ -50,8 +50,6 @@ class ReferralService:
             raise NotFoundException("Реферальный код не найден")
         if code.user_id == user_id:
             raise ValidationException("Нельзя использовать собственный реферальный код")
-        if code.max_uses is not None and code.uses_count >= code.max_uses:
-            raise ValidationException("Код больше не действителен")
 
         existing = await self.repo.get_referral_by_referee(user_id)
         if existing:
@@ -65,33 +63,45 @@ class ReferralService:
             created_at=datetime.now(UTC),
         )
         referral = await self.repo.create_referral(referral)
-        code.uses_count += 1
+
+        success = await self.repo.increment_code_uses(code.id, code.max_uses)
+        if not success:
+            await self.db.rollback()
+            raise ValidationException("Реферальный код больше не действителен")
+
         await self.db.commit()
         return ReferralResponse.model_validate(referral)
 
     async def mark_referral_completed(self, user_id: UUID) -> ReferralResponse | None:
-        referral = await self.repo.get_referral_by_referee(user_id)
-        if not referral or referral.status != "pending":
+        from sqlalchemy import update as sa_update
+
+        from app.services.payments.service import PaymentService
+
+        result = await self.db.execute(
+            sa_update(Referral)
+            .where(
+                Referral.referred_user_id == user_id,
+                Referral.status == "pending",
+            )
+            .values(
+                status="completed",
+                completed_at=datetime.now(UTC),
+                referrer_bonus_granted=True,
+                referee_bonus_granted=True,
+            )
+            .returning(Referral)
+        )
+        referral = result.one_or_none()
+        if referral is None:
             return None
 
-        referral.status = "completed"
-        referral.completed_at = datetime.now(UTC)
-
-        if not referral.referrer_bonus_granted:
-            from app.services.payments.service import PaymentService
-            payment_service = PaymentService(self.db)
-            await payment_service.wallet_service.credit(
-                referral.referrer_user_id, self.REFERRER_BONUS_RUB, bonus=True
-            )
-            referral.referrer_bonus_granted = True
-
-        if not referral.referee_bonus_granted:
-            from app.services.payments.service import PaymentService
-            payment_service = PaymentService(self.db)
-            await payment_service.wallet_service.credit(
-                user_id, self.REFEREE_BONUS_RUB, bonus=True
-            )
-            referral.referee_bonus_granted = True
+        payment_service = PaymentService(self.db)
+        await payment_service.wallet_service.credit(
+            referral.referrer_user_id, self.REFERRER_BONUS_RUB, bonus=True
+        )
+        await payment_service.wallet_service.credit(
+            user_id, self.REFEREE_BONUS_RUB, bonus=True
+        )
 
         await self.db.commit()
         return ReferralResponse.model_validate(referral)

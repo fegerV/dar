@@ -124,7 +124,10 @@ class PricingService:
         if promo.discount_type == "percent":
             discount = (price * discount / 100).quantize(Decimal("0.01"))
         discount = min(discount, price)
-        await self.repo.increment_promo_usage(promo.id)
+        if promo.max_uses is not None:
+            success = await self.repo.increment_promo_usage(promo.id, promo.max_uses)
+            if not success:
+                return PromoCodeValidateResponse(valid=False, discount_rub=Decimal("0.00"))
         return PromoCodeValidateResponse(
             valid=True,
             discount_type=promo.discount_type,

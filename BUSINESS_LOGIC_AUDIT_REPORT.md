@@ -1,415 +1,588 @@
-# Business Logic Security Audit
+# Business Logic Security Audit Report
 
-**Date:** 2026-08-19  
-**Scope:** Business logic vulnerabilities across ACCOUNT, WALLET, PAYMENT, BONUS, GENERATION, LIMITS, SUBSCRIPTION, COUPONS, REFERRALS, FILES, SHARING
+## Audit Methodology
 
----
-
-## Methodology
-
-Traced each entity through the full request lifecycle: frontend DTO → API endpoint → service layer → repository → database → worker → storage → external API.
-
-For each vulnerability identified: attack scenario, precondition, current behavior, expected behavior, impact, fix, and test.
+Treated the attacker as a legitimate registered user attempting to extract more value than entitled to. Examined all flows: registration, wallet, payments, entitlements, generations, pricing, referrals, file access, and sharing.
 
 ---
 
-## Vulnerability 1: Free Generation — price_rub Always 0
+## BL-01: Generation can be started without payment check
 
 | Field | Value |
-|---|---|
-| **Entity** | Payment / Project |
+||---|
+| **Entity** | Generation / Payment |
 | **Severity** | 🔴 CRITICAL |
-| **Type** | Business logic bypass — free service |
+| **Type** | Business logic bypass |
+| **Status** | ✅ FIXED |
+
+**Attack Scenario:**
+
+1. User registers (receives `welcome_generation` entitlement)
+2. User creates a project via the frontend
+3. User calls `POST /generations/projects/{project_id}` directly (bypassing frontend payment check)
+4. `GenerationService.start_generation()` creates a GenerationJob without checking if payment was made
+5. No payment required — generation runs anyway
+
+**Precondition:**
+- Authenticated user
+- A project exists (even in draft state)
+
+**Previous Behavior:**
+- `GenerationService.start_generation()` only checked project ownership and active generation status
+- **Did NOT check:** payment status, entitlement availability, or `project.price_rub > 0`
+
+**Fixed Behavior:**
+- `_verify_payment_or_entitlement()` added — checks:
+  1. If `project.price_rub > 0`: verifies a `paid` Payment record exists OR `project.paid_rub > 0`
+  2. If `project.price_rub == 0`: checks for available `welcome_generation` entitlement and atomically consumes it
+- After consuming an entitlement, `project.paid_rub` is set to lock in the "paid" state
+
+**Impact:**
+- Unlimited free generations without payment
+- Revenue loss
+
+**Fix:** Added `_verify_payment_or_entitlement()` in `GenerationService.start_generation()` (`backend/app/services/generations/service.py:38`)
+
+**Test:**
+- `test_generation_without_payment_or_entitlement_rejected` — verifies generation is rejected when no payment/entitlement
+- `test_generation_with_paid_project_allowed` — verifies paid projects work
+- `test_generation_with_paid_payment_record_allowed` — verifies payment record lookup
+- `test_entitlement_consumed_once` — verifies entitlement is consumed and not reusable
+
+---
+
+## BL-02: Welcome entitlement consumed only once (race condition fix)
+
+| Field | Value |
+||---|
+| **Entity** | Entitlement / Generation |
+| **Severity** | 🔴 CRITICAL |
+| **Type** | Race condition — double spend |
+| **Status** | ✅ FIXED |
+
+**Attack Scenario:**
+
+1. User has `welcome_generation` entitlement (quantity=1, consumed=0)
+2. Two concurrent `POST /generations/projects/{id}` requests
+3. Both check entitlement availability → both see consumed=0
+4. Both create generations and consume the entitlement
+5. Entitlement is consumed twice — infinite free generations
+
+**Precondition:**
+- User has a `welcome_generation` entitlement
+- Two concurrent generation requests
+
+**Previous Behavior:**
+- No atomicity in entitlement consumption during generation start
+- Entitlement was never consumed when generation started (only via external `consume` endpoint)
+
+**Fixed Behavior:**
+- `_consume_entitlement()` uses `EntitlementRepository.consume()` which performs an atomic `UPDATE ... WHERE consumed + quantity <= quantity SET consumed = consumed + quantity`
+- The `UPDATE` is atomic at the SQL level — only one of two concurrent requests succeeds
+
+**Impact:**
+- One-time welcome entitlement could be used indefinitely
+
+**Fix:** Linked entitlement consumption to `GenerationService.start_generation()` via atomic UPDATE
+
+**Test:**
+- `test_entitlement_consumed_once` — verifies second generation with same entitlement is rejected
+
+---
+
+## BL-03: Wallet debit race condition
+
+| Field | Value |
+||---|
+| **Entity** | Wallet / Payment |
+| **Severity** | 🔴 HIGH |
+| **Type** | Race condition — double spend |
+| **Status** | ✅ FIXED |
 
 **Attack Scenario:**
 ```
-User registers → creates project → calls POST /pricing/calculate → gets PriceResponse with total_rub=590.00
-→ calls POST /payments/projects/{id} → PaymentService.create_payment() uses project.price_rub (which is 0)
-→ YooKassa processes payment for 0.00 RUB
-→ User gets generation + payment record shows 0.00 paid
+User has balance = 100 RUB
+
+Request A: check balance = 100 → proceeds to debit
+Request B: check balance = 100 → proceeds to debit (before A commits)
+
+Request A: balance = 100 - 100 = 0
+Request B: balance = 100 - 100 = 0  (should fail, but doesn't)
 ```
 
 **Precondition:**
-- User registered
-- User has a project
+- User has wallet balance
+- Two concurrent debit requests
 
-**Current Behavior:**
-- `Project.price_rub` defaults to `0` (model line 31: `default=0`)
-- `ProjectCreate` schema (`schemas/project.py:7-11`) does NOT include `price_rub` — cannot be set on creation
-- `ProjectUpdate` schema (`schemas/project.py:14-16`) only allows `title` and `requested_delivery_at` — cannot be updated
-- `PricingService.calculate_price()` computes a price but **never writes it back** to `project.price_rub`
-- `PaymentService.create_payment()` charges `float(project.price_rub)` which is always `0.0`
+**Previous Behavior:**
+```python
+wallet = await self.get_or_create_wallet(user_id)
+if (wallet.balance_rub or 0) < amount:
+    raise ValidationException("Insufficient funds")
+wallet.balance_rub = (wallet.balance_rub or 0) - amount
+await self.db.commit()
+```
+- Read-modify-write pattern without `SELECT FOR UPDATE` or atomic `UPDATE`
+- Under PostgreSQL with concurrent requests, both can pass the balance check before either commits
 
-**Expected Behavior:**
-- `PricingService.calculate_price()` should write the calculated price to `project.price_rub`
-- OR `PaymentService.create_payment()` should accept the calculated price from the frontend
-- OR `ProjectCreate` should accept an initial price
+**Fixed Behavior:**
+```python
+result = await self.db.execute(
+    Wallet.__table__.update()
+    .where(Wallet.user_id == user_id, Wallet.balance_rub >= amount)
+    .values(balance_rub=Wallet.balance_rub - amount)
+    .returning(Wallet)
+)
+updated = result.one_or_none()
+if updated is None:
+    raise ValidationException("Недостаточно средств на кошельке")
+```
+- Single atomic `UPDATE ... WHERE balance_rub >= amount SET balance_rub = balance_rub - amount`
+- If no rows updated, the debit failed — either insufficient funds or race lost
 
-**Impact:** Every user can generate unlimited videos for free. Complete revenue bypass.
+**Impact:**
+- Users can overspend their wallet balance
+- Negative balance means free unlimited spending
 
-**Fix:** Update `PaymentService.create_payment()` to accept an explicitly calculated amount from the frontend, or have `PricingService` persist `project.price_rub`.
+**Fix:** Atomic UPDATE in `WalletService.debit()` (`backend/app/services/payments/service.py:131`)
 
 **Test:**
-```python
-async def test_payment_charges_calculated_amount(client, auth_headers, test_user, db_session):
-    # Create project
-    project = await client.post("/api/v1/projects", json={"recipient_id": ..., "occasion_code": "birthday"}, headers=auth_headers)
-    project_id = project.json()["id"]
-    # Calculate price
-    price = await client.post("/api/v1/pricing/calculate", json={"project_id": project_id}, headers=auth_headers)
-    # Create payment with calculated amount
-    payment = await client.post(f"/api/v1/payments/projects/{project_id}", json={"method": "bank_card"}, headers=auth_headers)
-    assert payment.json()["amount_rub"] > 0  # Currently fails — amount is 0.0
-```
+- `test_debit_atomic_no_overdraft` — verifies second debit fails when balance is exhausted
 
 ---
 
-## Vulnerability 2: Welcome Entitlement Code Mismatch
+## BL-04: Webhook replay → double wallet credit (idempotency)
 
 | Field | Value |
-|---|---|
-| **Entity** | Account / Entitlement |
-| **Severity** | 🔴 HIGH |
-| **Type** | Business logic bypass — free entitlement never usable |
-
-**Attack Scenario:**
-```
-User registers → AuthService.register() creates Entitlement(code="welcome_generation", quantity=1)
-→ User creates project → calls POST /pricing/calculate
-→ PricingService checks for Entitlement(code="free_generation") — not found
-→ PricingService returns free_generation_available=false, total_rub=590.00
-→ User pays full price for what should be a free generation
-```
-
-**Current Behavior:**
-- `AuthService.register()` (line 49): `code="welcome_generation"`
-- `PricingService.calculate_price()` (line 69): checks `Entitlement.code == "free_generation"`
-- Two different codes — the welcome entitlement is never matched
-
-**Expected Behavior:**
-- Both should use the same code, e.g., `"welcome_generation"`
-
-**Impact:** New users who should get a free generation are charged full price. User-facing bug + revenue loss due to churn.
-
-**Fix:** Change `PricingService.calculate_price()` line 69 to check for `"welcome_generation"` instead of `"free_generation"`.
-
----
-
-## Vulnerability 3: Webhook Replay — Double Wallet Credit
-
-| Field | Value |
-|---|---|
+||---|
 | **Entity** | Payment / Wallet |
 | **Severity** | 🔴 HIGH |
-| **Type** | Race condition / idempotency bypass |
+| **Type** | Idempotency bypass |
+| **Status** | ✅ FIXED |
 
 **Attack Scenario:**
-```
 1. User pays 590 RUB via YooKassa
-2. YooKassa sends webhook → handler credits user's wallet 590 RUB
+2. YooKassa sends webhook → handler credits wallet 590 RUB
 3. Network glitch — YooKassa retries the same webhook
 4. Handler processes it again → wallet credited another 590 RUB
-5. User now has 1180 RUB in wallet from a 590 RUB payment
-```
+5. User now has 1180 RUB from a 590 RUB payment
 
 **Precondition:**
 - User has made at least one successful payment
 - YooKassa retries the webhook (documented YooKassa behavior)
 
-**Current Behavior:**
-- `PaymentService.handle_webhook()` (line 167) does NOT check if the payment is already `status="paid"` before crediting the wallet
-- Line 191-201: if event is `payment.succeeded`, wallet is credited unconditionally
+**Previous Behavior:**
+- `PaymentService.handle_webhook()` did NOT check if payment was already `status="paid"` before crediting
 
-**Expected Behavior:**
-- Check `if payment.status != "paid"` before crediting wallet
-- If already paid, return early without re-crediting
+**Current Behavior (Fixed):**
+- `if payment.status != "paid"` guard prevents re-crediting
+- `PaymentService.handle_webhook()` (`backend/app/services/payments/service.py:210`)
 
 **Impact:** Users can get unlimited wallet credit by replaying webhooks.
 
-**Fix:**
-```python
-if payment.status != "paid":
-    payment.status = "paid"
-    paid_at = datetime.now(timezone.utc)
-    await self.wallet_service.credit(payment.user_id, payment.amount_rub)
-```
-
 **Test:**
-```python
-async def test_webhook_idempotency(client, db_session, test_user):
-    # Simulate two webhook calls for the same payment
-    payment = create_test_payment(db_session, test_user.id, status="pending")
-    webhook_body = {"event": "payment.succeeded", "metadata": {"payment_id": str(payment.id)}, ...}
-    # First webhook
-    await service.handle_webhook(raw_body, webhook_body, valid_signature)
-    assert wallet.balance_rub == 590
-    # Second webhook (replay)
-    await service.handle_webhook(raw_body, webhook_body, valid_signature)
-    assert wallet.balance_rub == 590  # Should not increase
-```
+- `test_webhook_idempotency` — verifies two identical webhook calls only credit once
 
 ---
 
-## Vulnerability 4: Entitlement Consumption Race Condition
+## BL-05: Promo code usage race condition
 
 | Field | Value |
-|---|---|
-| **Entity** | Entitlement |
+||---|
+| **Entity** | PromoCode |
 | **Severity** | ⚠️ MEDIUM |
-| **Type** | Race condition — double spend |
+| **Type** | Race condition |
+| **Status** | ✅ FIXED |
 
 **Attack Scenario:**
 ```
-1. User has Entitlement(quantity=1, consumed=0)
-2. Request A: GET /payments/entitlements/{id}/consume → reads consumed=0
-3. Request B: GET /payments/entitlements/{id}/consume → reads consumed=0 (before A commits)
-4. Request A: consumed=1, checks 1 <= 1 ✓, commits
-5. Request B: consumed=1, checks 1 <= 1 ✓, commits
-6. Both requests succeed — entitlement was consumed twice
+Promo code with max_uses=1, used_count=0
+
+Request A: validate → used_count=0 < 1 ✓
+Request B: validate → used_count=0 < 1 ✓ (before A commits)
+
+Request A: increment_promo_usage → used_count=1
+Request B: increment_promo_usage → used_count=2 (should fail)
 ```
 
 **Precondition:**
-- User has an entitlement with quantity > 0
-- Two concurrent `consume_entitlement` requests are made
+- Promo code with limited uses
+- Concurrent requests
 
-**Current Behavior:**
-- `EntitlementRepository.consume()` (line 25): `entitlement.consumed += quantity` then `flush()` — no check before increment
-- `EntitlementService.consume_entitlement()` (line 42): checks `if entitlement.consumed > entitlement.quantity` AFTER increment — too late
+**Previous Behavior:**
+- `PricingRepository.get_promo_code()` checks `used_count >= max_uses` (read)
+- `PricingRepository.increment_promo_usage()` does `UPDATE SET used_count = used_count + 1` (write) — no constraint check
+- Read and write are separate operations — TOCTOU race
 
-**Expected Behavior:**
-- Use `UPDATE ... WHERE consumed + quantity <= quantity` atomic update
-- Or use `SELECT FOR UPDATE` within a transaction
-
-**Impact:** User can double-spend entitlements.
-
-**Fix:**
+**Fixed Behavior:**
 ```python
-from sqlalchemy import func
-result = await self.db.execute(
-    Entitlement.__table__.update()
-    .where(Entitlement.id == entitlement_id, Entitlement.user_id == user_id)
-    .where(Entitlement.consumed + quantity <= Entitlement.quantity)
-    .values(consumed=Entitlement.consumed + quantity)
-    .returning(Entitlement)
-)
+async def increment_promo_usage(self, promo_id: UUID, max_uses: int | None = None) -> bool:
+    stmt = sa_update(PromoCode).where(PromoCode.id == promo_id)
+    if max_uses is not None:
+        stmt = stmt.where(PromoCode.used_count < max_uses)  # Atomic constraint
+    stmt = stmt.values(used_count=PromoCode.used_count + 1).returning(PromoCode.id)
+    result = await self.db.execute(stmt)
+    return result.one_or_none() is not None
 ```
+- `UPDATE ... WHERE used_count < max_uses SET used_count = used_count + 1` is atomic
+- If no rows affected, the promo was exhausted — caller handles gracefully
+
+**Impact:**
+- Promo code can be used more times than `max_uses`
+- Revenue loss from unlimited discounts
+
+**Fix:** Atomic UPDATE in `PricingRepository.increment_promo_usage()` (`backend/app/repositories/pricing.py:59`)
 
 ---
 
-## Vulnerability 5: Promo Code Always Valid
+## BL-06: Referral code uses_count race condition
 
 | Field | Value |
-|---|---|
-| **Entity** | Coupon / Payment |
-| **Severity** | 🔴 HIGH |
-| **Type** | Business logic bypass — free discount |
-
-**Attack Scenario:**
-```
-User calls POST /pricing/promo/validate with body={"code": "anything"}
-→ PricingService.validate_promo_code() always returns {"valid": true, "discount_rub": 100.00}
-→ User gets 100 RUB discount for any random string
-```
-
-**Current Behavior:**
-- `PricingService.validate_promo_code()` (line 90-96): Hardcoded return `valid=True, discount_rub=100.00`
-- `_apply_promo_code()` (line 110-118): Also hardcoded `valid=True, discount_rub=min(100, price)`
-
-**Expected Behavior:**
-- Promo codes should be validated against a database table
-- Invalid codes should return `valid=False`
-
-**Impact:** Any user can get 100 RUB discount on every order by entering any promo code.
-
-**Fix:**
-- Create a `promo_codes` table in the database
-- Implement `_apply_promo_code()` to query the database
-- Remove the hardcoded return values
-
----
-
-## Vulnerability 6: Generation Never Dispatched to Worker
-
-| Field | Value |
-|---|---|
-| **Entity** | Generation |
-| **Severity** | 🔴 CRITICAL |
-| **Type** | Broken flow — generation never runs |
-
-**Attack Scenario:**
-```
-User calls POST /generations/projects/{id} → GenerationService.start_generation() creates a GenerationJob with status="queued"
-→ No Celery task is dispatched
-→ Worker never picks up the job
-→ Generation stays in "queued" status forever
-→ SSE stream never emits progress events
-```
-
-**Current Behavior:**
-- `GenerationService.start_generation()` (line 69-77): Creates `GenerationJob` but does NOT call `process_generation_job.apply_async()`
-- The only `apply_async()` call is in `PipelineOrchestrator.run()` (line 186)
-- The Android app calls `/generations/projects/{id}` (via `GenerationsApi.start()`), NOT `/pipeline/projects/{id}/run`
-
-**Expected Behavior:**
-- After creating the job, dispatch it to the worker:
-  ```python
-  process_generation_job.apply_async(args=[str(job.id)], countdown=5)
-  ```
-
-**Impact:** No user can actually generate any video. The entire core business flow is broken.
-
-**Fix:** Add task dispatch after job creation in `GenerationService.start_generation()`.
-
----
-
-## Vulnerability 7: `generation.prompt` AttributeError in Worker
-
-| Field | Value |
-|---|---|
-| **Entity** | Generation / Quality |
-| **Severity** | 🔴 CRITICAL |
-| **Type** | Runtime crash — AttributeError |
-
-**Attack Scenario:**
-```
-If execute_pipeline were dispatched:
-→ Worker calls QualityCheckRequest(prompt=generation.prompt)
-→ Generation model has NO "prompt" attribute → AttributeError
-→ Generation stuck in "processing" status
-```
-
-**Current Behavior:**
-- `pipeline_tasks.py:132`: `QualityCheckRequest(prompt=generation.prompt)` — `Generation` model has no `prompt` field
-- `generation_tasks.py:83`: Uses safe `(generation.input_json or {}).get("prompt", "")`
-
-**Expected Behavior:**
-- Use `generation.input_json.get("prompt")` consistently
-
-**Fix:** Replace `generation.prompt` with `(generation.input_json or {}).get("prompt", "")` in `pipeline_tasks.py:132`.
-
----
-
-## Vulnerability 8: Telegram Linking is a Stub
-
-| Field | Value |
-|---|---|
-| **Entity** | Telegram / Notification |
-| **Severity** | 🔴 HIGH |
-| **Type** | Incomplete feature — data not persisted |
-
-**Attack Scenario:**
-```
-User calls POST /telegram/link with body={"telegram_id": 12345, "username": "user"}
-→ Endpoint returns {"telegram_id": 12345, "username": "user", "status": "linked"}
-→ Nothing is stored in the database
-→ User tries to send video to Telegram → TelegramDeliveryService.send() → "Telegram chat_id missing"
-```
-
-**Current Behavior:**
-- `POST /telegram/link` (line 18-28): Returns input data, does not persist
-- `User` model has no `telegram_user_id` field
-- `TelegramDeliveryService.send()` (line 26): `chat_id = delivery.destination` — relies on `destination` being set, which it isn't
-
-**Expected Behavior:**
-- `User` model should have `telegram_user_id` field
-- `link_telegram` should store the ID on the user record
-- `TelegramDeliveryService` should use the stored ID
-
-**Fix:**
-1. Add `telegram_user_id` column to `users` model + migration
-2. Store `telegram_user_id` in `link_telegram()` endpoint
-3. Update `TelegramDeliveryService` to fetch from user record
-
----
-
-## Vulnerability 9: Referral Bonus Never Granted
-
-| Field | Value |
-|---|---|
-| **Entity** | Referral / Bonus |
+||---|
+| **Entity** | ReferralCode |
 | **Severity** | ⚠️ MEDIUM |
-| **Type** | Unimplemented feature — bonus not granted |
+| **Type** | Race condition |
+| **Status** | ✅ FIXED |
 
 **Attack Scenario:**
 ```
-User A creates referral code
-→ User B applies it → Referral(status="pending") created
-→ User B completes a generation (pays)
-→ mark_referral_completed is never called
-→ User A and User B never receive bonus entitlements
+Referral code with max_uses=1, uses_count=0
+
+Request A: apply_code → reads uses_count=0 < 1 ✓
+Request B: apply_code → reads uses_count=0 < 1 ✓ (before A commits)
+
+Request A: uses_count += 1 → 1
+Request B: uses_count += 1 → 2 (should fail)
 ```
 
-**Current Behavior:**
-- `ReferralService.mark_referral_completed()` exists (line 63) but is **never called from any code path**
-- `referrer_bonus_granted` and `referee_bonus_granted` flags are never set to `true`
+**Precondition:**
+- Referral code with limited uses
+- Concurrent `apply_code` calls
 
-**Expected Behavior:**
-- When a referred user completes their first paid generation, call `mark_referral_completed`
-- Grant bonus entitlements to both referrer and referee
+**Previous Behavior:**
+- `ReferralService.apply_code()` reads `code.uses_count` and `code.max_uses` in Python
+- Increments: `code.uses_count += 1` in Python
+- TOCTOU race between check and increment
+
+**Fixed Behavior:**
+- `ReferralRepository.increment_code_uses()` performs atomic `UPDATE ... WHERE uses_count < max_uses SET uses_count = uses_count + 1`
+- If no rows affected, the code is exhausted — rollback and raise `ValidationException`
+
+**Impact:** Referral codes can be used beyond their limit.
+
+**Fix:** Added `increment_code_uses()` method, updated `apply_code()` (`backend/app/services/referrals/service.py:47`)
 
 ---
 
-## Vulnerability 10: Free-Use Generation Bypass
+## BL-07: Referral bonus double-grant race condition
 
 | Field | Value |
-|---|---|
-| **Entity** | Payment / Generation |
-| **Severity** | 🔴 CRITICAL |
-| **Type** | Business logic bypass — no payment required |
+||---|
+| **Entity** | Referral |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Race condition |
+| **Status** | ✅ FIXED |
 
 **Attack Scenario:**
 ```
-User registers → gets welcome_generation entitlement
-→ Skips payment entirely → calls POST /generations/projects/{id}
-→ Generation is created and (if dispatched) would run
-→ User gets video without paying
+Referral with status="pending", referrer_bonus_granted=False
+
+Request A: mark_referral_completed → reads status="pending", grants bonus, sets granted=True
+Request B: mark_referral_completed → reads status="pending" (before A commits), grants bonus again
+
+Both requests grant referrer_bonus — double payout
 ```
+
+**Precondition:**
+- A referral is in "pending" status
+- Two concurrent webhook deliveries for the same payment
+
+**Previous Behavior:**
+- Read referral → check status → grant bonus → set `referrer_bonus_granted = True` → commit
+- TOCTOU race between status check and commit
+
+**Fixed Behavior:**
+- Uses atomic `UPDATE ... WHERE status="pending" SET status="completed", referrer_bonus_granted=True, referee_bonus_granted=True`
+- If no rows affected, referral was already completed — return `None` without granting bonus
+
+**Impact:** Referrer/referee bonuses granted multiple times for same payment.
+
+**Fix:** Atomic UPDATE in `mark_referral_completed()` (`backend/app/services/referrals/service.py:75`)
+
+---
+
+## BL-08: force_regenerate bypasses active generation check
+
+| Field | Value |
+||---|
+| **Entity** | Generation |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Business logic bypass |
+| **Status** | ✅ FIXED |
+
+**Attack Scenario:**
+1. User starts a generation for a project
+2. Generation is `status="processing"`
+3. User calls `POST /generations/projects/{project_id}` with `force_regenerate: true`
+4. A NEW generation is created, running alongside the existing one
+5. Both jobs consume resources — double billing on usage-based pricing
+
+**Precondition:**
+- User has an active generation
+- User can set `force_regenerate: true`
+
+**Previous Behavior:**
+- `force_regenerate: true` simply skipped the conflict check — both generations run
+
+**Fixed Behavior:**
+- When `force_regenerate` is true and an active generation exists, the existing one is cancelled first
+- `existing.status = "cancelled"` before creating the new generation
+
+**Impact:**
+- Concurrent generations on same project — resource waste
+- Potential billing confusion
+
+**Fix:** Cancel existing generation before creating new one (`backend/app/services/generations/service.py:30-34`)
+
+**Test:**
+- `test_force_regenerate_cancels_existing` — verifies first generation is cancelled
+
+---
+
+## BL-09: Bonus balance used for payment
+
+| Field | Value |
+||---|
+| **Entity** | Wallet / Payment |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Missing feature |
+| **Status** | ✅ FIXED |
+
+**Attack Scenario:**
+
+1. User has 0 RUB balance and 500 RUB bonus balance
+2. User calls `/pricing/calculate` → sees `total_rub: 590`
+3. User pays 590 RUB via YooKassa
+4. Bonus balance is never checked or applied
+
+**Precondition:**
+- User has bonus balance
+- User makes real payment
+
+**Previous Behavior:**
+- `PaymentService.create_payment()` did not check for or apply bonus balance
+
+**Fixed Behavior:**
+- `POST /payments/projects/{id}` now checks wallet bonus balance before creating payment
+- If bonus covers full amount, `project.paid_rub` is set and a 0-RUB payment is created (no external charge)
+- If bonus covers partial amount, only the remaining balance is charged via YooKassa
+- Bonus debit is atomic via `debit_bonus()` using `UPDATE ... WHERE bonus_balance >= amount`
+- Race condition handled: if `debit_bonus` fails (insufficient bonus), falls back to full amount via YooKassa
+
+**Impact:**
+- Users were paying real money when they had bonus balance available
+
+**Fix:** Bonus balance deduction added to payment creation flow (`backend/app/api/v1/payments.py:47-68`)
+
+---
+
+## BL-10: No email verification → multiple account creation
+
+| Field | Value |
+||---|
+| **Entity** | Account |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Business logic bypass |
+| **Status** | ⚠️ PENDING |
+
+**Attack Scenario:**
+
+1. Register account A → get `welcome_generation` free entitlement
+2. Register account B with different email → get another free entitlement
+3. Repeat indefinitely → unlimited free generations
+
+**Precondition:**
+- No email verification (confirmed in auth audit)
+- Welcome entitlement per account
 
 **Current Behavior:**
-- `GenerationService.start_generation()` does NOT check if the user has paid
-- `payment.price_rub` is 0 (see Vulnerability 1), so payment always succeeds for 0 RUB
-- No check that payment status is `"paid"` before allowing generation
+- Registration is completely open — no CAPTCHA, no email verification
+- Each new account gets a `welcome_generation` entitlement
+- IP-based rate limiting exists but is easily bypassed with cloud instances
 
 **Expected Behavior:**
-- `start_generation()` should verify that the project has a paid generation
-- Check `payment.status == "paid"` for this project
+- Email verification required before entitlement is granted
+- Or: detect and flag multiple accounts from same IP/device
 
-**Fix:**
-```python
-# In GenerationService.start_generation()
-payment = await PaymentRepository(db).get_by_project_id(project_id)
-if payment is None or payment.status != "paid":
-    raise ValidationException("Payment required before generation")
-```
+**Impact:**
+- Unlimited free content generation
+- Bypass of paid features
+
+**Fix:** Require email verification before granting welcome entitlement. Track `registration_ip` on user and limit one welcome entitlement per IP.
 
 ---
 
-## Summary Table
+## BL-11: Presigned URL exposure in share links
 
-| # | Vulnerability | Severity | Entity | Status |
-|---|---|---|---|---|
-| 1 | price_rub always 0 → free generation | 🔴 CRITICAL | Payment/Project | ✅ FIXED |
-| 2 | Entitlement code mismatch → free entitlement unusable | 🔴 HIGH | Account/Entitlement | ✅ FIXED |
-| 3 | Webhook replay → double wallet credit | 🔴 HIGH | Payment/Wallet | ✅ FIXED |
-| 4 | Entitlement consumption race condition | ⚠️ MEDIUM | Entitlement | CONFIRMED |
-| 5 | Promo code always valid | 🔴 HIGH | Coupon | CONFIRMED |
-| 6 | Generation never dispatched to worker | 🔴 CRITICAL | Generation | ✅ FIXED |
-| 7 | `generation.prompt` AttributeError in worker | 🔴 CRITICAL | Generation/Quality | ✅ FIXED |
-| 8 | Telegram linking is a stub | 🔴 HIGH | Notification | ✅ FIXED |
-| 9 | Referral bonus never granted | ⚠️ MEDIUM | Referral/Bonus | CONFIRMED |
-| 10 | No payment check before generation | 🔴 CRITICAL | Payment/Generation | CONFIRMED |
+| Field | Value |
+||---|
+| **Entity** | Files / Storage |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Information exposure |
+| **Status** | ⚠️ PENDING |
+
+**Attack Scenario:**
+
+1. User creates a share link for their project
+2. Share link returns `video_url` — a presigned URL to S3/MinIO storage
+3. User copies the presigned URL and shares it directly (bypassing the share token)
+4. The presigned URL is accessible by anyone until it expires (1 hour)
+
+**Precondition:**
+- User has a completed generation with a share link
+- User can view the share page
+
+**Current Behavior:**
+- `get_public_share()` returns `generation.output_json["video_url"]` directly
+- Presigned URLs have 1-hour expiry but are valid from anywhere
+- No access logging or revocation
+
+**Expected Behavior:**
+- Serve videos through a proxy endpoint that checks the share token
+- Or: shorten presigned URL expiry and regenerate on each request
+- Or: use signed URLs with IP binding
+
+**Impact:**
+- Share link URLs can be distributed, bypassing view limits
+- Videos can be downloaded and re-shared indefinitely within the 1-hour window
+
+**Fix:** Replace direct presigned URLs with a proxy endpoint, or implement URL revocation.
 
 ---
 
-## Priority Fix Order — IN PROGRESS
+## BL-12: Payment creation can use any user's project (no cross-user payment)
 
-1. ✅ **Fix generation dispatch** (Vuln #6) — COMPLETED
-2. ✅ **Fix `generation.prompt` crash** (Vuln #7) — COMPLETED
-3. ⏳ **Fix payment enforcement** (Vuln #10) — PENDING
-4. ✅ **Fix price persistence** (Vuln #1) — `calculate_price()` now writes to `project.price_rub`
-5. ✅ **Fix webhook idempotency** (Vuln #3) — Added `if payment.status != "paid"` guard
-6. ✅ **Fix entitlement code mismatch** (Vuln #2) — Changed `"free_generation"` → `"welcome_generation"`
-7. ⏳ **Fix promo code validation** (Vuln #5) — PENDING
-8. ✅ **Fix Telegram linking** (Vuln #8) — COMPLETED
-9. ⏳ **Fix referral bonus** (Vuln #9) — PENDING
-10. ⏳ **Fix entitlement race condition** (Vuln #4) — PENDING
+| Field | Value |
+||---|
+| **Entity** | Payment / Project |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Business logic bypass |
+| **Status** | ✅ VERIFIED SAFE |
+
+**Attack Scenario:**
+
+1. User A creates a project and gets a share link
+2. User B calls `POST /payments/projects/{A_project_id}` — but `ProjectRepository.get_by_id(project_id, user_id)` checks ownership
+3. This is safe — the payment endpoint verifies the project belongs to the user
+
+**Verified:** Safe — ownership check in `backend/app/api/v1/payments.py:39`
+
+---
+
+## BL-13: Refund does not revoke entitlement or generation access
+
+| Field | Value |
+||---|
+| **Entity** | Payment / Generation |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Revenue leakage |
+| **Status** | ⚠️ PENDING (no refund endpoint exists) |
+
+**Attack Scenario:**
+
+1. User pays 590 RUB → generation starts and completes
+2. User calls YooKassa refund API directly (or support refunds)
+3. Refund webhook arrives → wallet debited 590 RUB
+4. But user keeps the generated video — service already delivered
+
+**Precondition:**
+- User has completed a generation
+- Refund is processed (manually or via support)
+
+**Current Behavior:**
+- No refund webhook handler exists (`payment.refund` event not handled)
+- No mechanism to revoke access after refund
+- `refunded_at` field exists on Payment model but is never set
+
+**Expected Behavior:**
+- Handle `refund.succeeded` webhook
+- Mark payment as `refunded`
+- Optionally revoke share links or mark generation as inaccessible
+- Deduct refund from wallet balance
+
+**Impact:**
+- Users can get refunds and keep the service
+- Revenue loss
+
+**Fix:** Add refund webhook handler, implement access revocation.
+
+---
+
+## BL-14: Double payment on same project prevented
+
+| Field | Value |
+||---|
+| **Entity** | Payment / Pricing |
+| **Severity** | ⚠️ MEDIUM |
+| **Type** | Business logic bypass |
+| **Status** | ✅ FIXED |
+
+**Attack Scenario:**
+
+1. User calls `/pricing/calculate` → sets `project.price_rub = 590`
+2. User calls `POST /payments/projects/{id}` → creates payment for 590 RUB
+3. User calls `/pricing/calculate` again with different params → `project.price_rub` changes
+4. User calls `POST /payments/projects/{id}` again → creates a second payment
+
+**Precondition:**
+- Project exists
+- User can calculate price multiple times
+
+**Previous Behavior:**
+- No check prevented creating multiple payments on the same project
+- `project.paid_rub` was not set during payment creation
+
+**Fixed Behavior:**
+- `POST /payments/projects/{id}` now checks:
+  1. `project.paid_rub > 0` → reject with `ConflictException`
+  2. Existing `paid` Payment record for this project → reject with `ConflictException`
+- When payment is fully covered by bonus, `project.paid_rub` is set immediately
+- After YooKassa webhook fires, the payment is marked as `paid`
+
+**Impact:**
+- Double payment on same project
+- Price manipulation via repeated /pricing/calculate calls
+
+**Fix:** Added payment existence checks in `POST /payments/projects/{id}` (`backend/app/api/v1/payments.py:43-46`)
+
+---
+
+## Summary
+
+| ID | Issue | Severity | Status |
+|---|---|---|---|
+| BL-01 | Generation without payment check | 🔴 CRITICAL | ✅ FIXED |
+| BL-02 | Welcome entitlement double spend (race) | 🔴 CRITICAL | ✅ FIXED |
+| BL-03 | Wallet debit race condition | 🔴 HIGH | ✅ FIXED |
+| BL-04 | Webhook replay double-credit | 🔴 HIGH | ✅ FIXED |
+| BL-05 | Promo code usage race | ⚠️ MEDIUM | ✅ FIXED |
+| BL-06 | Referral code uses_count race | ⚠️ MEDIUM | ✅ FIXED |
+| BL-07 | Referral bonus double-grant race | ⚠️ MEDIUM | ✅ FIXED |
+| BL-08 | force_regenerate bypasses conflict check | ⚠️ MEDIUM | ✅ FIXED |
+| BL-09 | Bonus balance not used for payment | ⚠️ MEDIUM | ✅ FIXED |
+| BL-10 | Multiple account creation | ⚠️ MEDIUM | ⚠️ PENDING |
+| BL-11 | Presigned URL exposure in share links | ⚠️ MEDIUM | ⚠️ PENDING |
+| BL-12 | Cross-user payment | Safe | ✅ VERIFIED |
+| BL-13 | No refund handling | ⚠️ MEDIUM | ⚠️ PENDING |
+| BL-14 | Mutable project price_rub | ⚠️ MEDIUM | ✅ FIXED |
+
+### Files Modified
+
+- `backend/app/services/generations/service.py` — added payment/entitlement verification before generation start
+- `backend/app/services/payments/service.py` — atomic wallet debit
+- `backend/app/services/referrals/service.py` — atomic referral completion, atomic code usage increment
+- `backend/app/repositories/pricing.py` — atomic promo code usage increment
+- `backend/app/repositories/referrals.py` — added `increment_code_uses()` atomic method
+- `backend/app/repositories/entitlements.py` — fixed consume return check for SQLite compatibility
+- `backend/tests/test_generations.py` — added payment/entitlement verification tests
+- `backend/tests/test_payments.py` — added webhook idempotency and wallet debit tests
