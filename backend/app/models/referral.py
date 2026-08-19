@@ -33,4 +33,5 @@ class Referral(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     referrer_bonus_granted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     referee_bonus_granted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)

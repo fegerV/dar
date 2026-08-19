@@ -11,6 +11,7 @@ class DeliveryCreate(BaseModel):
     max_views: int | None = Field(None, ge=1)
     password: str | None = Field(None, min_length=1)
     scheduled_at: datetime | None = None
+    timezone: str | None = None
 
 
 class DeliveryResponse(BaseModel):

@@ -67,6 +67,9 @@ class DeliveryService:
             delivery_link_id=link.id,
             scheduled_at=body.scheduled_at,
         )
+
+        if body.scheduled_at and body.timezone:
+            delivery.scheduled_at = self._convert_to_utc(body.scheduled_at, body.timezone)
         delivery = await self.repo.create_delivery(delivery)
 
         if body.scheduled_at:
@@ -169,3 +172,15 @@ class DeliveryService:
         )
         await self.repo.create_share_event(event)
         await self.db.commit()
+
+    @staticmethod
+    def _convert_to_utc(scheduled_at: datetime, user_timezone: str) -> datetime:
+        if scheduled_at.tzinfo is not None:
+            return scheduled_at.astimezone(timezone.utc)
+        from zoneinfo import ZoneInfo
+
+        try:
+            tz = ZoneInfo(user_timezone)
+            return scheduled_at.replace(tzinfo=tz).astimezone(timezone.utc)
+        except Exception:
+            return scheduled_at.replace(tzinfo=timezone.utc)

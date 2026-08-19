@@ -18,6 +18,7 @@ MAX_NOTES_LENGTH = 1000
 
 class ContactImportRequest(BaseModel):
     contacts: list[dict]
+    consent_given: bool = False
 
     @field_validator("contacts")
     @classmethod
@@ -35,9 +36,16 @@ class ContactImportResponse(BaseModel):
 @router.post("/import", response_model=ContactImportResponse)
 async def import_contacts(
     body: ContactImportRequest,
-    db=Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    if not body.consent_given:
+        from app.core.exceptions import ValidationException
+        raise ValidationException(
+            "Explicit consent (consent_given=true) is required for contact import. "
+            "Contacts are processed locally and never sent to third-party services."
+        )
+
     repo = RecipientRepository(db)
     imported = 0
     skipped = 0

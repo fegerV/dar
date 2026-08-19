@@ -212,6 +212,10 @@ class PaymentService:
                 paid_at = datetime.now(timezone.utc)
                 payment.paid_at = paid_at
                 await self.wallet_service.credit(payment.user_id, payment.amount_rub)
+
+                from app.services.referrals.service import ReferralService
+                referral_service = ReferralService(self.db)
+                await referral_service.mark_referral_completed(payment.user_id)
         elif event == "payment.canceled" or status == "canceled":
             payment.status = "failed"
         elif event == "payment.waiting_for_capture" or status == "waiting_for_capture":
