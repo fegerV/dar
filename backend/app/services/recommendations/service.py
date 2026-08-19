@@ -111,6 +111,10 @@ class RecommendationService:
     async def select(
         self, project_id: UUID, recommendation_id: UUID, user_id: UUID
     ) -> RecommendationSelectResponse:
+        project = await self.project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
+
         rec = await self.repo.get_by_id(recommendation_id, project_id)
         if rec is None:
             raise NotFoundException("Рекомендация не найдена")
@@ -118,10 +122,6 @@ class RecommendationService:
         rec = await self.repo.mark_selected(recommendation_id, project_id, rec.template_version_id)
         if rec is None:
             raise NotFoundException("Рекомендация не найдена")
-
-        project = await self.project_repo.get_by_id(project_id, user_id)
-        if project is None:
-            raise NotFoundException("Проект не найден")
 
         project.selected_recommendation_id = recommendation_id
         project.selected_template_version_id = rec.template_version_id

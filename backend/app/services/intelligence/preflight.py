@@ -13,10 +13,18 @@ class ImagePreflightService:
         self.db = db
         self.generation_repo = GenerationRepository(db)
 
-    async def analyze(self, generation_id: UUID, image_url: str, image_metadata: dict | None = None) -> ImagePreflightResult:
+    async def analyze(self, generation_id: UUID, image_url: str, image_metadata: dict | None = None, user_id: UUID | None = None) -> ImagePreflightResult:
         generation = await self.generation_repo.get_by_id(generation_id)
         if generation is None:
             raise ValidationException("Генерация не найдена")
+
+        if user_id is not None:
+            from app.repositories.projects import ProjectRepository
+
+            project_repo = ProjectRepository(self.db)
+            project = await project_repo.get_by_id(generation.project_id, user_id)
+            if project is None:
+                raise ValidationException("Генерация не найдена")
 
         metadata = image_metadata or {}
         quality_score = float(metadata.get("quality_score", 85))

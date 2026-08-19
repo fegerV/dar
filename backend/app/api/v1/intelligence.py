@@ -31,7 +31,7 @@ async def analyze_image(
     current_user=Depends(get_current_user),
 ):
     service = ImagePreflightService(db)
-    return await service.analyze(body.generation_id, body.image_url, body.image_metadata)
+    return await service.analyze(body.generation_id, body.image_url, body.image_metadata, current_user.id)
 
 
 @router.get("/recipes/{recipe_code}", response_model=VideoRecipeResponse)
@@ -40,6 +40,10 @@ async def get_recipe(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    from app.core.exceptions import ForbiddenException
+
+    if not getattr(current_user, "is_admin", False):
+        raise ForbiddenException("Admin access required")
     service = RecipeService(db)
     recipe = await service.get_best_recipe(recipe_code)
     if recipe is None:

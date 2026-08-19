@@ -1,14 +1,36 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.repositories.projects import ProjectRepository
 from app.services.analytics.ab_testing import ABTestService, FeatureFlagService
 from app.services.analytics.funnel import FunnelService
 from app.services.analytics.service import AnalyticsService
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
+
+ALLOWED_EVENT_NAMES = {
+    "visit",
+    "register",
+    "create_project",
+    "complete_brief",
+    "select_template",
+    "pay",
+    "deliver",
+    "share_click",
+    "nps_survey",
+    "csat_survey",
+}
+
+ALLOWED_FEATURE_FLAGS = {
+    "beta_features",
+    "new_ui",
+    "advanced_editor",
+    "voice_cloning",
+}
 
 
 @router.post("/events")
@@ -19,6 +41,17 @@ async def track_event(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    if event_name not in ALLOWED_EVENT_NAMES:
+        from app.core.exceptions import ValidationException
+        raise ValidationException("Invalid event name")
+
+    if project_id is not None:
+        project_repo = ProjectRepository(db)
+        project = await project_repo.get_by_id(project_id, current_user.id)
+        if project is None:
+            from app.core.exceptions import NotFoundException
+            raise NotFoundException("Project not found")
+
     service = AnalyticsService(db)
     await service.track_event(
         event_name=event_name,
@@ -85,6 +118,9 @@ async def set_feature_flag(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    if flag_name not in ALLOWED_FEATURE_FLAGS:
+        from app.core.exceptions import ValidationException
+        raise ValidationException("Invalid feature flag name")
     flag_service = FeatureFlagService(db)
     await flag_service.set_flag(current_user.id, flag_name, enabled)
     return {"flag": flag_name, "enabled": enabled}

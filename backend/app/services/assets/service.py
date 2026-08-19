@@ -1,12 +1,17 @@
+import os
+import uuid
+from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, ValidationException
 from app.integrations.storage.factory import get_storage_provider
 from app.models.asset import Asset, StorageObject
 from app.repositories.storage import StorageRepository
 from app.schemas.asset import AssetUploadRequest, AssetUploadResponse, AssetResponse, AssetListResponse
+
+ALLOWED_FILE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".avi", ".mp3", ".wav", ".ogg", ".pdf", ".txt"}
 
 
 class AssetService:
@@ -16,9 +21,14 @@ class AssetService:
         self.storage = get_storage_provider()
 
     async def get_upload_url(self, body: AssetUploadRequest, user_id: UUID) -> AssetUploadResponse:
-        import uuid
+        safe_name = os.path.basename(body.filename)
+        if not safe_name or safe_name in (".", ".."):
+            raise ValidationException("Invalid filename")
+        ext = os.path.splitext(safe_name)[1].lower()
+        if ext not in ALLOWED_FILE_EXTENSIONS:
+            raise ValidationException(f"File extension '{ext}' not allowed")
         asset_id = uuid.uuid4()
-        object_key = f"uploads/{user_id}/{asset_id}_{body.filename}"
+        object_key = f"uploads/{user_id}/{asset_id}_{safe_name}"
         upload_url = await self.storage.generate_presigned_upload_url(
             bucket="daragent",
             object_key=object_key,
@@ -28,6 +38,14 @@ class AssetService:
         return AssetUploadResponse(asset_id=asset_id, upload_url=upload_url, expires_in=900)
 
     async def confirm_upload(self, asset_id: UUID, user_id: UUID, object_key: str) -> AssetResponse:
+        expected_prefix = f"uploads/{user_id}/"
+        if not object_key.startswith(expected_prefix):
+            raise NotFoundException("Asset not found")
+
+        existing = await self.storage_repo.get_asset(asset_id)
+        if existing is not None and existing.owner_user_id != user_id:
+            raise NotFoundException("Asset not found")
+
         storage_obj = StorageObject(
             bucket="daragent",
             object_key=object_key,
