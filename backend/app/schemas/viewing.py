@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 VALID_REACTIONS = {"fire", "heart", "laugh", "cry", "neutral"}
 
 
-class ReactionEnum(str, Enum):
+class ReactionEnum(StrEnum):
     fire = "fire"
     heart = "heart"
     laugh = "laugh"

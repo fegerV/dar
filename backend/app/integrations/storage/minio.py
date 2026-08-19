@@ -99,3 +99,10 @@ class MinIOProvider(StorageProvider):
             object_key,
             expires=expires_in,
         )
+
+    async def healthcheck(self) -> bool:
+        try:
+            self.client.bucket_exists(self.bucket)
+            return True
+        except Exception:
+            return False

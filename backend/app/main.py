@@ -1,19 +1,17 @@
 import logging
 import shutil
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware import Middleware
+from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
-from sqlalchemy import text
 
 from app.core.config import settings
-from app.core.database import engine, async_session_factory
+from app.core.database import async_session_factory, engine
 from app.core.lifespan import lifespan
-from app.middleware.csrf import CSRFMiddleware
 from app.middleware.audit import AuditMiddleware
+from app.middleware.csrf import CSRFMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.request_id import RequestIdMiddleware
 
@@ -59,7 +57,7 @@ app.add_middleware(
 )
 
 
-from app.api.v1.router import v1_router
+from app.api.v1.router import v1_router  # noqa: E402
 
 app.include_router(v1_router)
 
@@ -80,9 +78,10 @@ async def health_detailed():
         db_ok = False
 
     disk = shutil.disk_usage("/")
+    disk_used_percent = (disk.used / disk.total) * 100 if disk.total > 0 else 0
 
     monitoring_ok = True
-    redis_ok = True
+    metrics = {}
     try:
         async with async_session_factory() as session:
             from app.services.monitoring.service import MonitoringService
@@ -90,20 +89,63 @@ async def health_detailed():
             metrics = await monitor.collect_system_metrics()
     except Exception:
         monitoring_ok = False
-        metrics = {}
+
+    from app.integrations.ai.registry import create_provider_registry
+
+    registry = create_provider_registry()
+    ai_providers_status = {}
+    ai_ok = True
+    provider_attrs = (
+        "text_providers",
+        "image_providers",
+        "video_providers",
+        "voice_providers",
+        "music_providers",
+    )
+    for attr in provider_attrs:
+        providers = getattr(registry, attr, [])
+        for p in providers:
+            try:
+                healthy = await p.healthcheck()
+                ai_providers_status[f"{p.name}"] = healthy
+                if not healthy:
+                    ai_ok = False
+            except Exception:
+                ai_providers_status[f"{p.name}"] = False
+                ai_ok = False
+
+    storage_ok = True
+    try:
+        from app.integrations.storage.factory import get_storage_provider
+        storage = get_storage_provider()
+        storage_ok = await storage.healthcheck()
+    except Exception:
+        storage_ok = False
+
+    redis_ok = metrics.get("components", {}).get("redis", False)
 
     return {
-        "status": "ok" if (db_ok and monitoring_ok) else "degraded",
+        "status": "ok" if (db_ok and monitoring_ok and ai_ok and storage_ok) else "degraded",
         "database": db_ok,
-        "redis": metrics.get("components", {}).get("redis", False),
+        "redis": redis_ok,
+        "ai_providers": ai_providers_status,
+        "storage": storage_ok,
         "disk": {
             "total": disk.total,
             "used": disk.used,
             "free": disk.free,
-            "used_percent": metrics.get("disk", {}).get("used_percent", 0),
+            "used_percent": disk_used_percent,
         },
+        "disk_alert": disk_used_percent > 90,
         "queue_depth": metrics.get("queue_depth", {}),
         "user_count": metrics.get("user_count", 0),
+        "components": {
+            "database": int(db_ok),
+            "redis": int(redis_ok),
+            "ai": int(ai_ok),
+            "storage": int(storage_ok),
+            "disk": int(disk_used_percent < 90),
+        },
     }
 
 

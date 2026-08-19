@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import BinaryIO
-from uuid import UUID
 
 
 class StorageProvider(ABC):
@@ -42,4 +40,8 @@ class StorageProvider(ABC):
         expires_in: int = 900,
         content_type: str | None = None,
     ) -> str:
+        ...
+
+    @abstractmethod
+    async def healthcheck(self) -> bool:
         ...

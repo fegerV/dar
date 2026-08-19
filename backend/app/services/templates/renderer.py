@@ -1,29 +1,53 @@
+import logging
 import re
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
 from app.models.template import Scene, SceneVariable, TemplateVersion
 from app.repositories.recommendations import TemplateRepository
 from app.schemas.template_render import (
-    RenderSceneRequest,
     RenderSceneResponse,
     RenderTemplateRequest,
     RenderTemplateResponse,
 )
+from app.services.cache.template_cache import TemplateCacheManager
+
+logger = logging.getLogger(__name__)
 
 
 class TemplateRenderer:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.template_repo = TemplateRepository(db)
+        self.cache = TemplateCacheManager(db)
 
-    async def render_template(self, body: RenderTemplateRequest) -> RenderTemplateResponse:
+    async def render_template(
+        self, body: RenderTemplateRequest, fallback_to_cache: bool = True
+    ) -> RenderTemplateResponse:
+        try:
+            return await self._render_template_internal(body)
+        except Exception as e:
+            if not fallback_to_cache:
+                raise
+            if isinstance(e, NotFoundException):
+                cached = await self._get_cached_render(body.template_version_id)
+                if cached:
+                    logger.info(
+                        "Graceful degradation: using cached template render for %s",
+                        body.template_version_id,
+                    )
+                    return cached
+            raise
+
+    async def _render_template_internal(
+        self, body: RenderTemplateRequest
+    ) -> RenderTemplateResponse:
         version = await self.template_repo.get_version_by_id(body.template_version_id)
         if version is None:
             raise NotFoundException("Версия шаблона не найдена")
-
         template = await self.template_repo.get_by_id(version.template_id)
         if template is None:
             raise NotFoundException("Шаблон не найден")
@@ -65,7 +89,7 @@ class TemplateRenderer:
         if template.preview_asset_id:
             preview_url = f"/assets/{template.preview_asset_id}"
 
-        return RenderTemplateResponse(
+        result = RenderTemplateResponse(
             template_version_id=body.template_version_id,
             scenes=rendered_scenes,
             total_duration_sec=total_duration,
@@ -73,15 +97,16 @@ class TemplateRenderer:
             render_config=version.render_config or {},
         )
 
+        await self._store_cache(body.template_version_id, result)
+        return result
+
     async def _get_scenes(self, template_id: UUID) -> list[Scene]:
-        from sqlalchemy import select
         result = await self.db.execute(
             select(Scene).where(Scene.template_id == template_id).order_by(Scene.created_at.asc())
         )
         return list(result.scalars().all())
 
     async def _get_variables(self, template_version_id: UUID) -> list[SceneVariable]:
-        from sqlalchemy import select
         result = await self.db.execute(
             select(SceneVariable)
             .join(Scene, SceneVariable.scene_id == Scene.id)
@@ -114,3 +139,11 @@ class TemplateRenderer:
         for scene in render_result.scenes:
             if not scene.rendered_prompt:
                 raise ValidationException(f"Не заполнена сцена: {scene.code}")
+
+    async def _get_cached_render(self, template_version_id: UUID) -> RenderTemplateResponse | None:
+        return await self.cache.get_rendered_template(template_version_id)
+
+    async def _store_cache(
+        self, template_version_id: UUID, result: RenderTemplateResponse
+    ) -> None:
+        await self.cache.store_rendered_template(template_version_id, result)

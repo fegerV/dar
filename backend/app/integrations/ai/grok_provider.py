@@ -1,9 +1,12 @@
-import hashlib
+import logging
 from typing import Any
 from uuid import UUID
 
 from app.core.config import settings
 from app.integrations.ai.base import BaseTextProvider
+from app.services.resilience.circuit_breaker import circuit_breaker
+
+logger = logging.getLogger(__name__)
 
 
 class GrokTextProvider(BaseTextProvider):
@@ -21,6 +24,7 @@ class GrokTextProvider(BaseTextProvider):
     def estimate_cost(self, task: dict[str, Any]) -> float:
         return 0.0
 
+    @circuit_breaker("grok_text", failure_threshold=3, recovery_timeout=60)
     async def generate_text(self, prompt: str, parameters: dict[str, Any]) -> dict[str, Any]:
         if not self.enabled:
             return {"text": None, "error": "Grok provider disabled"}
@@ -45,4 +49,8 @@ class GrokTextProvider(BaseTextProvider):
             )
             data = response.json()
             text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return {"text": text, "usage": data.get("usage", {}), "model": data.get("model", self.model)}
+            return {
+                "text": text,
+                "usage": data.get("usage", {}),
+                "model": data.get("model", self.model),
+            }

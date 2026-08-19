@@ -1,10 +1,10 @@
-import io
 from typing import BinaryIO
 
 import httpx
 
 from app.core.config import settings
 from app.integrations.storage.base import StorageProvider
+from app.services.resilience.circuit_breaker import circuit_breaker
 
 
 class YandexDiskProvider(StorageProvider):
@@ -19,6 +19,7 @@ class YandexDiskProvider(StorageProvider):
             "Accept": "application/json",
         }
 
+    @circuit_breaker("yandex_disk_upload", failure_threshold=3, recovery_timeout=60)
     async def upload(
         self,
         bucket: str,
@@ -128,3 +129,14 @@ class YandexDiskProvider(StorageProvider):
         if not upload_url:
             raise RuntimeError("Yandex Disk upload URL not received")
         return upload_url
+
+    async def healthcheck(self) -> bool:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{self.base_url}",
+                    headers=self._headers(),
+                )
+                return resp.status_code == 200
+        except Exception:
+            return False
