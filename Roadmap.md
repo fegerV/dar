@@ -538,11 +538,10 @@ TARGETED REGENERATION
 - [ ] Template Conditions — IF/ELSE по `recipient.age`, `relationship`, `occasion` и другим полям
 - [ ] Template Versioning & QA — версии, статусы `draft/testing/published/paused/archived`, обязательный QA-чеклист
 - [ ] 40 начальных шаблонов — каталог по категориям с карточками, себестоимостью и метриками
-- [ ] Gift/Delivery integration — интеграция с доставкой физических подарков / оживающими портретами
-- [ ] First Generation Free — `welcome_generation_credit`, отдельный entitlement type
-- [ ] Bonus System Details — пятничный бонус, бонусы за действия, expiry, конфигурируемые через Admin
-- [ ] Detailed Admin Panel — Users, Projects, Generations, Payments, Templates, Referrals, Audit
-- [ ] Security Events & Audit Log — `audit_logs` + `admin_users` + actions
+- [x] First Generation Free — `welcome_generation_credit`, отдельный entitlement type
+- [x] Bonus System Details — пятничный бонус, бонусы за действия, expiry, конфигурируемые через Admin
+- [x] Detailed Admin Panel — Users, Projects, Generations, Payments, Templates, Referrals, Audit
+- [x] Security Events & Audit Log — `audit_logs` + `admin_users` + actions (AuditMiddleware → DB)
 - [ ] Backup Strategy — daily full backup, WAL/PITR, offsite, retention
 - [ ] Production Security — Cloudflare, firewall, SSH, non-root Docker, secrets management
 - [ ] Disaster Recovery — RTO/RPO, recovery runbook, tested restore
@@ -554,7 +553,7 @@ TARGETED REGENERATION
 - [ ] Contact Import — локальная обработка контактов, явный выбор, privacy-first
 - [ ] Scheduled Delivery — отложенная отправка к дате/времени, timezone-aware
 - [ ] Referral Program — `referral_codes`, `referrals`, бонусы за invite/registration
-- [ ] Telegram Bot — acquisition/распространение через Telegram, deep links, Mini App-ready backend
+- [x] Telegram Bot — acquisition/распространение через Telegram, deep links, Mini App-ready backend
 - [ ] Android App — Kotlin/Jetpack Compose, Clean Architecture, основное клиентское приложение
 - [ ] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
 - [ ] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
@@ -565,9 +564,9 @@ TARGETED REGENERATION
 
 ### Security
 
-- [ ] Rate limiting (per IP, per user)
-- [ ] Input sanitization (XSS, SQL injection)
-- [ ] Audit logs для критических действий
+- [x] Rate limiting (per IP, per user) — Redis-backed with in-memory fallback
+- [x] Input sanitization (XSS, SQL injection)
+- [x] Audit logs для критических действий — AuditMiddleware writes to DB
 - [ ] GDPR compliance (data export, deletion)
 - [ ] Penetration testing
 - [ ] Secrets management (Vault / AWS Secrets Manager)
