@@ -6,6 +6,7 @@ from uuid import UUID
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
+from app.models.generation import Generation
 from app.models.intelligence import GenerationFailure, UserFeedback
 from app.schemas.intelligence import (
     GenerationFailureResponse,
@@ -52,11 +53,23 @@ async def get_generation_failure(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    from app.core.exceptions import NotFoundException
-    result = await db.execute(
+    gen_result = await db.execute(
+        select(Generation).where(Generation.id == generation_id)
+    )
+    generation = gen_result.scalar_one_or_none()
+    if generation is None:
+        raise NotFoundException("Generation not found")
+
+    from app.repositories.projects import ProjectRepository
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Generation not found")
+
+    failure_result = await db.execute(
         select(GenerationFailure).where(GenerationFailure.generation_id == generation_id)
     )
-    failure = result.scalar_one_or_none()
+    failure = failure_result.scalar_one_or_none()
     if failure is None:
         raise NotFoundException("Failure analysis not found")
     return GenerationFailureResponse.model_validate(failure)
@@ -68,6 +81,19 @@ async def submit_feedback(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    gen_result = await db.execute(
+        select(Generation).where(Generation.id == body.generation_id)
+    )
+    generation = gen_result.scalar_one_or_none()
+    if generation is None:
+        raise NotFoundException("Generation not found")
+
+    from app.repositories.projects import ProjectRepository
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(generation.project_id, current_user.id)
+    if project is None:
+        raise NotFoundException("Generation not found")
+
     feedback = UserFeedback(
         generation_id=body.generation_id,
         rating=body.rating,
