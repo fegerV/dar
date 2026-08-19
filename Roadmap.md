@@ -557,7 +557,7 @@ TARGETED REGENERATION
 - [ ] Android App — Kotlin/Jetpack Compose, Clean Architecture, основное клиентское приложение
 - [x] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
 - [x] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
-- [ ] Mascot Engine — интерактивный маскот (Rive State Machine) для onboarding, brief, generation, feedback
+- [x] Mascot Engine — интерактивный маскот (Rive State Machine) для onboarding, brief, generation, feedback
 
 ---
 
