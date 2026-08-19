@@ -268,6 +268,32 @@ class AdminService:
         codes = list(result.scalars().all())
         return [AdminReferralCodeResponse.model_validate(c) for c in codes]
 
+    async def list_gallery_pending(self) -> list:
+        from app.models.gallery import GalleryStatus, GallerySubmission
+
+        result = await self.db.execute(
+            select(GallerySubmission)
+            .where(GallerySubmission.status == GalleryStatus.pending)
+            .order_by(GallerySubmission.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def review_gallery_submission(self, submission_id, moderator_id, approve, make_public):
+        from app.models.gallery import GalleryStatus, GallerySubmission
+
+        submission = await self.db.get(GallerySubmission, submission_id)
+        if submission is None:
+            raise NotFoundException("Submission not found")
+        from datetime import datetime, timezone
+
+        submission.status = GalleryStatus.approved if approve else GalleryStatus.rejected
+        submission.moderator_id = moderator_id
+        submission.reviewed_at = datetime.now(timezone.utc)
+        if approve:
+            submission.is_public = make_public
+        await self.db.flush()
+        return submission
+
     async def get_order(self, order_id: UUID) -> AdminOrderDetailResponse:
         result = await self.db.execute(select(Generation).where(Generation.id == order_id))
         generation = result.scalar_one_or_none()

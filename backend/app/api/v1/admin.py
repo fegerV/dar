@@ -22,8 +22,8 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
-    WorkerStatusUpdate,
     QueueJobAction,
+    WorkerStatusUpdate,
 )
 from app.services.admin.service import AdminService
 
@@ -265,3 +265,42 @@ async def get_order(
 ):
     service = AdminService(db)
     return await service.get_order(order_id)
+
+
+@router.get("/gallery/pending")
+async def get_gallery_pending(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    items = await service.list_gallery_pending()
+    return [
+        {
+            "id": str(i.id),
+            "title": i.title,
+            "video_url": i.video_url,
+            "thumbnail_url": i.thumbnail_url,
+            "user_id": str(i.user_id),
+            "created_at": i.created_at.isoformat(),
+        }
+        for i in items
+    ]
+
+
+@router.post("/gallery/{submission_id}/review")
+async def review_gallery_submission(
+    submission_id: UUID,
+    approve: bool = Query(default=True),
+    make_public: bool = Query(default=False),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    submission = await service.review_gallery_submission(
+        submission_id, current_user.id, approve, make_public
+    )
+    return {
+        "id": str(submission.id),
+        "status": submission.status.value,
+        "is_public": submission.is_public,
+    }

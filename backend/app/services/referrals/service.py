@@ -13,6 +13,7 @@ from app.schemas.referral import ReferralCodeResponse, ReferralResponse, Referra
 class ReferralService:
     REFERRER_BONUS_RUB = 200.00
     REFEREE_BONUS_RUB = 100.00
+    MAX_ATTRIBUTIONS_PER_CODE = 10
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -94,6 +95,34 @@ class ReferralService:
 
         await self.db.commit()
         return ReferralResponse.model_validate(referral)
+
+    async def record_referral_attribution(self, referral_id: UUID) -> None:
+        """Record that a referral was attributed via a share link view (fraud prevention)."""
+        referral = await self.db.get(Referral, referral_id)
+        if not referral:
+            return
+
+        metadata = dict(referral.metadata_ or {})
+        attribution_count = metadata.get("share_attributions", 0)
+
+        if attribution_count >= self.MAX_ATTRIBUTIONS_PER_CODE:
+            return
+
+        metadata["share_attributions"] = attribution_count + 1
+        referral.metadata_ = metadata
+        await self.db.flush()
+
+    async def validate_referral_code(self, code: str, user_id: UUID) -> bool:
+        """Fraud prevention: validate code, prevent self-referral, check limits."""
+        code_obj = await self.repo.get_by_code(code)
+        if not code_obj or code_obj.user_id == user_id:
+            return False
+
+        existing = await self.repo.get_referral_by_referee(user_id)
+        if existing:
+            return False
+
+        return True
 
     async def get_stats(self, user_id: UUID) -> ReferralStatsResponse:
         code_result = await self.db.execute(

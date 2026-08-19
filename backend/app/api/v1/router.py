@@ -11,6 +11,7 @@ from app.api.v1.calendar import router as calendar_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.feedback import router as feedback_router
+from app.api.v1.gallery import router as gallery_router
 from app.api.v1.generations import router as generations_router
 from app.api.v1.generations_stream import router as generations_stream_router
 from app.api.v1.holidays import router as holidays_router
@@ -62,3 +63,4 @@ v1_router.include_router(account_router)
 v1_router.include_router(calendar_router)
 v1_router.include_router(contacts_router)
 v1_router.include_router(relationship_context_router)
+v1_router.include_router(gallery_router)

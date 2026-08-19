@@ -50,6 +50,7 @@ class PublicShareView(BaseModel):
     video_url: str | None = None
     thumbnail_url: str | None = None
     duration_sec: int | None = None
+    referral_code: str | None = None
 
     model_config = {"from_attributes": True}
 

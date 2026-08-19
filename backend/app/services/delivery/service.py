@@ -1,13 +1,12 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
 from app.models.delivery import Delivery, DeliveryLink, ShareEvent
-from app.models.project import Project
 from app.repositories.delivery import DeliveryRepository
 from app.repositories.projects import ProjectRepository
 from app.schemas.delivery import (
@@ -15,7 +14,6 @@ from app.schemas.delivery import (
     DeliveryListResponse,
     DeliveryResponse,
     PublicShareView,
-    ShareLinkResponse,
 )
 
 
@@ -38,11 +36,21 @@ class DeliveryService:
 
         token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_in_days)
+        expires_at = datetime.now(UTC) + timedelta(days=body.expires_in_days)
 
         password_hash = None
         if body.password:
             password_hash = hashlib.sha256(body.password.encode()).hexdigest()
+
+        from app.services.referrals.service import ReferralService
+
+        referral_code = None
+        referrer_user_id = None
+        ref_service = ReferralService(self.db)
+        code_obj = await ref_service.get_my_code(user_id)
+        if code_obj:
+            referral_code = code_obj.code
+            referrer_user_id = user_id
 
         link = DeliveryLink(
             project_id=project_id,
@@ -55,14 +63,21 @@ class DeliveryService:
         )
         link = await self.repo.create_link(link)
 
-        public_url = f"/share/{token}"
+        await self.repo.set_referral_data(link.id, referral_code, referrer_user_id)
+
+        if referral_code:
+            public_url = f"/share/{token}?ref={referral_code}"
+        else:
+            public_url = f"/share/{token}"
 
         delivery = Delivery(
             project_id=project_id,
             generation_id=generation.id,
             user_id=user_id,
             channel=body.channel,
-            status="scheduled" if body.scheduled_at else ("sent" if body.channel != "link" else "created"),
+             status="scheduled" if body.scheduled_at else (
+                "sent" if body.channel != "link" else "created"
+            ),
             destination=body.destination,
             delivery_link_id=link.id,
             scheduled_at=body.scheduled_at,
@@ -128,13 +143,15 @@ class DeliveryService:
             raise NotFoundException("Доставка не найдена")
         return DeliveryResponse.model_validate(delivery)
 
-    async def get_public_share(self, token: str, password: str | None = None) -> PublicShareView:
+    async def get_public_share(
+        self, token: str, password: str | None = None, track: bool = True
+    ) -> PublicShareView:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         link = await self.repo.get_link_by_token(token_hash)
         if link is None or not link.is_active:
             raise NotFoundException("Ссылка не найдена или недоступна")
 
-        if link.expires_at and datetime.now(timezone.utc) > link.expires_at:
+        if link.expires_at and datetime.now(UTC) > link.expires_at:
             raise NotFoundException("Ссылка истекла")
 
         if link.max_views is not None and (link.view_count or 0) >= link.max_views:
@@ -146,7 +163,9 @@ class DeliveryService:
             if hashlib.sha256(password.encode()).hexdigest() != link.password_hash:
                 raise ValidationException("Неверный пароль")
 
-        await self.repo.increment_link_views(link.id)
+        if track:
+            await self.repo.increment_link_views(link.id)
+            await self.repo.track_referral_view(link.id)
 
         generation = await self.repo.get_latest_generation(link.project_id)
         output = generation.output_json if generation else {}
@@ -159,6 +178,7 @@ class DeliveryService:
             video_url=output.get("video_url"),
             thumbnail_url=output.get("thumbnail_url"),
             duration_sec=output.get("duration_sec"),
+            referral_code=link.referral_code if hasattr(link, "referral_code") else None,
         )
 
     async def track_share_event(
@@ -176,11 +196,11 @@ class DeliveryService:
     @staticmethod
     def _convert_to_utc(scheduled_at: datetime, user_timezone: str) -> datetime:
         if scheduled_at.tzinfo is not None:
-            return scheduled_at.astimezone(timezone.utc)
+            return scheduled_at.astimezone(UTC)
         from zoneinfo import ZoneInfo
 
         try:
             tz = ZoneInfo(user_timezone)
-            return scheduled_at.replace(tzinfo=tz).astimezone(timezone.utc)
+            return scheduled_at.replace(tzinfo=tz).astimezone(UTC)
         except Exception:
-            return scheduled_at.replace(tzinfo=timezone.utc)
+            return scheduled_at.replace(tzinfo=UTC)

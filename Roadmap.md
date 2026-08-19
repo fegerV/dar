@@ -381,19 +381,19 @@ TARGETED REGENERATION
 - [x] Share links с аналитикой просмотров
   - [x] Unique link per share
   - [x] View count tracking
-  - [ ] Referral attribution
-- [ ] Referral program
-  - [ ] Unique referral code per user
-  - [ ] Bonus for referrer + referee
-  - [ ] Fraud prevention
-- [ ] Social media sharing
-  - [ ] Open Graph tags generation
-  - [ ] Twitter Card metadata
-  - [ ] Direct share buttons
-- [ ] Public gallery (opt-in)
-  - [ ] User consent required
-  - [ ] Moderation before publish
-  - [ ] Attribution to creator
+  - [x] Referral attribution
+- [x] Referral program
+  - [x] Unique referral code per user
+  - [x] Bonus for referrer + referee
+  - [x] Fraud prevention
+- [x] Social media sharing
+  - [x] Open Graph tags generation
+  - [x] Twitter Card metadata
+  - [x] Direct share buttons
+- [x] Public gallery (opt-in)
+  - [x] User consent required
+  - [x] Moderation before publish
+  - [x] Attribution to creator
 
 ### 3.4 Pricing Engine
 

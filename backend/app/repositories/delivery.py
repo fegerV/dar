@@ -1,6 +1,5 @@
 import hashlib
-import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -19,6 +18,50 @@ class DeliveryRepository:
         await self.db.flush()
         return link
 
+    async def set_referral_data(
+        self, link_id: UUID, referral_code: str | None, referrer_user_id: UUID | None
+    ) -> None:
+        link = await self.db.get(DeliveryLink, link_id)
+        if link:
+            link.referral_code = referral_code
+            link.referrer_user_id = referrer_user_id
+            await self.db.flush()
+
+    async def track_referral_view(self, link_id: UUID) -> None:
+        link = await self.db.get(DeliveryLink, link_id)
+        if link and link.referral_code:
+            link.referral_attribution_count = (link.referral_attribution_count or 0) + 1
+
+            from app.models.referral import Referral
+            from app.services.referrals.service import ReferralService
+
+            ref_service = ReferralService(self.db)
+            code_obj = await ref_service.repo.get_by_code(link.referral_code)
+            if code_obj:
+                result = await self.db.execute(
+                    select(Referral).where(
+                        Referral.code == code_obj.code,
+                        Referral.referred_user_id.is_(None),
+                    )
+                )
+                referral = result.scalar_one_or_none()
+                if referral:
+                    await ref_service.record_referral_attribution(referral.id)
+            await self.db.flush()
+
+    async def track_referral_view_by_code(self, token: str, referral_code: str) -> None:
+        """Track referral attribution when a viewer uses a ?ref= code on a share link."""
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        result = await self.db.execute(
+            select(DeliveryLink).where(DeliveryLink.token_hash == token_hash)
+        )
+        link = result.scalar_one_or_none()
+        if link:
+            from app.services.referrals.service import ReferralService
+
+            ref_service = ReferralService(self.db)
+            await ref_service.repo.record_referral_view_on_link(link.id, referral_code)
+
     async def get_link_by_token(self, token_hash: str) -> DeliveryLink | None:
         result = await self.db.execute(
             select(DeliveryLink).where(DeliveryLink.token_hash == token_hash)
@@ -29,7 +72,7 @@ class DeliveryRepository:
         link = await self.db.get(DeliveryLink, link_id)
         if link:
             link.view_count = (link.view_count or 0) + 1
-            link.last_opened_at = datetime.now(timezone.utc)
+            link.last_opened_at = datetime.now(UTC)
             await self.db.flush()
 
     async def create_delivery(self, delivery: Delivery) -> Delivery:
@@ -43,7 +86,9 @@ class DeliveryRepository:
 
     async def list_by_project(self, project_id: UUID) -> list[Delivery]:
         result = await self.db.execute(
-            select(Delivery).where(Delivery.project_id == project_id).order_by(Delivery.created_at.desc())
+            select(Delivery)
+            .where(Delivery.project_id == project_id)
+            .order_by(Delivery.created_at.desc())
         )
         return list(result.scalars().all())
 
