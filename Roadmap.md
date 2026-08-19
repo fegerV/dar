@@ -581,12 +581,12 @@ TARGETED REGENERATION
 
 ### Reliability
 
-- [ ] Health checks для всех сервисов
-- [ ] Graceful degradation (AI down → cached templates)
-- [ ] Circuit breakers для внешних API
-- [ ] Backup strategy (daily DB, hourly WAL)
-- [ ] Disaster recovery plan
-- [ ] Chaos engineering tests
+- [x] Health checks для всех сервисов
+- [x] Graceful degradation (AI down → cached templates)
+- [x] Circuit breakers для внешних API
+- [x] Backup strategy (daily DB, hourly WAL)
+- [x] Disaster recovery plan
+- [x] Chaos engineering tests
 
 ### DevOps
 
