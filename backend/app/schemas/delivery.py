@@ -55,7 +55,3 @@ class PublicShareView(BaseModel):
 
 class PublicShareAccessRequest(BaseModel):
     password: str | None = None
-
-
-class DeliveryTrackRequest(BaseModel):
-    delivery_id: UUID

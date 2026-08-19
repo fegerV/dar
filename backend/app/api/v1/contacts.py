@@ -45,7 +45,7 @@ async def import_contacts(
             contact_email=None,
             notes="Imported from contacts",
         )
-        repo.db.add(recipient)
+        await repo.create(recipient)
         imported += 1
     await db.commit()
     return ContactImportResponse(imported=imported, skipped=skipped)

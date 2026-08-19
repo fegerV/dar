@@ -25,14 +25,6 @@ class PaymentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class PaymentWebhookRequest(BaseModel):
-    event: str
-    payment_id: str | None = None
-    status: str | None = None
-    amount: float | None = None
-    metadata: dict | None = None
-
-
 class PaymentWebhookResponse(BaseModel):
     received: bool = True
 

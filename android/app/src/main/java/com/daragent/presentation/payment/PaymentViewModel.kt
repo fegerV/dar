@@ -93,7 +93,8 @@ class PaymentViewModel(
                         cachePaymentLocally(payment)
                         return@launch
                     }
-                }.onFailure {
+                }.onFailure { e ->
+                    _state.value = _state.value.copy(error = e.message, isLoading = false)
                 }
                 attempts++
                 delay(3000)

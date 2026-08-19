@@ -1,21 +1,12 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException
 from app.integrations.storage.factory import get_storage_provider
 from app.models.asset import Asset, StorageObject
-from app.models.payment import Payment
-from app.repositories.storage import PaymentRepository, StorageRepository, WalletRepository
+from app.repositories.storage import StorageRepository
 from app.schemas.asset import AssetUploadRequest, AssetUploadResponse, AssetResponse, AssetListResponse
-from app.schemas.payment import (
-    EntitlementResponse,
-    PaymentCreate,
-    PaymentResponse,
-    PaymentWebhookResponse,
-    WalletResponse,
-)
 
 
 class AssetService:
@@ -81,48 +72,3 @@ class AssetService:
         if asset is None or asset.owner_user_id != user_id:
             raise NotFoundException("Asset not found")
         return AssetResponse.model_validate(asset)
-
-
-
-class WalletService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.wallet_repo = WalletRepository(db)
-
-    async def get_or_create_wallet(self, user_id: UUID):
-        from app.models.payment import Wallet
-        wallet = await self.wallet_repo.get_by_user_id(user_id)
-        if wallet is None:
-            wallet = Wallet(user_id=user_id, balance_rub=0, bonus_balance=0)
-            await self.wallet_repo.create(wallet)
-            await self.db.commit()
-        return wallet
-
-    async def get_wallet(self, user_id: UUID) -> WalletResponse:
-        wallet = await self.get_or_create_wallet(user_id)
-        return WalletResponse.model_validate(wallet)
-
-
-class PaymentService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.payment_repo = PaymentRepository(db)
-        self.wallet_service = WalletService(db)
-
-    async def create_payment(self, user_id: UUID, project_id: UUID, body: PaymentCreate) -> PaymentResponse:
-        payment = Payment(
-            user_id=user_id,
-            project_id=project_id,
-            method=body.method,
-            amount_rub=0,  # calculated elsewhere
-            bonus_amount_rub=0,
-            discount_rub=0,
-            status="pending",
-        )
-        await self.payment_repo.create(payment)
-        await self.db.commit()
-        return PaymentResponse.model_validate(payment)
-
-    async def handle_webhook(self, body: PaymentWebhookRequest) -> PaymentWebhookResponse:
-        # Idempotent webhook processing
-        return PaymentWebhookResponse(received=True)

@@ -34,27 +34,6 @@ class RecipeService:
         await self.db.flush()
 
 
-class ModelSelectorService:
-    def __init__(self, db) -> None:
-        self.db = db
-        self.recipe_service = RecipeService(db)
-
-    async def select_model(self, template_code: str, input_metadata: dict | None = None) -> str | None:
-        recipe = await self.recipe_service.get_best_recipe(template_code, input_metadata)
-        if recipe:
-            return recipe.model_name
-        return self._fallback_model(input_metadata)
-
-    def _fallback_model(self, input_metadata: dict | None) -> str | None:
-        if not input_metadata:
-            return "grok"
-        if input_metadata.get("face_count", 1) > 1:
-            return "kling"
-        if input_metadata.get("pose") == "profile":
-            return "veo"
-        return "grok"
-
-
 class FailureAnalyzer:
     CRITIC_TO_FAILURES = {
         "identity_score": ["face_distortion", "low_face_quality"],

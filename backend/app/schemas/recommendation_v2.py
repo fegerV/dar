@@ -20,12 +20,6 @@ class RecommendationItem(BaseModel):
     concept_title: str | None = None
 
 
-class RecommendationJobResponse(BaseModel):
-    project_id: UUID
-    status: str
-    queued_at: datetime | None = None
-
-
 class RecommendationListResponseV2(BaseModel):
     items: list[RecommendationItem]
     generated_at: datetime

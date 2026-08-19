@@ -4,12 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-class RenderVariable(BaseModel):
-    code: str
-    value: str | None = None
-    type: str = "text"
-
-
 class RenderSceneRequest(BaseModel):
     scene_id: UUID
     variables: dict[str, str | None] = Field(default_factory=dict)
