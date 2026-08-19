@@ -557,6 +557,172 @@ TARGETED REGENERATION
 - [ ] Android App — Kotlin/Jetpack Compose, Clean Architecture, основное клиентское приложение
 - [x] Feedback Loop — пост-просмотровые реакции (`🔥/❤️/😂/😭/😐`), детали негатива
 - [x] A/B Testing Framework — варианты шаблонов/цен/скриптов, сравнительные метрики
+- [ ] Mascot Engine — интерактивный маскот (Rive State Machine) для onboarding, brief, generation, feedback
+
+---
+
+## Mascot Engine Technical Specification (ТЗ)
+
+### 1. Архитектура
+
+Дарагент — это персонаж с состояниями, а не набор анимационных файлов.
+
+```
+                  USER / SYSTEM
+                       ↓
+                  MascotEvent
+                       ↓
+                MascotController
+                       ↓
+                 MascotState
+                       ↓
+               Rive State Machine
+                       ↓
+                  Animation
+                       ↓
+              Dynamic UI / Bubble
+```
+
+### 2. Технологии
+
+| Задача | Формат/технология |
+|--------|-------------------|
+| Лисёнок | Rive (.riv) |
+| State Machine | Rive State Machine |
+| UI effects | Lottie JSON |
+| Иконки | SVG / Android Vector Drawable |
+| Статические изображения | WebP |
+| Фотографии | JPEG + WebP |
+| Видео | MP4 H.264/H.265 |
+| Музыка | AAC |
+| Голос | AAC/Opus |
+
+### 3. Android проект структура
+
+```text
+presentation/
+└── mascot/
+    ├── MascotView.kt
+    ├── MascotController.kt
+    ├── MascotState.kt
+    ├── MascotEvent.kt
+    ├── MascotStateMachine.kt
+    ├── MascotBubble.kt
+    └── MascotRepository.kt
+
+assets/
+└── mascot/
+    ├── daragent_fox.riv
+    ├── effects/
+    │   ├── sparkle.json
+    │   ├── confetti.json
+    │   └── magic.json
+    └── sounds/
+        ├── notebook_open.mp3
+        ├── writing.mp3
+        ├── success.mp3
+        └── magic.mp3
+```
+
+### 4. Состояния маскота (MVP)
+
+| State ID | Состояние | Назначение |
+|---|---|---|
+| `idle` | Спокойное | обычное состояние |
+| `hello` | Приветствие | первый запуск |
+| `listen` | Слушает | пользователь вводит ответ |
+| `think` | Думает | обработка ответа |
+| `write` | Пишет | запись в блокнот |
+| `read` | Читает | смотрит записи |
+| `look_up` | Поднимает взгляд | переход к следующему вопросу |
+| `happy` | Радуется | хороший ответ |
+| `surprised` | Удивление | интересный факт |
+| `wink` | Подмигивает | шутка/игривость |
+| `point` | Показывает | подсказка/выбор |
+| `celebrate` | Празднует | готовое поздравление |
+| `working` | Работает | генерация |
+| `success` | Успех | успешное завершение |
+| `error` | Ошибка | ошибка генерации/системы |
+| `sorry` | Извиняется | проблема |
+| `goodbye` | Прощание | выход/завершение |
+
+### 5. Базовая мимика — компоненты персонажа
+
+**Глаза:** blink, look left/right/down/up, surprised, happy
+**Брови:** neutral, raised, worried, happy
+**Рот:** neutral, smile, happy, surprised, sad, talking/expressive
+**Голова:** neutral, nod, shake, tilt left/right
+**Тело:** idle/breathing, lean forward/back, excited
+**Руки:** wave, write, hold notebook, point, celebrate, thinking, surprise
+
+### 6. Блокнот (Notebook)
+
+Блокнот — часть Rive-сцены. Текст накладывается Android-интерфейсом (не зашит в анимацию).
+
+Состояния:
+- `notebook_closed` → `notebook_open` → `write` → `look_up` → `happy`
+
+### 7. Системные события (MascotEvent)
+
+```
+SHOW_HELLO, USER_TYPING, USER_FINISHED_TYPING, ANSWER_RECEIVED,
+SAVE_STARTED, SAVE_COMPLETED, INTERESTING_FACT, GENERATION_STARTED,
+GENERATION_COMPLETED, GENERATION_FAILED, USER_SELECTED_TEMPLATE,
+USER_SELECTED_PREMIUM, SHARE_COMPLETED, REFERRAL_COMPLETED
+```
+
+### 8. Слои анимации
+
+- **Loop:** idle, listen, working, thinking
+- **One Shot:** hello, write, wink, celebrate, success, goodbye
+- После One Shot автоматически возвращается в idle
+
+### 9. Переходы между состояниями
+
+Плавные переходы (не резкие переключения):
+- idle → listen → think → write → happy → idle
+
+### 10. Asset Storage Архитектура
+
+```
+Android → FastAPI → Object Storage → MinIO/S3
+```
+
+**PostgreSQL** (метаданные): `photo_id`, `user_id`, `storage_key`, `mime_type`, `width`, `height`, `size`, `quality_score`, `created_at`
+
+**Object Storage** (сами файлы):
+- `/user/{user_id}/photos/`
+- `/user/{user_id}/avatars/`
+- `/generation/{generation_id}/input/intermediate/output/`
+- `/templates/`, `/mascot/`, `/effects/`, `/sounds/`
+
+### 11. Creative Brief хранение
+
+PostgreSQL relational + JSONB:
+
+**Реляционные таблицы:** `users`, `user_profiles`, `user_photos`, `recipients`, `recipient_interests`, `greeting`, `brief_sessions`, `brief_messages`
+
+**JSONB поля:** `personality`, `interests`, `creative_preferences`, `conversation_context`
+
+AI metadata для фото: `quality_score`, `face_detected`, `frontal_score`, `lighting_score`, `identity_score`
+
+### 12. Onboarding сценарий
+
+```
+State 1: hello → "Привет! Меня зовут Дарагент..."
+State 2: listen → пользователь вводит имя
+State 3: think → обработка ответа
+State 4: write → открывает блокнот, записывает имя
+State 5: happy → "Очень приятно, Виктор!"
+State 6: look_up → "А кого будем поздравлять?"
+```
+
+### 13. Анимация должна быть лёгкой
+
+- Минимальный размер `.riv`-файла
+- Векторная графика
+- 30 FPS достаточно
+- Работает на недорогих Android-смартфонах
 
 ---
 
