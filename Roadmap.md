@@ -860,8 +860,9 @@ State 6: look_up → "А кого будем поздравлять?"
    - [ ] Recipe auto-generation from results
 
 7. **Фаза 3.1: Payment — Transaction History** (1 неделя)
-   - [ ] Ledger transaction listing API
-   - [ ] Admin UI for transaction history
+   - [x] Ledger transaction listing API
+   - [x] Admin UI for transaction history
+   - [x] Integration tests for ledger transactions (7 tests)
 
 8. **Фаза 4: Onboarding Flow — реализация в веб** (2 недели)
    - [ ] About Me page (gender/age collection)

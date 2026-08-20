@@ -23,6 +23,7 @@ const navItems = [
   { href: "/admin/storage", label: "Storage", icon: HardDrive },
   { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/ledger", label: "Transaction History", icon: BarChart3 },
   { href: "/admin/referrals", label: "Referrals", icon: ClipboardList },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: Shield },
   { href: "/admin/system", label: "System", icon: Settings },

@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
 from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
-from app.models.payment import Payment, Wallet
+from app.models.payment import LedgerTransaction, Payment, Wallet
 from app.models.project import Project
 from app.models.referral import Referral, ReferralCode
 from app.models.template import Template, TemplateVersion, Scene
@@ -20,6 +20,8 @@ from app.schemas.admin import (
     AdminDashboardStats,
     AdminGenerationDetailResponse,
     AdminGenerationResponse,
+    AdminLedgerResponse,
+    AdminLedgerTransactionResponse,
     AdminOrderDetailResponse,
     AdminOrderResponse,
     AdminPaymentResponse,
@@ -313,6 +315,52 @@ class AdminService:
         )
         payments = list(result.scalars().all())
         return [AdminPaymentResponse.model_validate(p) for p in payments], total
+
+    async def list_ledger_transactions(
+        self, page: int = 1, page_size: int = 20, transaction_type: str | None = None
+    ) -> AdminLedgerResponse:
+        query = select(LedgerTransaction).order_by(LedgerTransaction.created_at.desc())
+        count_query = select(func.count()).select_from(LedgerTransaction)
+
+        if transaction_type:
+            query = query.where(LedgerTransaction.type == transaction_type)
+            count_query = count_query.where(LedgerTransaction.type == transaction_type)
+
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar() or 0
+
+        offset = (page - 1) * page_size
+        result = await self.db.execute(query.offset(offset).limit(page_size))
+        transactions = list(result.scalars().all())
+
+        tx_dtos = []
+        for tx in transactions:
+            user_email = None
+            if tx.user_id is not None:
+                user_result = await self.db.execute(select(User.email).where(User.id == tx.user_id))
+                user_email = user_result.scalar_one_or_none()
+            tx_dtos.append(
+                AdminLedgerTransactionResponse(
+                    id=tx.id,
+                    user_id=tx.user_id,
+                    user_email=user_email,
+                    wallet_id=tx.wallet_id,
+                    type=tx.type,
+                    amount_rub=float(tx.amount_rub),
+                    is_bonus=tx.is_bonus,
+                    admin_id=tx.admin_id,
+                    reason=tx.reason,
+                    reference_id=tx.reference_id,
+                    created_at=tx.created_at,
+                )
+            )
+
+        return AdminLedgerResponse(
+            transactions=tx_dtos,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     async def list_audit_logs(self, limit: int = 100) -> list[AdminAuditLogResponse]:
         from app.models.audit import AuditLog

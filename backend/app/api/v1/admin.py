@@ -20,6 +20,7 @@ from app.schemas.admin import (
     AdminDashboardStats,
     AdminGenerationDetailResponse,
     AdminGenerationResponse,
+    AdminLedgerResponse,
     AdminPromptTemplateCreate,
     AdminPromptTemplateResponse,
     AdminPromptTemplateUpdate,
@@ -266,6 +267,18 @@ async def list_payments(
     service = AdminService(db)
     payments, _ = await service.list_payments(page, page_size)
     return payments
+
+
+@router.get("/ledger/transactions", response_model=AdminLedgerResponse)
+async def list_ledger_transactions(
+    page: int = 1,
+    page_size: int = 20,
+    transaction_type: str | None = Query(default=None, description="Filter by transaction type"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_ledger_transactions(page, page_size, transaction_type)
 
 
 @router.post("/payments/{payment_id}/refund")

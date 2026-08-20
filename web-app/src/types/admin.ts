@@ -109,6 +109,27 @@ export interface AdminPayment {
   paid_at: string | null
 }
 
+export interface AdminLedgerTransaction {
+  id: string
+  user_id: string
+  user_email: string | null
+  wallet_id: string | null
+  type: string
+  amount_rub: number
+  is_bonus: boolean
+  admin_id: string | null
+  reason: string
+  reference_id: string | null
+  created_at: string
+}
+
+export interface AdminLedgerResponse {
+  transactions: AdminLedgerTransaction[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface AuditLog {
   id: string
   actor_user_id: string | null

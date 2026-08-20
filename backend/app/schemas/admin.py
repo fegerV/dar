@@ -90,6 +90,31 @@ class WalletLedgerEntryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AdminLedgerTransactionResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    user_email: str | None = None
+    wallet_id: UUID | None = None
+    type: str
+    amount_rub: float
+    is_bonus: bool
+    admin_id: UUID | None = None
+    reason: str
+    reference_id: UUID | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AdminLedgerResponse(BaseModel):
+    transactions: list[AdminLedgerTransactionResponse]
+    total: int
+    page: int
+    page_size: int
+
+    model_config = {"from_attributes": True}
+
+
 class AdminReferralCodeResponse(BaseModel):
     id: UUID
     code: str
