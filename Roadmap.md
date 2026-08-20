@@ -845,8 +845,9 @@ State 6: look_up → "А кого будем поздравлять?"
    - [x] 6 integration tests
 
 4. **Фаза 2.3: Template Rendering — Image/Video insertion** (1 неделя)
-   - [ ] Image/video asset insertion into scenes
-   - [ ] Audio overlay support
+   - [x] Image/video asset insertion into scenes
+   - [x] Audio overlay support
+   - [x] 7 integration tests
 
 5. **Фаза 2.3: Template Rendering — Low-res preview** (1 неделя)
    - [ ] 360p preview generation within 30s
