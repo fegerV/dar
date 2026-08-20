@@ -395,11 +395,12 @@ class AdminService:
             ("notifications", {"telegram_enabled": False, "email_enabled": True}),
         ]
         for key, value in defaults:
-            existing = await self.db.get(SystemSettings, key)
+            result = await self.db.execute(select(SystemSettings).where(SystemSettings.key == key))
+            existing = result.scalar_one_or_none()
             if existing is None:
                 setting = SystemSettings(key=key, value=value, description=f"Default {key}", is_public=False)
                 self.db.add(setting)
-        await self.db.flush()
+        await self.db.commit()
 
     async def get_user(self, user_id: UUID) -> AdminUserResponse:
         result = await self.db.execute(select(User).where(User.id == user_id))

@@ -1,3 +1,5 @@
+"use client"
+
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/admin-auth-context"
 import { Moon, Sun, User } from "lucide-react"

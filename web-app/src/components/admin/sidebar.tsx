@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook, Gavel } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 interface NavItem {

@@ -8,6 +8,7 @@ Create Date: 2026-08-19
 from typing import Sequence, Union
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
 
 revision: str = "022_add_relationship_context"
@@ -20,14 +21,15 @@ def upgrade() -> None:
     op.create_table(
         "relationship_subtypes",
         sa.Column("id", sa.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("code", sa.String(50), nullable=False, unique=True),
+        sa.Column("code", sa.String(50), nullable=False),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("parent_code", sa.String(50), nullable=True),
         sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("true")),
-        sa.Column("metadata", sa.JSONB, nullable=False, server_default="{}"),
+        sa.Column("metadata", JSONB, nullable=False, server_default="{}"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.UniqueConstraint("code", "parent_code", name="uq_relationship_subtypes_code_parent"),
     )
 
     op.create_table(
@@ -38,7 +40,7 @@ def upgrade() -> None:
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("true")),
-        sa.Column("metadata", sa.JSONB, nullable=False, server_default="{}"),
+        sa.Column("metadata", JSONB, nullable=False, server_default="{}"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint("owner_user_id", "code", name="uq_recipient_groups_owner_code"),
@@ -51,7 +53,7 @@ def upgrade() -> None:
         sa.Column("group_id", sa.UUID(as_uuid=True), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("description", sa.String(2000), nullable=False),
-        sa.Column("tags", sa.JSONB, nullable=False, server_default="[]"),
+        sa.Column("tags", JSONB, nullable=False, server_default="[]"),
         sa.Column("remind_before_days", sa.Integer, nullable=True),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
@@ -71,6 +73,7 @@ def upgrade() -> None:
           ('work_colleague','Коллега','colleague',0,true),
           ('work_boss','Начальник','boss',0,true),
           ('work_subordinate','Подчинённый','colleague',1,true)
+        ON CONFLICT DO NOTHING
     """)
 
 

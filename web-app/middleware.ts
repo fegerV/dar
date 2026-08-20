@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-const ADMIN_PATHS = ["/admin/dashboard", "/admin/orders", "/admin/generations", "/admin/queue", "/admin/users", "/admin/templates", "/admin/payments", "/admin/workers", "/admin/system"]
+const ADMIN_PATHS = ["/admin/dashboard", "/admin/orders", "/admin/generations", "/admin/queue", "/admin/users", "/admin/templates", "/admin/payments", "/admin/workers", "/admin/system", "/admin/help"]
+
+const SUPPORTED_LOCALES = ["ru", "en"]
 
 export function middleware(request: NextRequest) {
-  const locale = request.nextUrl.searchParams.get("locale") || "ru"
-  const response = NextResponse.redirect(new URL(`/${locale}${request.nextUrl.pathname}`, request.url))
-  response.cookies.set("locale", locale, { path: "/", maxAge: 60 * 60 * 24 * 365 })
+  const { pathname, searchParams } = request.nextUrl
+  const locale = searchParams.get("locale") || "ru"
 
-  if (request.nextUrl.pathname.startsWith("/admin") && !request.nextUrl.pathname.startsWith("/admin/login") && !request.nextUrl.pathname.startsWith("/admin/init") && !request.nextUrl.pathname.startsWith("/admin/setup")) {
-     const token = request.cookies.get("daragent_admin_access")?.value
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login") && !pathname.startsWith("/admin/init") && !pathname.startsWith("/admin/setup")) {
+    const token = request.cookies.get("daragent_admin_access")?.value
     if (!token) {
-      return NextResponse.redirect(new URL("/admin/login", request.url))
+      return NextResponse.redirect(new URL(`/${locale}/admin/login?locale=${locale}`, request.url))
     }
   }
+
+  const response = NextResponse.next()
+  response.cookies.set("locale", locale, { path: "/", maxAge: 60 * 60 * 24 * 365 })
 
   return response
 }
