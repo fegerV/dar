@@ -4,6 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { MockGenerator } from "@/components/mock-generator"
 import { useAppStore } from "@/store/app-store"
 
@@ -27,9 +29,16 @@ export default function QualityCheckPage() {
     return null
   }
 
+  const isLowQuality = bestIndex !== null && state.user.photos.length > 0
+
   return (
     <div className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-2xl">
+        <div className="mb-6">
+          <Progress value={75} aria-label="Step 3 of 4" className="h-2 mb-2" />
+          <p className="text-sm text-muted-foreground text-center">Шаг 3 из 4</p>
+        </div>
+
         <button onClick={() => router.back()} className="flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
           ← {t("common.back")}
         </button>
@@ -46,6 +55,9 @@ export default function QualityCheckPage() {
               alt="Best photo"
               className="w-32 h-32 object-cover rounded-lg mx-auto"
             />
+            {isLowQuality && (
+              <p className="text-xs text-warning mt-2">{t("onboarding.quality_check.low_quality")}</p>
+            )}
             <Button onClick={handleNext} className="w-full mt-4">
               {t("onboarding.quality_check.next")}
             </Button>

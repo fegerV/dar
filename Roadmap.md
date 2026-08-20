@@ -865,9 +865,9 @@ State 6: look_up → "А кого будем поздравлять?"
    - [x] Integration tests for ledger transactions (7 tests)
 
 8. **Фаза 4: Onboarding Flow — реализация в веб** (2 недели)
-   - [ ] About Me page (gender/age collection)
-   - [ ] Photos page with quality check
-   - [ ] Home page with bottom nav
+   - [x] About Me page (gender/age collection)
+   - [x] Photos page with quality check
+   - [x] Home page with bottom nav
 
 9. **Фаза 6: Security — GDPR compliance** (1 неделя)
    - [ ] Account deletion endpoint
