@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
+from app.core.security import create_access_token
 from app.models.brief import CreativeBrief
 from app.models.generation import Generation, GenerationStep
 from app.models.project import Project
@@ -298,6 +299,41 @@ async def test_script_generation_circuit_breaker_opens_on_failures(db_session, t
 
     cb._state = CircuitState.CLOSED
     cb._failures = 0
+
+
+@pytest.mark.asyncio
+async def test_script_generation_api_endpoint(client, db_session, test_user):
+    """POST /generations/{id}/script endpoint works."""
+    project, recipient, brief = await _create_project_with_brief(db_session, test_user.id)
+
+    gen = Generation(
+        project_id=project.id,
+        type="final",
+        status="processing",
+        requested_by_user_id=test_user.id,
+        input_json={"brief": {}},
+    )
+    db_session.add(gen)
+    await db_session.commit()
+
+    token = create_access_token(test_user.id)
+    headers = {"Authorization": f"Bearer {token}", "X-Requested-With": "XMLHttpRequest"}
+
+    response = await client.post(f"/api/v1/generations/{gen.id}/script", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "script" in data
+    assert "source" in data
+
+
+@pytest.mark.asyncio
+async def test_script_generation_api_not_found(client, db_session, test_user):
+    """POST /generations/{id}/script returns 404 for nonexistent generation."""
+    token = create_access_token(test_user.id)
+    headers = {"Authorization": f"Bearer {token}", "X-Requested-With": "XMLHttpRequest"}
+
+    response = await client.post(f"/api/v1/generations/{uuid4()}/script", headers=headers)
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

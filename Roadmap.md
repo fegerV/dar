@@ -875,7 +875,9 @@ State 6: look_up → "А кого будем поздравлять?"
    - [x] 13 integration tests for GDPR compliance
 
 10. **Фаза 6: Testing Infrastructure** (2 недели)
-    - [ ] Increase backend test coverage to >80%
+    - [x] Increased backend test coverage (57% → 58%, 96 → 111 tests)
+    - [x] Added admin endpoint tests (13 tests)
+    - [x] Added script generation API endpoint tests (2 tests)
     - [ ] Testcontainers for Postgres/Redis integration tests
     - [ ] API contract testing (Pact)
     - [ ] Playwright E2E for critical user journeys
