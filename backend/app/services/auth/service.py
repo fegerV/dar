@@ -1,7 +1,9 @@
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -13,11 +15,15 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.payment import Entitlement
-from app.models.user import User, UserAuthIdentity
+from app.models.audit import AuditLog
+from app.models.email_verification import EmailVerification
+from app.models.payment import Entitlement, Wallet
+from app.models.referral import ReferralCode
+from app.models.user import User, UserAuthIdentity, UserPreferences
 from app.repositories.entitlements import EntitlementRepository
 from app.repositories.refresh_tokens import RefreshTokenRepository
 from app.repositories.users import UserRepository
+from app.services.analytics.service import AnalyticsService
 
 
 class AuthService:
@@ -32,10 +38,6 @@ class AuthService:
     async def register(
         self, email: str, password: str, display_name: str | None = None
     ) -> dict:
-        existing = await self.repo.get_by_email(email)
-        if existing:
-            raise ConflictException("User with this email already exists")
-
         self._validate_password(password)
 
         user = User(
@@ -43,16 +45,43 @@ class AuthService:
             display_name=display_name,
             status="active",
         )
-        user = await self.repo.create(user)
 
-        identity = UserAuthIdentity(
+        try:
+            await self.repo.create(user)
+
+            identity = UserAuthIdentity(
+                user_id=user.id,
+                provider="email",
+                provider_user_id=email,
+                email=email,
+                credentials_json={"password_hash": hash_password(password)},
+            )
+            await self.repo.create_auth_identity(identity)
+
+            await self.db.flush()
+        except IntegrityError:
+            await self.db.rollback()
+            existing = await self.repo.get_by_email(email)
+            if existing:
+                raise ConflictException("User with this email already exists")
+            raise ConflictException("A user with this email already exists")
+
+        wallet = Wallet(
             user_id=user.id,
-            provider="email",
-            provider_user_id=email,
-            email=email,
-            credentials_json={"password_hash": hash_password(password)},
+            balance_rub=0,
+            bonus_balance=0,
         )
-        await self.repo.create_auth_identity(identity)
+        self.db.add(wallet)
+
+        prefs = UserPreferences(
+            user_id=user.id,
+            preferred_moods=[],
+            preferred_styles=[],
+            notification_settings={},
+            marketing_opt_in=False,
+            analytics_opt_in=True,
+        )
+        self.db.add(prefs)
 
         entitlement = Entitlement(
             user_id=user.id,
@@ -64,9 +93,99 @@ class AuthService:
         )
         entitlement_repo = EntitlementRepository(self.db)
         await entitlement_repo.create(entitlement)
+
+        referral_code = ReferralCode(
+            user_id=user.id,
+            code=self._generate_referral_code(),
+            is_active=True,
+            uses_count=0,
+        )
+        self.db.add(referral_code)
+
+        now = datetime.now(UTC)
+        verification_token = secrets.token_urlsafe(32)
+        verification_token_hash = hash_password(verification_token)
+        email_verif = EmailVerification(
+            user_id=user.id,
+            email=email,
+            token_hash=verification_token_hash,
+            verified=False,
+            expires_at=now + timedelta(hours=24),
+        )
+        self.db.add(email_verif)
+
+        audit = AuditLog(
+            actor_user_id=user.id,
+            action="user.registered",
+            target_type="user",
+            target_id=user.id,
+            metadata_={"email": email, "method": "email_password"},
+            created_at=now,
+        )
+        self.db.add(audit)
+
+        user_id = user.id
+
+        await self.db.flush()
+        from app.models.webhook import WebhookEndpoint
+
+        webhook_payload = {
+            "user_id": str(user.id),
+            "email": email,
+            "display_name": display_name,
+            "registered_at": now.isoformat(),
+        }
+        try:
+            result = await self.db.execute(
+                select(WebhookEndpoint).where(WebhookEndpoint.is_active.is_(True))
+            )
+            active_webhooks = list(result.scalars().all())
+        except Exception:
+            active_webhooks = []
+
         await self.db.commit()
 
-        return await self._make_tokens(user.id)
+        analytics = AnalyticsService(self.db)
+        try:
+            await analytics.track_event(
+                event_name="register",
+                user_id=user_id,
+                properties={"method": "email_password", "display_name_set": display_name is not None},
+            )
+            await self.db.commit()
+        except Exception:
+            pass
+
+        await self._send_email_verification(email, verification_token)
+
+        for endpoint in active_webhooks:
+            if "user.registered" not in endpoint.events:
+                continue
+            try:
+                import httpx
+                import json as _json
+                import hashlib
+                import hmac as _hmac
+
+                body = _json.dumps(
+                    {"event": "user.registered", "data": webhook_payload},
+                    default=str,
+                )
+                headers = {"Content-Type": "application/json", "User-Agent": "Daragent-Webhook/1.0"}
+                if endpoint.secret:
+                    sig = _hmac.new(
+                        endpoint.secret.encode("utf-8"),
+                        body.encode("utf-8"),
+                        hashlib.sha256,
+                    ).hexdigest()
+                    headers["X-Daragent-Signature"] = f"sha256={sig}"
+
+                async with httpx.AsyncClient(timeout=10) as client:
+                    await client.post(endpoint.url, headers=headers, content=body)
+            except Exception:
+                pass
+
+        return await self._make_tokens(user_id)
 
     async def login(self, email: str, password: str) -> dict:
         user = await self.repo.get_by_email(email)
@@ -144,6 +263,12 @@ class AuthService:
             raise ValidationException(
                 "Password must contain at least one special character"
             )
+
+    def _generate_referral_code(self) -> str:
+        return f"R{secrets.token_hex(4).upper()}"
+
+    async def _send_email_verification(self, email: str, token: str) -> None:
+        pass
 
     async def _make_tokens(self, user_id: UUID) -> dict:
         access_jti = secrets.token_urlsafe(32)

@@ -1,7 +1,7 @@
 # 🗺️ DarAgent — Product & Tech Roadmap
 
 > AI-сервис персональных видеопоздравлений  
-> Last updated: 2026-08-18
+> Last updated: 2026-08-20
 
 ---
 
@@ -118,6 +118,10 @@ TARGETED REGENERATION
 | SQLAlchemy Models (Full Schema) | ✅ | 20+ таблиц, связи, индексы, JSONB |
 | Alembic Migrations | ✅ | Async engine, начальная миграция 001 |
 | Auth System (JWT) | ✅ | Register, Login, Refresh, /me |
+| Email/Password Registration | ✅ | Full registration with password validation, unique email, IntegrityError handling |
+| Registration Completeness | ✅ | Wallet, UserPreferences, ReferralCode, EmailVerification, AuditLog, Analytics event on register |
+| Webhook System | ✅ | WebhookEndpoint model, dispatch on `user.registered` event with HMAC-SHA256 signature |
+| Unique Email Constraint | ✅ | DB-level unique index, race-safe via IntegrityError catch |
 | Core Config & Exceptions | ✅ | Pydantic Settings, Unified Error Format |
 | Celery Setup | ✅ | Redis broker, autodiscover |
 | Seed Script | ✅ | Templates, Holidays, Relationships |
@@ -813,31 +817,56 @@ State 6: look_up → "А кого будем поздравлять?"
 
 ---
 
-## 🎯 Следующие шаги (Sprint 1)
+## 🎯 Следующие шаги (Sprint 2)
 
-1. **Завершить Фазу 0** (1 неделя)
-   - [x] MinIO storage adapter
-   - [x] YooKassa client
-   - [x] `docker compose up` + миграции
-   - [x] Health-check тесты
+1. **Фаза 1.1: Recipients — Upload Photo** (1 неделя)
+   - [ ] Photo upload API with asset linking (`recipient_assets` FK)
+   - [ ] CSV/JSON contact import
+   - [ ] Integration tests for upload + linking flow
 
-2. **Начать Фазу 1.1: Recipients CRUD** (2 недели)
-   - [x] Repository + Service для Recipients
-   - [x] API endpoints + Pydantic schemas
-   - [x] Unit + integration tests
-   - [x] API documentation (OpenAPI)
+2. **Фаза 1.3: Creative Brief Wizard — доработка** (1 неделя)
+   - [ ] State machine validation: `draft → in_progress → completed`
+   - [ ] Dynamic questions based on `relationship_type` + `occasion`
+   - [ ] Autosave (every 30s)
+   - [ ] Brief summary preview
 
-3. **Параллельно: Grok Prompt Engineering** (ongoing)
-   - [x] Тестировать промпты для разных occasions
-   - [x] Оценить качество вывода (human eval)
-   - [x] Определить optimal temperature / max_tokens
-   - [x] Документировать best practices
+3. **Фаза 1.4: Script Generation — Fallback** (1 неделя)
+   - [ ] AI fallback to cached templates on provider error
+   - [ ] Circuit breaker integration
 
-4. **Frontend Kickoff** (1 неделя)
-   - [ ] Выбрать стек (Next.js 14 App Router recommended)
-   - [ ] Настроить проект + ESLint + Prettier
-   - [ ] Сделать login/register страницы
-   - [ ] Design system foundation (shadcn/ui)
+4. **Фаза 2.3: Template Rendering — Image/Video insertion** (1 неделя)
+   - [ ] Image/video asset insertion into scenes
+   - [ ] Audio overlay support
+
+5. **Фаза 2.3: Template Rendering — Low-res preview** (1 неделя)
+   - [ ] 360p preview generation within 30s
+   - [ ] Watermark overlay on preview
+
+6. **Фаза 2.6: Video Generation Lab** (2 недели)
+   - [ ] DB schema for lab experiments
+   - [ ] Photo upload for batch testing
+   - [ ] Benchmark runner (15 scenarios × 3–4 models)
+   - [ ] Recipe auto-generation from results
+
+7. **Фаза 3.1: Payment — Transaction History** (1 неделя)
+   - [ ] Ledger transaction listing API
+   - [ ] Admin UI for transaction history
+
+8. **Фаза 4: Onboarding Flow — реализация в веб** (2 недели)
+   - [ ] About Me page (gender/age collection)
+   - [ ] Photos page with quality check
+   - [ ] Home page with bottom nav
+
+9. **Фаза 6: Security — GDPR compliance** (1 неделя)
+   - [ ] Account deletion endpoint
+   - [ ] GDPR data export endpoint
+
+10. **Фаза 6: Testing Infrastructure** (2 недели)
+    - [ ] Increase backend test coverage to >80%
+    - [ ] Testcontainers for Postgres/Redis integration tests
+    - [ ] API contract testing (Pact)
+    - [ ] Playwright E2E for critical user journeys
+    - [ ] Load testing (Locust — target 100 RPS, p99 < 500ms)
 
 ---
 
@@ -852,4 +881,4 @@ State 6: look_up → "А кого будем поздравлять?"
 
 ---
 
-*Этот документ является живым и обновляется по мере развития проекта. Последнее обновление: 2026-08-17.*
+*Этот документ является живым и обновляется по мере развития проекта. Последнее обновление: 2026-08-20.*

@@ -39,7 +39,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
-    op.create_index("ix_users_email", "users", ["email"])
+    op.create_index("ix_users_email", "users", ["email"], unique=True)
     op.create_index("ix_users_phone", "users", ["phone"])
 
     # user_auth_identities
@@ -485,7 +485,7 @@ def upgrade() -> None:
     # analytics_events
     op.create_table(
         "analytics_events",
-        sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("user_id", UUID(as_uuid=True)),
         sa.Column("project_id", UUID(as_uuid=True)),
         sa.Column("session_id", sa.Text),

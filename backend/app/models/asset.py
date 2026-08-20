@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -45,3 +45,5 @@ class Asset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     moderation_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    recipient_assets = relationship("RecipientAsset", back_populates="asset", cascade="all, delete-orphan")

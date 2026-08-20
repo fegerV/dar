@@ -57,6 +57,27 @@ export function clearAuthTokens(): void {
   clearTokens()
 }
 
+export async function register(
+  email: string,
+  password: string,
+  displayName?: string,
+): Promise<Tokens> {
+  const res = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password, display_name: displayName }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || "Registration failed")
+  }
+  const data = await res.json()
+  const tokens = { access: data.access_token, refresh: data.refresh_token }
+  setTokens(tokens)
+  return tokens
+}
+
 export async function login(email: string, password: string): Promise<Tokens> {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",

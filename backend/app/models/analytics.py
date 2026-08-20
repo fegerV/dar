@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,7 +10,7 @@ from app.models.base import Base
 class AnalyticsEvent(Base):
     __tablename__ = "analytics_events"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True))
     project_id: Mapped[str | None] = mapped_column(UUID(as_uuid=True))
     session_id: Mapped[str | None] = mapped_column(Text)

@@ -51,7 +51,9 @@ class RecipientAsset(Base, UUIDPrimaryKeyMixin):
     recipient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recipients.id", ondelete="CASCADE"), nullable=False
     )
-    asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    asset_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False
+    )
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
@@ -59,3 +61,4 @@ class RecipientAsset(Base, UUIDPrimaryKeyMixin):
     )
 
     recipient = relationship("Recipient", back_populates="recipient_assets")
+    asset = relationship("Asset", back_populates="recipient_assets")

@@ -3,79 +3,168 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { register } from "@/lib/api"
 
 export default function AuthPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const [phone, setPhone] = useState("")
-  const [code, setCode] = useState("")
-  const [step, setStep] = useState<"phone" | "code">("phone")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [displayName, setDisplayName] = useState("")
+  const [step, setStep] = useState<"register" | "login">("register")
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleSendCode = () => {
-    if (phone.length >= 10) setStep("code")
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+    try {
+      await register(email, password, displayName || undefined)
+      router.push("/onboarding/about-me")
+    } catch (err: any) {
+      const msg = err?.message || t("auth.register_error")
+      if (msg.includes("already exists")) {
+        setStep("login")
+        setError(t("auth.already_have_account_prompt"))
+      } else {
+        setError(msg)
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleVerify = () => {
-    if (code.length >= 4) {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+    try {
+      const { login } = await import("@/lib/api")
+      await login(email, password)
       router.push("/onboarding/about-me")
+    } catch (err: any) {
+      setError(err?.message || t("auth.login_error"))
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4 py-12">
       <div className="w-full max-w-sm space-y-6">
-        <button onClick={() => router.back()} className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4 mr-1" />
           {t("common.back")}
         </button>
+
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">{t("auth.title")}</h1>
+          <h1 className="text-2xl font-bold">
+            {step === "register" ? t("auth.register_title") : t("auth.login_title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {step === "register" ? t("auth.register_subtitle") : t("auth.login_subtitle")}
+          </p>
         </div>
 
-        {step === "phone" && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">{t("auth.phone_label")}</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder={t("auth.phone_placeholder")}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-            <Button className="w-full" onClick={handleSendCode}>
-              {t("auth.send_code")}
-            </Button>
+        {error && (
+          <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+            {error}
           </div>
         )}
 
-        {step === "code" && (
-          <div className="space-y-4">
+        <form
+          onSubmit={step === "register" ? handleRegister : handleLogin}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="email">{t("auth.email_label")}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder={t("auth.email_placeholder")}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          {step === "register" && (
             <div className="space-y-2">
-              <Label htmlFor="code">{t("auth.code_label")}</Label>
+              <Label htmlFor="display_name">{t("auth.name_label")}</Label>
               <Input
-                id="code"
+                id="display_name"
                 type="text"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder={t("auth.code_placeholder")}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                autoComplete="name"
+                placeholder={t("auth.name_placeholder")}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={isLoading}
               />
             </div>
-            <Button className="w-full" onClick={handleVerify}>
-              {t("auth.verify")}
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              Введите любой 4-значный код
-            </p>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="password">{t("auth.password_label")}</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete={step === "register" ? "new-password" : "current-password"}
+              placeholder={t("auth.password_placeholder")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+            />
           </div>
-        )}
+
+          {step === "register" && (
+            <p className="text-xs text-muted-foreground">
+              {t("auth.password_hint")}
+            </p>
+          )}
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading
+              ? t("common.loading")
+              : step === "register"
+                ? t("auth.register_button")
+                : t("auth.login_button")}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {step === "register" ? (
+            <>
+              {t("auth.have_account")}{" "}
+              <button
+                onClick={() => setStep("login")}
+                className="text-primary hover:underline"
+              >
+                {t("auth.login_link")}
+              </button>
+            </>
+          ) : (
+            <>
+              {t("auth.no_account")}{" "}
+              <button
+                onClick={() => setStep("register")}
+                className="text-primary hover:underline"
+              >
+                {t("auth.register_link")}
+              </button>
+            </>
+          )}
+        </p>
       </div>
     </div>
   )

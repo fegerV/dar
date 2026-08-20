@@ -15,7 +15,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     display_name: Mapped[str | None] = mapped_column(Text)
     first_name: Mapped[str | None] = mapped_column(Text)
     last_name: Mapped[str | None] = mapped_column(Text)
-    email: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255), unique=True)
     phone: Mapped[str | None] = mapped_column(String(30))
     avatar_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     locale: Mapped[str] = mapped_column(String(10), nullable=False, default="ru-RU")
@@ -30,6 +30,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     auth_identities = relationship("UserAuthIdentity", back_populates="user", cascade="all, delete-orphan")
     wallet = relationship("Wallet", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    preferences = relationship("UserPreferences", backref="user", uselist=False, cascade="all, delete-orphan")
 
 
 class UserAuthIdentity(Base, UUIDPrimaryKeyMixin):

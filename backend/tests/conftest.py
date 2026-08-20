@@ -31,12 +31,16 @@ TestSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_com
 # Replace them with SQLite-compatible JSON types for test schema creation.
 def _replace_pg_types(metadata):
     from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+    from sqlalchemy import BigInteger
     from sqlalchemy.types import JSON as SQLA_JSON
+    from sqlalchemy.types import Integer as SQLA_Integer
 
     for table in metadata.tables.values():
         for col in table.columns:
             if isinstance(col.type, (JSONB, ARRAY)):
                 col.type = SQLA_JSON()
+            if isinstance(col.type, BigInteger):
+                col.type = SQLA_Integer()
 
 
 _original_create_all = Base.metadata.create_all
@@ -63,8 +67,17 @@ async def create_test_db():
 @pytest.fixture
 async def db_session():
     async with TestSessionLocal() as session:
-        yield session
-        await session.rollback()
+        try:
+            yield session
+            await session.rollback()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            try:
+                await session.close()
+            except Exception:
+                pass
 
 
 @pytest.fixture
@@ -83,7 +96,12 @@ async def client(db_session):
 
 @pytest.fixture
 async def test_user(db_session):
-    user = User(email="test@example.com", display_name="Test User")
+    import uuid
+
+    user = User(
+        email=f"test_{uuid.uuid4().hex[:8]}@example.com",
+        display_name="Test User",
+    )
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
@@ -97,4 +115,21 @@ def access_token(test_user):
 
 @pytest.fixture
 def auth_headers(access_token):
-    return {"Authorization": f"Bearer {access_token}"}
+    return {"Authorization": f"Bearer {access_token}", "X-Requested-With": "XMLHttpRequest"}
+
+
+@pytest.fixture(autouse=True)
+def mock_storage_provider():
+    from unittest.mock import AsyncMock, patch
+
+    with patch("app.services.recipients.service.get_storage_provider") as mock_factory, \
+         patch("app.services.assets.service.get_storage_provider") as mock_assets_factory:
+        mock_storage = mock_factory.return_value
+        mock_storage.generate_presigned_upload_url = AsyncMock(
+            return_value="https://presigned.example.com/upload/abc123"
+        )
+        mock_assets_storage = mock_assets_factory.return_value
+        mock_assets_storage.generate_presigned_upload_url = AsyncMock(
+            return_value="https://presigned.example.com/upload/abc123"
+        )
+        yield mock_storage

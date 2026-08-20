@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RecipientCreate(BaseModel):
@@ -61,10 +61,26 @@ class RecipientResponse(BaseModel):
     traits: list[str] = []
     favorite_things: list[str] = []
     forbidden_topics: list[str] = []
+    photo_url: str | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _compute_photo_url(cls, data):
+        recipient_assets = getattr(data, "recipient_assets", None)
+        if recipient_assets is not None:
+            primary = next(
+                (ra for ra in recipient_assets if ra.is_primary),
+                None,
+            )
+            if primary and primary.asset:
+                data_dict = dict(data.__dict__)
+                data_dict["photo_url"] = f"assets/{primary.asset.id}"
+                return data_dict
+        return data
 
 
 class RecipientListResponse(BaseModel):
@@ -72,3 +88,15 @@ class RecipientListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class RecipientPhotoUploadRequest(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    mime_type: str | None = None
+    size_bytes: int | None = Field(None, ge=0)
+
+
+class RecipientPhotoUploadResponse(BaseModel):
+    asset_id: UUID
+    upload_url: str
+    expires_in: int = 900

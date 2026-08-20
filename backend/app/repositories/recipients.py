@@ -2,8 +2,9 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.models.recipient import Recipient
+from app.models.recipient import Recipient, RecipientAsset
 
 
 class RecipientRepository:
@@ -12,7 +13,11 @@ class RecipientRepository:
 
     async def get_by_id(self, recipient_id: UUID, owner_user_id: UUID) -> Recipient | None:
         result = await self.db.execute(
-            select(Recipient).where(
+            select(Recipient)
+            .options(
+                selectinload(Recipient.recipient_assets).selectinload(RecipientAsset.asset),
+            )
+            .where(
                 Recipient.id == recipient_id,
                 Recipient.owner_user_id == owner_user_id,
                 Recipient.archived_at.is_(None),
@@ -27,9 +32,15 @@ class RecipientRepository:
         page_size: int = 20,
         search: str | None = None,
     ) -> tuple[list[Recipient], int]:
-        query = select(Recipient).where(
-            Recipient.owner_user_id == owner_user_id,
-            Recipient.archived_at.is_(None),
+        query = (
+            select(Recipient)
+            .options(
+                selectinload(Recipient.recipient_assets).selectinload(RecipientAsset.asset),
+            )
+            .where(
+                Recipient.owner_user_id == owner_user_id,
+                Recipient.archived_at.is_(None),
+            )
         )
         count_query = select(func.count()).select_from(Recipient).where(
             Recipient.owner_user_id == owner_user_id,

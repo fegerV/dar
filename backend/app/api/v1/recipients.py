@@ -4,7 +4,14 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.schemas.recipient import RecipientCreate, RecipientUpdate, RecipientResponse, RecipientListResponse
+from app.schemas.recipient import (
+    RecipientCreate,
+    RecipientUpdate,
+    RecipientResponse,
+    RecipientListResponse,
+    RecipientPhotoUploadRequest,
+    RecipientPhotoUploadResponse,
+)
 from app.services.recipients.service import RecipientService
 
 router = APIRouter(prefix="/recipients", tags=["Recipients"])
@@ -62,3 +69,26 @@ async def archive_recipient(
 ):
     service = RecipientService(db)
     await service.archive(current_user.id, recipient_id)
+
+
+@router.post("/{recipient_id}/photo/upload-url", response_model=RecipientPhotoUploadResponse)
+async def get_photo_upload_url(
+    recipient_id: UUID,
+    body: RecipientPhotoUploadRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = RecipientService(db)
+    return await service.get_photo_upload_url(current_user.id, recipient_id, body)
+
+
+@router.post("/{recipient_id}/photo/confirm-upload", response_model=RecipientResponse)
+async def confirm_photo_upload(
+    recipient_id: UUID,
+    asset_id: UUID,
+    object_key: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = RecipientService(db)
+    return await service.confirm_photo_upload(current_user.id, recipient_id, asset_id, object_key)
