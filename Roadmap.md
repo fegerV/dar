@@ -272,8 +272,8 @@ TARGETED REGENERATION
 - [x] Парсинг `template_versions.render_config`
 - [x] Подстановка переменных в сцены (`scene_variables`)
   - [x] Text replacement
-  - [ ] Image/video insertion
-  - [ ] Audio overlay
+  - [x] Image/video insertion (asset URL resolution via `RenderedAsset`)
+  - [x] Audio overlay (from `render_config.audio` or `scene_config.audio`)
 - [x] Валидация длительности и контента
 - [ ] Preview generation (low-res для быстрого просмотра)
   - [ ] 360p preview within 30 seconds
