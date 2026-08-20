@@ -535,6 +535,8 @@ TARGETED REGENERATION
   - [x] GPU / VRAM / Jobs
 - [x] System
   - [x] Logs / Audit / Settings
+  - [x] Help & Info page (system health, metrics reference, admin guide)
+  - [x] i18n descriptions for all system setting fields
 
 ---
 

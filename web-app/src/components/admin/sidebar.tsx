@@ -2,34 +2,43 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, Gavel, HardDrive, Webhook } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
-const navItems = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-  { href: "/admin/generations", label: "Generations", icon: Sparkles },
-  { href: "/admin/errors", label: "Errors", icon: AlertCircle },
-  { href: "/admin/queue", label: "Queue", icon: GitBranch },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/support", label: "Support", icon: LifeBuoy },
-  { href: "/admin/moderation", label: "Moderation", icon: Gavel },
-  { href: "/admin/templates", label: "Templates", icon: FileText },
-  { href: "/admin/prompts", label: "Prompt Library", icon: Edit3 },
-  { href: "/admin/ai", label: "AI Models", icon: Bot },
-  { href: "/admin/workers", label: "Workers", icon: Bot },
-  { href: "/admin/rbac", label: "RBAC", icon: ShieldCheck },
-  { href: "/admin/promo", label: "Promo Codes", icon: Percent },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/storage", label: "Storage", icon: HardDrive },
-  { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard },
-  { href: "/admin/ledger", label: "Transaction History", icon: BarChart3 },
-  { href: "/admin/referrals", label: "Referrals", icon: ClipboardList },
-  { href: "/admin/audit-logs", label: "Audit Logs", icon: Shield },
-  { href: "/admin/system", label: "System", icon: Settings },
+interface NavItem {
+  href: string
+  i18nKey: string
+  icon: React.ElementType
+}
+
+const navItems: NavItem[] = [
+  { href: "/admin/dashboard", i18nKey: "admin.sidebar.dashboard", icon: LayoutDashboard },
+  { href: "/admin/orders", i18nKey: "admin.sidebar.orders", icon: ShoppingCart },
+  { href: "/admin/generations", i18nKey: "admin.sidebar.generations", icon: Sparkles },
+  { href: "/admin/errors", i18nKey: "admin.sidebar.errors", icon: AlertCircle },
+  { href: "/admin/queue", i18nKey: "admin.sidebar.queue", icon: GitBranch },
+  { href: "/admin/users", i18nKey: "admin.sidebar.users", icon: Users },
+  { href: "/admin/support", i18nKey: "admin.sidebar.support", icon: LifeBuoy },
+  { href: "/admin/moderation", i18nKey: "admin.sidebar.moderation", icon: Gavel },
+  { href: "/admin/templates", i18nKey: "admin.sidebar.templates", icon: FileText },
+  { href: "/admin/prompts", i18nKey: "admin.sidebar.prompts", icon: Edit3 },
+  { href: "/admin/ai", i18nKey: "admin.sidebar.ai_models", icon: Bot },
+  { href: "/admin/workers", i18nKey: "admin.sidebar.workers", icon: Bot },
+  { href: "/admin/rbac", i18nKey: "admin.sidebar.rbac", icon: ShieldCheck },
+  { href: "/admin/promo", i18nKey: "admin.sidebar.promo", icon: Percent },
+  { href: "/admin/analytics", i18nKey: "admin.sidebar.analytics", icon: BarChart3 },
+  { href: "/admin/storage", i18nKey: "admin.sidebar.storage", icon: HardDrive },
+  { href: "/admin/webhooks", i18nKey: "admin.sidebar.webhooks", icon: Webhook },
+  { href: "/admin/payments", i18nKey: "admin.sidebar.payments", icon: CreditCard },
+  { href: "/admin/ledger", i18nKey: "admin.sidebar.ledger", icon: BarChart3 },
+  { href: "/admin/referrals", i18nKey: "admin.sidebar.referrals", icon: ClipboardList },
+  { href: "/admin/audit-logs", i18nKey: "admin.sidebar.audit_logs", icon: Shield },
+  { href: "/admin/system", i18nKey: "admin.sidebar.system", icon: Settings },
+  { href: "/admin/help", i18nKey: "admin.sidebar.help", icon: LifeBuoy },
 ]
 
 export function AdminSidebar() {
+  const { t } = useTranslation()
   const pathname = usePathname()
 
   return (
@@ -40,7 +49,7 @@ export function AdminSidebar() {
           <span>DarAgent Admin</span>
         </Link>
       </div>
-      <nav className="p-2 space-y-1" aria-label="Admin">
+      <nav className="p-2 space-y-1" aria-label="Admin navigation">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -54,7 +63,7 @@ export function AdminSidebar() {
               aria-current={isActive ? "page" : undefined}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              <span>{item.label}</span>
+              <span>{t(item.i18nKey)}</span>
             </Link>
           )
         })}
