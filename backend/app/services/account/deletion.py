@@ -11,7 +11,9 @@ from app.models.audit import AuditLog
 from app.models.generation import Generation
 from app.models.payment import Payment, Wallet
 from app.models.project import Project
-from app.models.user import User
+from app.models.recipient import Recipient
+from app.models.referral import Referral, ReferralCode
+from app.models.user import User, UserAuthIdentity, UserPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +121,67 @@ class AccountDeletionService:
             for log in audit_result.scalars().all()
         ]
 
+        recipient_result = await self.db.execute(
+            select(Recipient).where(Recipient.owner_user_id == user_id)
+        )
+        export_data["recipients"] = [
+            {
+                "id": str(r.id),
+                "first_name": r.first_name,
+                "last_name": r.last_name,
+                "nickname": r.nickname,
+                "relationship": r.relationship,
+                "contact_phone": r.contact_phone,
+                "contact_email": r.contact_email,
+                "interests": r.interests,
+                "traits": r.traits,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in recipient_result.scalars().all()
+        ]
+
+        auth_identity_result = await self.db.execute(
+            select(UserAuthIdentity).where(UserAuthIdentity.user_id == user_id)
+        )
+        export_data["auth_identities"] = [
+            {
+                "provider": ai.provider,
+                "email": ai.email,
+                "phone": ai.phone,
+                "last_login_at": ai.last_login_at.isoformat() if ai.last_login_at else None,
+                "created_at": ai.created_at.isoformat() if ai.created_at else None,
+            }
+            for ai in auth_identity_result.scalars().all()
+        ]
+
+        pref_result = await self.db.execute(
+            select(UserPreferences).where(UserPreferences.user_id == user_id)
+        )
+        pref = pref_result.scalar_one_or_none()
+        if pref:
+            export_data["preferences"] = {
+                "preferred_moods": pref.preferred_moods,
+                "preferred_styles": pref.preferred_styles,
+                "notification_settings": pref.notification_settings,
+                "marketing_opt_in": pref.marketing_opt_in,
+                "analytics_opt_in": pref.analytics_opt_in,
+                "updated_at": pref.updated_at.isoformat() if pref.updated_at else None,
+            }
+
+        referral_result = await self.db.execute(
+            select(Referral).where(Referral.referrer_user_id == user_id)
+        )
+        export_data["referrals"] = [
+            {
+                "id": str(r.id),
+                "status": r.status,
+                "referrer_bonus_granted": r.referrer_bonus_granted,
+                "referral_code": r.code,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in referral_result.scalars().all()
+        ]
+
         return export_data
 
     async def get_data_csv(self, user_id: UUID, table_name: str) -> str:
@@ -127,6 +190,7 @@ class AccountDeletionService:
             "wallets": Wallet,
             "projects": Project,
             "generations": Generation,
+            "recipients": Recipient,
         }
         model = model_map.get(table_name)
         if model is None:

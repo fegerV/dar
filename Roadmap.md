@@ -870,8 +870,9 @@ State 6: look_up → "А кого будем поздравлять?"
    - [x] Home page with bottom nav
 
 9. **Фаза 6: Security — GDPR compliance** (1 неделя)
-   - [ ] Account deletion endpoint
-   - [ ] GDPR data export endpoint
+   - [x] Account deletion endpoint (soft delete + scheduled deletion + hard delete admin)
+   - [x] GDPR data export endpoint (JSON + CSV)
+   - [x] 13 integration tests for GDPR compliance
 
 10. **Фаза 6: Testing Infrastructure** (2 недели)
     - [ ] Increase backend test coverage to >80%
