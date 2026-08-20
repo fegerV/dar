@@ -169,10 +169,12 @@ TARGETED REGENERATION
   - [x] `PUT /projects/{id}/brief` — создание/обновление
   - [x] `GET /projects/{id}/brief` — получение текущего состояния
   - [x] `POST /projects/{id}/brief/complete` — завершение заполнения
-- [ ] Пошаговая валидация (state machine: `draft → in_progress → completed`)
-- [ ] Динамические вопросы на основе `relationship_type` и `occasion`
-- [ ] Сохранение черновиков (autosave каждые 30 сек)
-- [ ] Предпросмотр заполненного брифа перед отправкой на генерацию
+- [x] Пошаговая валидация (state machine: `draft → in_progress → completed`)
+- [x] Динамические вопросы на основе `relationship_type` и `occasion`
+  - [x] `GET /projects/{id}/brief/questions?relationship=...&occasion_code=...`
+- [x] Сохранение черновиков (autosave — `last_autosave_at` на брифе)
+- [x] Предпросмотр заполненного брифа перед отправкой на генерацию
+  - [x] `GET /projects/{id}/brief/summary` — completion %, filled/всего полей
 
 ### 1.4 AI Script Generation (Grok Integration)
 
@@ -190,7 +192,11 @@ TARGETED REGENERATION
   - [x] Timeout handling (60s max per request)
   - [x] Result storage в `generations.output_json`
 - [x] API получения результатов (`/api/v1/generations/{id}`)
-- [ ] Механизм fallback при ошибке AI (кэшированные шаблоны)
+- [x] Механизм fallback при ошибке AI (кэшированные шаблоны)
+  - [x] `ScriptGenerationService` с fallback на `PromptTemplate` по occasion/relationship
+  - [x] Circuit breaker integration (`GrokTextProvider` + `CircuitBreaker`)
+  - [x] `POST /api/v1/generations/{id}/script` — trigger script generation with fallback
+- [x] Integration tests for script generation fallback (6 tests)
 
 ### 1.5 Recommendations Engine (v1)
 
@@ -827,14 +833,16 @@ State 6: look_up → "А кого будем поздравлять?"
    - [x] Integration tests for upload + linking flow (8 tests)
 
 2. **Фаза 1.3: Creative Brief Wizard — доработка** (1 неделя)
-   - [ ] State machine validation: `draft → in_progress → completed`
-   - [ ] Dynamic questions based on `relationship_type` + `occasion`
-   - [ ] Autosave (every 30s)
-   - [ ] Brief summary preview
+   - [x] State machine validation: `draft → in_progress → completed`
+   - [x] Dynamic questions based on `relationship_type` + `occasion`
+   - [x] Autosave (every 30s)
+   - [x] Brief summary preview
+   - [x] 13 integration tests
 
 3. **Фаза 1.4: Script Generation — Fallback** (1 неделя)
-   - [ ] AI fallback to cached templates on provider error
-   - [ ] Circuit breaker integration
+   - [x] AI fallback to cached templates on provider error
+   - [x] Circuit breaker integration
+   - [x] 6 integration tests
 
 4. **Фаза 2.3: Template Rendering — Image/Video insertion** (1 неделя)
    - [ ] Image/video asset insertion into scenes

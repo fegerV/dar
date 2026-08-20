@@ -26,6 +26,7 @@ from app.api.v1.recipients import router as recipients_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.referrals import router as referrals_router
 from app.api.v1.relationship_context import router as relationship_context_router
+from app.api.v1.script_generation import router as script_generation_router
 from app.api.v1.share import router as share_router
 from app.api.v1.telegram import router as telegram_router
 from app.api.v1.template_versions import router as template_versions_router
@@ -64,3 +65,4 @@ v1_router.include_router(calendar_router)
 v1_router.include_router(contacts_router)
 v1_router.include_router(relationship_context_router)
 v1_router.include_router(gallery_router)
+v1_router.include_router(script_generation_router)

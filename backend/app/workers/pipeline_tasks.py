@@ -1,21 +1,22 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
-from app.models.intelligence import GenerationFailure, VideoRecipe
+from app.models.intelligence import GenerationFailure
 from app.repositories.generations import GenerationRepository
 from app.schemas.quality import QualityCheckRequest
 from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeService
 from app.services.intelligence.preflight import ImagePreflightService
 from app.services.intelligence.prompt_repair import PromptRepairService
 from app.services.quality.service import QualityGateService
+from app.services.script_generation.service import ScriptGenerationService
 from app.workers.utils import estimate_eta, upload_placeholder_video
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ async def _execute_pipeline(generation_id: str):
             return
 
         generation.status = "processing"
-        generation.started_at = datetime.now(timezone.utc)
+        generation.started_at = datetime.now(UTC)
         await db.commit()
 
         try:
@@ -66,15 +67,33 @@ async def _execute_pipeline(generation_id: str):
 
         for idx, step in enumerate(steps):
             step.status = "processing"
-            step.started_at = datetime.now(timezone.utc)
+            step.started_at = datetime.now(UTC)
             await db.commit()
 
-            await asyncio.sleep(2)
-
-            step.status = "completed"
-            step.output_json = {"result": "ok", "step": step.step_code}
-            step.completed_at = datetime.now(timezone.utc)
-            await db.commit()
+            if step.step_code == "script":
+                script_service = ScriptGenerationService(db)
+                try:
+                    await script_service.generate_script(
+                        project_id=generation.project_id,
+                        owner_user_id=(
+                            generation.requested_by_user_id
+                            or generation.project.owner_user_id
+                        ),
+                        generation_step_id=step.id,
+                    )
+                except Exception as e:
+                    logger.warning("Script generation failed for step %s: %s", step.id, e)
+                    step.status = "failed"
+                    step.error_code = "script_generation_error"
+                    step.error_message = str(e)
+                    await db.commit()
+                    continue
+            else:
+                await asyncio.sleep(2)
+                step.status = "completed"
+                step.output_json = {"result": "ok", "step": step.step_code}
+                step.completed_at = datetime.now(UTC)
+                await db.commit()
 
             generation.progress = int((idx + 1) / total * 100)
             generation.current_step = step.step_code
@@ -83,7 +102,7 @@ async def _execute_pipeline(generation_id: str):
 
         generation.status = "completed"
         generation.progress = 100
-        generation.completed_at = datetime.now(timezone.utc)
+        generation.completed_at = datetime.now(UTC)
         try:
             urls = await upload_placeholder_video(generation)
         except Exception as e:
@@ -127,7 +146,7 @@ async def _execute_pipeline(generation_id: str):
         job = result.scalar_one_or_none()
         if job:
             job.status = "finished"
-            job.finished_at = datetime.now(timezone.utc)
+            job.finished_at = datetime.now(UTC)
 
         await db.commit()
         logger.info("Pipeline %s completed", generation_id)
@@ -157,7 +176,10 @@ async def _targeted_regeneration(db, generation: Generation, quality_response) -
     repair = PromptRepairService(db)
     recipe_service = RecipeService(db)
 
-    failure_codes = analyzer.analyze(critic.raw_response if isinstance(critic, dict) else {}, quality_checks)
+    failure_codes = analyzer.analyze(
+        critic.raw_response if isinstance(critic, dict) else {},
+        quality_checks,
+    )
     recipe = await recipe_service.get_best_recipe(getattr(generation, "template_code", None) or "")
 
     repaired = repair.repair(

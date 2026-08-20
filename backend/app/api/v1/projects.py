@@ -1,10 +1,16 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.schemas.brief import BriefCompleteResponse, BriefUpdate
+from app.schemas.brief import (
+    BriefCompleteResponse,
+    BriefQuestionsResponse,
+    BriefSummaryResponse,
+    BriefUpdate,
+)
 from app.schemas.project import (
     ProjectCreate,
     ProjectListResponse,
@@ -89,3 +95,27 @@ async def complete_brief(
 ):
     service = ProjectService(db)
     return await service.complete_brief(current_user.id, project_id)
+
+
+@router.get("/{project_id}/brief/questions", response_model=BriefQuestionsResponse)
+async def get_brief_questions(
+    project_id: UUID,
+    relationship: str | None = Query(None),
+    occasion_code: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = ProjectService(db)
+    return await service.get_brief_questions(
+        current_user.id, project_id, relationship, occasion_code
+    )
+
+
+@router.get("/{project_id}/brief/summary", response_model=BriefSummaryResponse)
+async def get_brief_summary(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    service = ProjectService(db)
+    return await service.get_brief_summary(current_user.id, project_id)
