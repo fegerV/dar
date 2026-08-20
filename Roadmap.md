@@ -144,7 +144,9 @@ TARGETED REGENERATION
   - [x] `PATCH /recipients/{id}` — обновление
   - [x] `DELETE /recipients/{id}` — мягкое удаление (archive)
 - [x] Валидация данных (имя обязательно, дата рождения опциональна)
-- [ ] Загрузка фото получателя (связь с Assets через `recipient_assets`)
+- [x] Загрузка фото получателя (связь с Assets через `recipient_assets`)
+  - [x] `POST /recipients/{id}/photo/upload-url` — presigned URL
+  - [x] `POST /recipients/{id}/photo/confirm-upload` — asset creation + linking
 - [x] Поиск и фильтрация по имени, дате рождения, тегам
 - [ ] Импорт контактов (CSV/JSON) — *опционально для MVP*
 
@@ -820,9 +822,9 @@ State 6: look_up → "А кого будем поздравлять?"
 ## 🎯 Следующие шаги (Sprint 2)
 
 1. **Фаза 1.1: Recipients — Upload Photo** (1 неделя)
-   - [ ] Photo upload API with asset linking (`recipient_assets` FK)
+   - [x] Photo upload API with asset linking (`recipient_assets` FK)
    - [ ] CSV/JSON contact import
-   - [ ] Integration tests for upload + linking flow
+   - [x] Integration tests for upload + linking flow (8 tests)
 
 2. **Фаза 1.3: Creative Brief Wizard — доработка** (1 неделя)
    - [ ] State machine validation: `draft → in_progress → completed`
