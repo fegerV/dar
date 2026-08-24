@@ -536,7 +536,8 @@ TARGETED REGENERATION
 - [x] System
   - [x] Logs / Audit / Settings
   - [x] Help & Info page (system health, metrics reference, admin guide)
-  - [x] i18n descriptions for all system setting fields
+  - [x] i18n descriptions for all system setting fields (feature_flags, generation, payments, notifications)
+  - [x] Sidebar i18n translations (RU/EN)
 
 ---
 
@@ -898,4 +899,4 @@ State 6: look_up → "А кого будем поздравлять?"
 
 ---
 
-*Этот документ является живым и обновляется по мере развития проекта. Последнее обновление: 2026-08-20.*
+*Этот документ является живым и обновляется по мере развития проекта. Последнее обновление: 2026-08-24.*
