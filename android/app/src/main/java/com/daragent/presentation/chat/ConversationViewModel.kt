@@ -2,8 +2,11 @@ package com.daragent.presentation.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.daragent.core.network.model.PersonDto
 import com.daragent.presentation.chat.model.ConversationState
 import com.daragent.presentation.chat.model.Message
+import com.daragent.presentation.chat.model.SuggestionAction
+import com.daragent.domain.conversation.GetPeopleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,16 +21,21 @@ data class ConversationUiState(
     val currentState: ConversationState = ConversationState.IDLE,
     val inputText: String = "",
     val isRecording: Boolean = false,
+    val people: List<PersonDto> = emptyList(),
+    val error: String? = null,
 )
 
 @HiltViewModel
-class ConversationViewModel @Inject constructor() : ViewModel() {
+class ConversationViewModel @Inject constructor(
+    private val getPeopleUseCase: GetPeopleUseCase,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationUiState())
     val uiState: StateFlow<ConversationUiState> = _uiState.asStateFlow()
 
     init {
         addWelcomeMessage()
+        loadPeople()
     }
 
     private fun addWelcomeMessage() {
@@ -38,6 +46,33 @@ class ConversationViewModel @Inject constructor() : ViewModel() {
         _uiState.update {
             it.copy(messages = listOf(welcome, chips))
         }
+    }
+
+    private fun loadPeople() {
+        viewModelScope.launch {
+            getPeopleUseCase().fold(
+                onSuccess = { people ->
+                    _uiState.update {
+                        it.copy(
+                            people = people,
+                            chips = createChipsFromPeople(people),
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(error = error.message)
+                    }
+                }
+            )
+        }
+    }
+
+    private fun createChipsFromPeople(people: List<PersonDto>): List<String> {
+        if (people.isEmpty()) {
+            return listOf("Маму", "Папу", "Друга", "Коллегу", "Вторую половинку")
+        }
+        return people.take(5).map { it.name }
     }
 
     fun onChipSelected(chip: String) {
@@ -63,16 +98,17 @@ class ConversationViewModel @Inject constructor() : ViewModel() {
                 messages = it.messages + userMessage,
                 isLoading = true,
                 currentState = ConversationState.AWAITING_INPUT,
+                error = null,
             )
         }
-        simulateAgentResponse(text)
+        processUserMessage(text)
     }
 
-    private fun simulateAgentResponse(userText: String) {
+    private fun processUserMessage(text: String) {
         viewModelScope.launch {
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(500)
 
-            val response = generateResponse(userText)
+            val response = generateResponse(text)
 
             _uiState.update {
                 it.copy(
@@ -102,12 +138,20 @@ class ConversationViewModel @Inject constructor() : ViewModel() {
                 Message.SuggestionCard(
                     title = "Папа 💙",
                     subtitle = "Какой у него праздник?",
+                    actions = listOf(
+                        SuggestionAction("День рождения") {},
+                        SuggestionAction("Юбилей") {},
+                    ),
                 )
             }
             lowerText.contains("друг") -> {
                 Message.SuggestionCard(
                     title = "Друг 🤝",
                     subtitle = "Давай придумаем что-то классное!",
+                    actions = listOf(
+                        SuggestionAction("День рождения") {},
+                        SuggestionAction("Выпускной") {},
+                    ),
                 )
             }
             lowerText.contains("фото") -> {
@@ -145,6 +189,10 @@ class ConversationViewModel @Inject constructor() : ViewModel() {
 
     fun onSuggestionAction(action: SuggestionAction) {
         action.onClick()
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 
     fun clearMessages() {
