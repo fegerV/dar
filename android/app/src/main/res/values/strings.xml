@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Дарагент</string>
+    <string name="welcome_title">Привет! Я Дарагент</string>
+    <string name="welcome_subtitle">Твой личный агент по поздравлениям</string>
+    <string name="button_start">Начать</string>
+    <string name="button_continue">Продолжить</string>
+    <string name="button_create_greeting">Создать поздравление</string>
+    <string name="button_people">Мои люди</string>
+    <string name="button_profile">Профиль</string>
+    <string name="prompt_whom">Кого сегодня порадуем?</string>
+    <string name="prompt_name">Как тебя зовут?</string>
+    <string name="prompt_nice_to_meet">Очень приятно, %s!</string>
+    <string name="prompt_first_greeting">Давай сделаем первое поздравление</string>
+    <string name="label_name">Имя</string>
+    <string name="label_email">Email</string>
+    <string name="label_password">Пароль</string>
+</resources>

@@ -1,8 +1,7 @@
 package com.daragent
 
 import android.app.Application
-import com.daragent.data.local.DarAgentDatabase
+import dagger.hilt.android.HiltAndroidApp
 
-class DarAgentApp : Application() {
-    val database by lazy { DarAgentDatabase.getDatabase(this) }
-}
+@HiltAndroidApp
+class DarAgentApp : Application()

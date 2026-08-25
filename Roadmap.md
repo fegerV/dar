@@ -324,11 +324,14 @@ TARGETED REGENERATION
 
 ### 2.6 Video Generation Lab (experimental)
 
-- [ ] Структура БД и админки для лаборатории
-- [ ] Загрузка тестовых фотографий (20–50 шт.)
-- [ ] Benchmark: 15 сценариев × 3–4 модели = 60 экспериментов
-- [ ] Автоматические оценки: cost, quality, success rate, avg_generations
-- [ ] Формирование Recipe/Model Profile → production
+- [x] Структура БД и админки для лаборатории
+- [x] 15 сценариев (portrait, product, food, nature, urban, abstract)
+- [x] API: CRUD для scenarios, photos, benchmarks, proposals
+- [x] Автоматический запуск: POST /benchmarks/run-all → создаёт 60 бенчмарков
+- [x] Автоматические оценки: cost, quality, success_rate, avg_generations
+- [ ] Формирование Recipe/Model Profile → production (approve + apply)
+- [ ] Загрузка тестовых фотографий (20–50 шт.) — требует ручного добавления
+- [ ] Интеграция с внешними API генерации видео (Runway, Kling, Pika)
 
 ### 🎯 Критерий приёмки Фазы 2
 
@@ -471,6 +474,174 @@ TARGETED REGENERATION
   - [x] String extraction
   - [x] EN/RU translation
   - [ ] RTL support (future)
+
+---
+
+## Фаза 4.7: Android Native App (6–8 недель)
+
+*Цель: Нативное Android-приложение с Conversational UI, полным циклом поздравлений.*
+
+### Архитектура
+
+- [x] Стек: **Kotlin + Jetpack Compose**
+- [x] Принцип: Android — клиент, не AI-оркестратор
+- [x] Backend — единая точка интеграции
+- [x] Android **не общается** напрямую с нейросетями, YooKassa, worker'ами
+
+### Backend API для Android
+
+- [x] Auth API (JWT)
+- [x] User API
+- [x] People API
+- [x] Conversation API
+- [x] Creative Brief API
+- [x] Media API (загрузка фото/видео)
+- [x] Image Analysis API
+- [x] Image Generation API
+- [x] Video Generation API (Lite + Premium)
+- [x] Generation API (статус, прогресс)
+- [x] Payment API
+- [x] Wallet API
+- [x] Referral API
+- [x] Notification API
+- [x] Feedback API
+
+### Структура проекта
+
+- [x] `core/network/` — Retrofit, OkHttp, авторизация
+- [x] `core/database/` — Room, кэш
+- [x] `core/storage/` — файловое хранилище
+- [x] `core/analytics/` — события, метрики
+- [x] `core/notifications/` — FCM
+- [x] `core/security/` — шифрование, key storage
+- [x] `data/` — repository для каждого домена
+- [x] `domain/` — use cases, бизнес-логика
+- [x] `presentation/` — экраны Compose
+- [x] `mascot/` — MascotView, MascotController
+- [x] `navigation/` — Navigation Compose
+
+### Navigation
+
+- [x] Splash
+- [x] Onboarding (знакомство с Лисёнком)
+- [x] Auth
+- [x] Home (Conversational UI)
+- [x] Conversation
+- [x] People
+- [x] Person
+- [x] CreativeBrief
+- [x] PhotoPicker
+- [x] MasterFrame
+- [x] Generation
+- [x] GenerationResult
+- [x] Payment
+- [x] Profile
+- [x] Settings
+
+### Conversational UI
+
+- [x] AgentConversationScreen
+- [x] Типизированные сообщения: TEXT, QUESTION, CHOICE, IMAGE, IMAGE_CAROUSEL, VIDEO, BRIEF, GENERATION, PAYMENT, PERSON, SYSTEM
+- [x] Текстовый ввод
+- [x] Voice input (кнопка микрофона)
+- [x] Quick chips (быстрые действия)
+- [x] Suggestion cards
+- [x] Photo/Video cards
+- [x] Generation progress cards
+
+### Доменные экраны
+
+- [x] Onboarding: знакомство с Дарагентом, сбор имени, возраста
+- [x] Home: диалог с Лисёнком, напоминания, быстрые действия
+- [x] People: карточки получателей, добавление нового
+- [x] CreativeBrief: предложение концепции, редактирование текста
+- [x] PhotoPicker: камера/галерея, анализ качества
+- [x] MasterFrame: выбор образа (Premium)
+- [x] Generation: прогресс, статус
+- [x] GenerationResult: видео плеер, Share Sheet
+- [x] Payment: ЮKassa форма
+- [x] Profile: баланс, настройки, история
+
+### Фоновые операции
+
+- [x] Очередь на backend (Redis + Workers)
+- [x] FCM для уведомлений
+- [x] Синхронизация при открытии приложения
+- [x] Возобновление загрузки при сбое
+- [x] Локальный кэш состояния генерации
+
+### Wallet и платежи
+
+- [x] Серверный ledger (immutable)
+- [x] Android только отображает баланс
+- [x] ЮKassa через backend (без секретов в приложении)
+- [x] Entitlement проверяется на backend
+
+### FCM
+
+- [x] Напоминания о праздниках
+- [x] Готовность видео
+- [x] Ошибки генерации
+- [x] Referral уведомления
+- [x] Feedback запросы
+
+### Оффлайн / плохой интернет
+
+- [x] Локальный кэш диалога
+- [x] Сохранение незавершённых drafts
+- [x] Возобновление загрузки
+- [x] Отображение последнего известного состояния
+
+### Окружения
+
+- [x] development: api.dev.daragent.ru
+- [x] staging: api.stage.daragent.ru
+- [x] production: api.daragent.ru
+- [x] Build variants: debug, staging, release
+
+### CI/CD
+
+- [x] GitHub Actions: lint, unit tests, build
+- [x] Подпись AAB
+- [x] Secrets: KEYSTORE, API_BASE_URL, SENTRY_DSN
+
+### MVP Android
+
+- [x] Авторизация
+- [x] Onboarding
+- [x] Лисёнок
+- [x] Conversational UI
+- [x] Текстовый ввод
+- [x] Voice input
+- [x] Мои люди
+- [x] Загрузка фото
+- [x] Анализ качества фото
+- [x] Creative Brief
+- [x] Предложение текста
+- [x] Редактирование текста
+- [x] Lite Generation
+- [x] Generation Progress
+- [x] Video Player
+- [x] Share Sheet
+- [x] FCM
+- [x] Referral
+- [x] Wallet
+- [x] ЮKassa
+- [x] Feedback
+- [x] Generation History
+- [x] Generation Status Center
+
+### Что НЕ в MVP Android
+
+❌ полноценный Premium cinematic editor
+❌ песни
+❌ рэп
+❌ voice cloning
+❌ сложный видеоредактор
+❌ AR
+❌ ручной монтаж сцен
+❌ сложный календарь
+❌ десятки параметров генерации
 
 ---
 

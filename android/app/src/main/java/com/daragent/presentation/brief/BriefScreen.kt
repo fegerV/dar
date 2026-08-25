@@ -1,4 +1,4 @@
-package com.daragent.presentation.profile
+package com.daragent.presentation.brief
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,10 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {}) {
+fun BriefScreen(onBack: () -> Unit = {}) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Text("Profile Screen")
+            Text("Brief Screen")
         }
     }
 }
