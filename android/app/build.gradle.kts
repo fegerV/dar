@@ -81,6 +81,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.accompanist.permissions)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

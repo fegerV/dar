@@ -1,9 +1,11 @@
 package com.daragent.data.di
 
 import com.daragent.core.network.api.GenerationApi
+import com.daragent.core.network.api.PaymentApi
 import com.daragent.core.network.api.PeopleApi
 import com.daragent.data.auth.AuthRepository
 import com.daragent.data.generation.GenerationRepository
+import com.daragent.data.payment.PaymentRepository
 import com.daragent.data.people.PeopleRepository
 import com.daragent.core.security.TokenManager
 import dagger.Module
@@ -32,5 +34,11 @@ object RepositoryModule {
     @Singleton
     fun provideGenerationRepository(generationApi: GenerationApi): GenerationRepository {
         return GenerationRepository(generationApi)
+    }
+
+    @Provides
+    @Singleton
+    fun providePaymentRepository(paymentApi: PaymentApi): PaymentRepository {
+        return PaymentRepository(paymentApi)
     }
 }
