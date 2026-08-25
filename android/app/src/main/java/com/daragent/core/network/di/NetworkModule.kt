@@ -82,4 +82,10 @@ object NetworkModule {
     fun provideFeedbackApi(retrofitClient: RetrofitClient): FeedbackApi {
         return retrofitClient.retrofit.create(FeedbackApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideChatApi(retrofitClient: RetrofitClient): ChatApi {
+        return retrofitClient.retrofit.create(ChatApi::class.java)
+    }
 }

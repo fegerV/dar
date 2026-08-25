@@ -8,6 +8,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.assets import router as assets_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.calendar import router as calendar_router
+from app.api.v1.chat import router as chat_router
 from app.api.v1.contacts import router as contacts_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.feedback import router as feedback_router
@@ -16,6 +17,7 @@ from app.api.v1.generations import router as generations_router
 from app.api.v1.generations_stream import router as generations_stream_router
 from app.api.v1.holidays import router as holidays_router
 from app.api.v1.intelligence import router as intelligence_router
+from app.api.v1.lab import router as lab_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.pipeline import router as pipeline_router
 from app.api.v1.pricing import router as pricing_router
@@ -66,3 +68,5 @@ v1_router.include_router(contacts_router)
 v1_router.include_router(relationship_context_router)
 v1_router.include_router(gallery_router)
 v1_router.include_router(script_generation_router)
+v1_router.include_router(lab_router)
+v1_router.include_router(chat_router)

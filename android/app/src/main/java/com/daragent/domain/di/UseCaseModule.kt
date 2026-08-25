@@ -3,9 +3,11 @@ package com.daragent.domain.di
 import com.daragent.data.auth.AuthRepository
 import com.daragent.data.people.PeopleRepository
 import com.daragent.data.generation.GenerationRepository
+import com.daragent.data.chat.ChatRepository
 import com.daragent.domain.auth.*
 import com.daragent.domain.conversation.*
 import com.daragent.domain.generation.*
+import com.daragent.domain.chat.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,5 +76,23 @@ object UseCaseModule {
     @Singleton
     fun provideCreateGenerationUseCase(generationRepository: GenerationRepository): CreateGenerationUseCase {
         return CreateGenerationUseCase(generationRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSendMessageUseCase(chatRepository: ChatRepository): SendMessageUseCase {
+        return SendMessageUseCase(chatRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCreateProjectUseCase(chatRepository: ChatRepository): CreateProjectUseCase {
+        return CreateProjectUseCase(chatRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetProjectUseCase(chatRepository: ChatRepository): GetProjectUseCase {
+        return GetProjectUseCase(chatRepository)
     }
 }

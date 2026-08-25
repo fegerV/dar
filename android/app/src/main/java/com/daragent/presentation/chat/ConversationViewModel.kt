@@ -6,6 +6,7 @@ import com.daragent.core.network.model.PersonDto
 import com.daragent.presentation.chat.model.ConversationState
 import com.daragent.presentation.chat.model.Message
 import com.daragent.presentation.chat.model.SuggestionAction
+import com.daragent.domain.chat.SendMessageUseCase
 import com.daragent.domain.conversation.GetPeopleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +24,13 @@ data class ConversationUiState(
     val isRecording: Boolean = false,
     val people: List<PersonDto> = emptyList(),
     val error: String? = null,
+    val currentProjectId: String? = null,
 )
 
 @HiltViewModel
 class ConversationViewModel @Inject constructor(
     private val getPeopleUseCase: GetPeopleUseCase,
+    private val sendMessageUseCase: SendMessageUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationUiState())
@@ -58,6 +61,9 @@ class ConversationViewModel @Inject constructor(
                             chips = createChipsFromPeople(people),
                         )
                     }
+                    if (people.isNotEmpty()) {
+                        updateWelcomeWithPeople(people)
+                    }
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -73,6 +79,14 @@ class ConversationViewModel @Inject constructor(
             return listOf("Маму", "Папу", "Друга", "Коллегу", "Вторую половинку")
         }
         return people.take(5).map { it.name }
+    }
+
+    private fun updateWelcomeWithPeople(people: List<PersonDto>) {
+        val updatedMessages = _uiState.value.messages.toMutableList()
+        if (updatedMessages.isNotEmpty() && updatedMessages[0] is Message.Welcome) {
+            updatedMessages[0] = Message.Welcome(userName = null)
+        }
+        _uiState.update { it.copy(messages = updatedMessages) }
     }
 
     fun onChipSelected(chip: String) {
@@ -106,64 +120,57 @@ class ConversationViewModel @Inject constructor(
 
     private fun processUserMessage(text: String) {
         viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
+            sendMessageUseCase(text, _uiState.value.currentProjectId).fold(
+                onSuccess = { response ->
+                    _uiState.update {
+                        it.copy(currentProjectId = response.projectId)
+                    }
 
-            val response = generateResponse(text)
-
-            _uiState.update {
-                it.copy(
-                    messages = it.messages + response,
-                    isLoading = false,
-                    currentState = ConversationState.IDLE,
-                )
-            }
+                    val agentMessages = parseResponseToMessages(response)
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages + agentMessages,
+                            isLoading = false,
+                            currentState = ConversationState.IDLE,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    val errorMessage = Message.ErrorMessage(
+                        text = "Не удалось отправить сообщение: ${error.message}",
+                        onRetry = { sendMessage(text) },
+                    )
+                    _uiState.update {
+                        it.copy(
+                            messages = it.messages + errorMessage,
+                            isLoading = false,
+                            currentState = ConversationState.ERROR,
+                        )
+                    }
+                }
+            )
         }
     }
 
-    private fun generateResponse(userText: String): Message {
-        val lowerText = userText.lowercase()
-        return when {
-            lowerText.contains("мам") || lowerText.contains("маму") -> {
-                Message.SuggestionCard(
-                    title = "Мама ❤️",
-                    subtitle = "Расскажи мне о ней поближе",
-                    actions = listOf(
-                        SuggestionAction("День рождения") {},
-                        SuggestionAction("Юбилей") {},
-                        SuggestionAction("Просто так") {},
-                    ),
+    private fun parseResponseToMessages(response: com.daragent.core.network.model.chat.ChatMessageResponse): List<Message> {
+        val messages = mutableListOf<Message>()
+
+        messages.add(
+            Message.Text(
+                text = response.text,
+                isFromUser = false,
+            )
+        )
+
+        if (response.suggestions.isNotEmpty()) {
+            messages.add(
+                Message.QuickChips(
+                    chips = response.suggestions,
                 )
-            }
-            lowerText.contains("пап") || lowerText.contains("папу") -> {
-                Message.SuggestionCard(
-                    title = "Папа 💙",
-                    subtitle = "Какой у него праздник?",
-                    actions = listOf(
-                        SuggestionAction("День рождения") {},
-                        SuggestionAction("Юбилей") {},
-                    ),
-                )
-            }
-            lowerText.contains("друг") -> {
-                Message.SuggestionCard(
-                    title = "Друг 🤝",
-                    subtitle = "Давай придумаем что-то классное!",
-                    actions = listOf(
-                        SuggestionAction("День рождения") {},
-                        SuggestionAction("Выпускной") {},
-                    ),
-                )
-            }
-            lowerText.contains("фото") -> {
-                Message.PhotoRequest(text = "Отлично! Загрузи фото 📸")
-            }
-            else -> {
-                Message.Text(
-                    text = "Интересно! Расскажи подробнее о человеке, которого хочешь поздравить 🦊",
-                    isFromUser = false,
-                )
-            }
+            )
         }
+
+        return messages
     }
 
     fun onPhotoRequested() {
@@ -198,5 +205,15 @@ class ConversationViewModel @Inject constructor(
     fun clearMessages() {
         _uiState.update { ConversationUiState() }
         addWelcomeMessage()
+    }
+
+    fun createProject(
+        recipientName: String?,
+        occasion: String?,
+        mood: String?,
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+        }
     }
 }
