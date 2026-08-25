@@ -524,7 +524,9 @@ TARGETED REGENERATION
 
 - [x] Splash
 - [x] Onboarding (знакомство с Лисёнком)
-- [x] Auth
+- [x] Auth (выбор провайдера: Яндекс, VK, логин/пароль)
+- [x] Login (email + пароль)
+- [x] Register (имя, email, пароль)
 - [x] Home (Conversational UI)
 - [x] Conversation
 - [x] People
@@ -607,7 +609,8 @@ TARGETED REGENERATION
 
 ### MVP Android
 
-- [x] Авторизация
+- [x] Авторизация (Яндекс, VK, email+пароль)
+- [x] Account Linking (привязка нескольких провайдеров)
 - [x] Onboarding
 - [x] Лисёнок
 - [x] Conversational UI
@@ -642,6 +645,41 @@ TARGETED REGENERATION
 ❌ ручной монтаж сцен
 ❌ сложный календарь
 ❌ десятки параметров генерации
+
+---
+
+## Архитектура авторизации
+
+### Провайдеры
+
+- [x] Email + пароль
+- [x] Яндекс OAuth (LoginSDK)
+- [x] VK OAuth
+
+### Account Linking
+
+```
+users
+ └── id = 123
+
+user_auth_identities
+ ├── user_id = 123, provider = password
+ ├── user_id = 123, provider = yandex, provider_user_id = yandex:xxx
+ └── user_id = 123, provider = vk, provider_user_id = vk:yyy
+```
+
+### Backend API
+
+- [x] `POST /api/v1/auth/login` — email + пароль
+- [x] `POST /api/v1/auth/oauth/login` — OAuth (Яндекс, VK)
+- [x] `POST /api/v1/auth/oauth/link` — привязка провайдера к текущему аккаунту
+- [x] `GET /api/v1/auth/me/providers` — список привязанных провайдеров
+
+### Безопасность
+
+- [x] Никакие секреты провайдеров не хранятся в Android
+- [x] Android отправляет access_token провайдера на backend
+- [x] Backend верифицирует токен и создаёт/находит пользователя
 
 ---
 
