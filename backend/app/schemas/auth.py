@@ -45,3 +45,20 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class OAuthRequest(BaseModel):
+    provider: str = Field(..., pattern="^(yandex|vk)$")
+    access_token: str
+    id_token: str | None = None
+
+
+class LinkProviderRequest(BaseModel):
+    provider: str = Field(..., pattern="^(yandex|vk)$")
+    access_token: str
+
+
+class LinkedProviderResponse(BaseModel):
+    provider: str
+    provider_user_id: str
+    email: str | None = None

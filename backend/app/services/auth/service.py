@@ -202,6 +202,84 @@ class AuthService:
 
         return await self._make_tokens(user.id)
 
+    async def oauth_login(self, provider: str, access_token: str, id_token: str | None = None) -> dict:
+        from app.services.auth.oauth_service import OAuthService
+
+        oauth_service = OAuthService(self.db)
+        try:
+            provider_info = await oauth_service._fetch_provider_info(provider, access_token)
+        except Exception:
+            raise UnauthorizedException("Invalid provider token")
+
+        provider_user_id = f"{provider}:{provider_info['id']}"
+
+        identity = await self.repo.get_auth_identity(provider, provider_user_id)
+
+        if identity:
+            identity.last_login_at = datetime.now(UTC)
+            user = await self.repo.get_by_id(identity.user_id)
+            if not user or user.status != "active":
+                raise UnauthorizedException("User not found or inactive")
+            return await self._make_tokens(user.id)
+
+        email = provider_info.get("email")
+        existing_user = await self.repo.get_by_email(email) if email else None
+
+        if existing_user:
+            await oauth_service.link_provider(existing_user.id, provider, access_token)
+            return await self._make_tokens(existing_user.id)
+
+        user = User(
+            email=email,
+            display_name=provider_info.get("name"),
+            status="active",
+        )
+        await self.repo.create(user)
+
+        identity = UserAuthIdentity(
+            user_id=user.id,
+            provider=provider,
+            provider_user_id=provider_user_id,
+            email=email,
+            credentials_json={"access_token": access_token},
+        )
+        await self.repo.create_auth_identity(identity)
+
+        wallet = Wallet(user_id=user.id, balance_rub=0, bonus_balance=0)
+        self.db.add(wallet)
+
+        prefs = UserPreferences(
+            user_id=user.id,
+            preferred_moods=[],
+            preferred_styles=[],
+            notification_settings={},
+            marketing_opt_in=False,
+            analytics_opt_in=True,
+        )
+        self.db.add(prefs)
+
+        referral_code = ReferralCode(
+            user_id=user.id,
+            code=self._generate_referral_code(),
+            is_active=True,
+            uses_count=0,
+        )
+        self.db.add(referral_code)
+
+        await self.db.commit()
+
+        analytics = AnalyticsService(self.db)
+        try:
+            await analytics.track_event(
+                event_name="register",
+                user_id=user.id,
+                properties={"method": f"oauth_{provider}"},
+            )
+        except Exception:
+            pass
+
+        return await self._make_tokens(user.id)
+
     async def refresh(self, refresh_token: str) -> dict:
         payload = decode_token(refresh_token)
         if payload is None or payload.get("type") != "refresh":
