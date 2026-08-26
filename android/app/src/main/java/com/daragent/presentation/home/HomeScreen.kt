@@ -7,13 +7,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import com.daragent.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToConversation: () -> Unit,
-    onNavigateToPeople: () -> Unit,
-    onNavigateToProfile: () -> Unit,
+    navController: NavHostController? = null,
+    onNavigateToConversation: () -> Unit = {},
+    onNavigateToPeople: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
+    onNewGreeting: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {

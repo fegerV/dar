@@ -10,19 +10,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
-    onBack: () -> Unit,
-    onPaymentComplete: () -> Unit,
+    projectId: String = "",
+    amount: Double = 0.0,
+    navController: NavHostController? = null,
+    onBack: () -> Unit = {},
+    onSuccess: () -> Unit = {},
     viewModel: PaymentViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState.isCompleted) {
         if (uiState.isCompleted) {
-            onPaymentComplete()
+            onSuccess()
         }
     }
 

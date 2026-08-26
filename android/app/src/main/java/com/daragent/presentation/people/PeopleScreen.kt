@@ -21,7 +21,8 @@ import com.daragent.presentation.people.components.PersonCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
-    onBack: () -> Unit,
+    onBack: () -> Unit = {},
+    onAddPerson: () -> Unit = {},
     viewModel: PeopleViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()

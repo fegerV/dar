@@ -64,6 +64,20 @@ object Routes {
     const val SETTINGS = "settings"
 }
 
+object DarAgentDestinations {
+    const val HOME_ROUTE = Routes.HOME
+    const val HISTORY_ROUTE = Routes.HISTORY
+    const val PROFILE_ROUTE = Routes.PROFILE
+    const val CONVERSATION_ROUTE = Routes.CONVERSATION
+    const val PEOPLE_ROUTE = Routes.PEOPLE
+    const val PHOTO_PICKER_ROUTE = Routes.PHOTO_PICKER
+    const val BRIEF_ROUTE = Routes.BRIEF
+    const val GENERATION_ROUTE = Routes.GENERATION
+    const val RESULT_ROUTE = Routes.RESULT
+    const val PAYMENT_ROUTE = Routes.PAYMENT
+    const val SETTINGS_ROUTE = Routes.SETTINGS
+}
+
 @Composable
 fun DarAgentNavHost(
     navController: NavHostController,

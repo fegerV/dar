@@ -8,7 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ResultScreen(onBack: () -> Unit = {}) {
+fun ResultScreen(
+    onBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
             Text("Result Screen")
