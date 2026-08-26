@@ -139,4 +139,12 @@ class PipelineOrchestrator:
                 status="queued",
                 input_json={},
             ),
+            GenerationStep(
+                generation_id=generation_id,
+                step_no=6,
+                step_code="preview",
+                type="video",
+                status="queued",
+                input_json={},
+            ),
         ]

@@ -48,6 +48,17 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
 
+    # Preview generation settings
+    PREVIEW_RESOLUTION: str = "640x360"
+    PREVIEW_BITRATE: str = "800k"
+    PREVIEW_CRF: int = 28
+    PREVIEW_WATERMARK_TEXT: str = "DarAgent"
+    PREVIEW_WATERMARK_POSITION: str = "bottom-right"
+    PREVIEW_WATERMARK_OPACITY: float = 0.5
+    PREVIEW_WATERMARK_PADDING: int = 10
+    FFMPEG_PATH: str = "ffmpeg"
+    FFPROBE_PATH: str = "ffprobe"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     def validate_production(self) -> None:

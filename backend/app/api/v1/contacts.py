@@ -1,90 +1,89 @@
-from datetime import datetime
-from uuid import UUID
-
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, field_validator
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.recipient import Recipient
 from app.repositories.recipients import RecipientRepository
+from app.services.contacts.import_service import (
+    ContactImportResult,
+    process_import,
+)
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
-
-MAX_CONTACTS = 500
-MAX_NAME_LENGTH = 255
-MAX_NOTES_LENGTH = 1000
-
-
-class ContactImportRequest(BaseModel):
-    contacts: list[dict]
-    consent_given: bool = False
-
-    @field_validator("contacts")
-    @classmethod
-    def check_contacts_limit(cls, v):
-        if len(v) > MAX_CONTACTS:
-            raise ValueError(f"Too many contacts (max {MAX_CONTACTS})")
-        return v
 
 
 class ContactImportResponse(BaseModel):
     imported: int
     skipped: int
+    errors: list[dict] = []
 
 
 @router.post("/import", response_model=ContactImportResponse)
 async def import_contacts(
-    body: ContactImportRequest,
+    file: UploadFile = File(None),
+    contacts: str = Form(None),
+    consent_given: bool = Form(False),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if not body.consent_given:
+    if not consent_given:
         from app.core.exceptions import ValidationException
+
         raise ValidationException(
             "Explicit consent (consent_given=true) is required for contact import. "
             "Contacts are processed locally and never sent to third-party services."
         )
 
+    contacts_raw: list[dict] = []
+
+    if file:
+        content = await file.read()
+        text = content.decode("utf-8-sig")
+        from app.services.contacts.import_service import parse_import_file
+
+        contacts_raw = parse_import_file(file.filename or "contacts.csv", text)
+    elif contacts:
+        import json
+
+        contacts_raw = json.loads(contacts)
+        if isinstance(contacts_raw, dict):
+            contacts_raw = contacts_raw.get("contacts", [])
+    else:
+        from app.core.exceptions import ValidationException
+
+        raise ValidationException("Provide a file (CSV/JSON) or contacts JSON string")
+
+    result: ContactImportResult = process_import(contacts_raw)
+
     repo = RecipientRepository(db)
-    imported = 0
-    skipped = 0
-    for contact in body.contacts:
-        name = contact.get("name")
-        if not name or not isinstance(name, str):
-            skipped += 1
-            continue
-        if len(name) > MAX_NAME_LENGTH:
-            name = name[:MAX_NAME_LENGTH]
-
-        birthday_raw = contact.get("birthday")
-        birth_date = None
-        if birthday_raw:
-            if isinstance(birthday_raw, str):
-                try:
-                    birth_date = datetime.fromisoformat(birthday_raw.replace("Z", "+00:00")).date()
-                except (ValueError, TypeError):
-                    pass
-            elif isinstance(birthday_raw, datetime):
-                birth_date = birthday_raw.date()
-
-        relationship = contact.get("relationship")
-        if relationship and not isinstance(relationship, str):
-            relationship = str(relationship)[:MAX_NAME_LENGTH]
-
-        notes = "Imported from contacts"
+    for contact_data in result.contacts:
+        birth_date = contact_data.get("birthday") or contact_data.get("birth_date")
         recipient = Recipient(
             owner_user_id=current_user.id,
-            first_name=name.split(" ")[0][:MAX_NAME_LENGTH],
-            last_name=" ".join(name.split(" ")[1:])[:MAX_NAME_LENGTH] if " " in name else None,
+            first_name=contact_data["first_name"],
+            last_name=contact_data.get("last_name"),
+            nickname=contact_data.get("nickname"),
+            gender=contact_data.get("gender"),
             birth_date=birth_date,
-            relationship=relationship,
-            contact_phone=None,
-            contact_email=None,
-            notes=notes[:MAX_NOTES_LENGTH],
+            city=contact_data.get("city"),
+            occupation=contact_data.get("occupation"),
+            relationship=contact_data.get("relationship"),
+            contact_phone=contact_data.get("contact_phone"),
+            contact_email=contact_data.get("contact_email"),
+            notes=contact_data.get("notes"),
+            interests=contact_data.get("interests", []),
+            traits=contact_data.get("traits", []),
+            favorite_things=contact_data.get("favorite_things", []),
+            forbidden_topics=contact_data.get("forbidden_topics", []),
         )
         await repo.create(recipient)
-        imported += 1
+
     await db.commit()
-    return ContactImportResponse(imported=imported, skipped=skipped)
+
+    return ContactImportResponse(
+        imported=result.imported,
+        skipped=result.skipped,
+        errors=result.errors,
+    )

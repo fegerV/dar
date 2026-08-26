@@ -15,6 +15,7 @@ from app.schemas.quality import QualityCheckRequest
 from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeService
 from app.services.intelligence.preflight import ImagePreflightService
 from app.services.intelligence.prompt_repair import PromptRepairService
+from app.services.preview.service import generate_preview_for_generation
 from app.services.quality.service import QualityGateService
 from app.services.script_generation.service import ScriptGenerationService
 from app.workers.utils import estimate_eta, upload_placeholder_video
@@ -88,6 +89,32 @@ async def _execute_pipeline(generation_id: str):
                     step.error_message = str(e)
                     await db.commit()
                     continue
+            elif step.step_code == "preview":
+                try:
+                    video_url = (generation.output_json or {}).get("video_url")
+                    if video_url:
+                        preview_urls = await generate_preview_for_generation(
+                            video_url=video_url,
+                            project_id=generation.project_id,
+                            generation_id=generation.id,
+                        )
+                        if preview_urls.get("preview_url"):
+                            generation.output_json = dict(generation.output_json or {})
+                            generation.output_json["preview_url"] = preview_urls["preview_url"]
+                            generation.output_json["preview_thumbnail_url"] = (
+                                preview_urls.get("preview_thumbnail_url")
+                            )
+                            await db.commit()
+                    step.status = "completed"
+                    step.output_json = {"result": "ok", "step": "preview"}
+                    step.completed_at = datetime.now(UTC)
+                    await db.commit()
+                except Exception as e:
+                    logger.warning("Preview generation failed for step %s: %s", step.id, e)
+                    step.status = "failed"
+                    step.error_code = "preview_generation_error"
+                    step.error_message = str(e)
+                    await db.commit()
             else:
                 await asyncio.sleep(2)
                 step.status = "completed"

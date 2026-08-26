@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class GenerationStartRequest(BaseModel):
@@ -35,11 +35,28 @@ class GenerationResponse(BaseModel):
     error_code: str | None = None
     error_message: str | None = None
     output_assets: list[dict] = []
+    video_url: str | None = None
+    thumbnail_url: str | None = None
+    preview_url: str | None = None
+    preview_thumbnail_url: str | None = None
     created_at: datetime
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_urls(cls, data):
+        output_json = getattr(data, "output_json", None) or {}
+        if isinstance(output_json, dict):
+            data_dict = dict(data.__dict__) if hasattr(data, "__dict__") else data
+            data_dict["video_url"] = output_json.get("video_url")
+            data_dict["thumbnail_url"] = output_json.get("thumbnail_url")
+            data_dict["preview_url"] = output_json.get("preview_url")
+            data_dict["preview_thumbnail_url"] = output_json.get("preview_thumbnail_url")
+            return data_dict
+        return data
 
 
 class GenerationListResponse(BaseModel):
