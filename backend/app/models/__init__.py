@@ -10,6 +10,7 @@ from app.models.intelligence import (
     UserFeedback,
     VideoRecipe,
 )
+from app.models.lab import LabBenchmark, LabPhoto, LabRecipeProposal, LabScenario
 from app.models.payment import Entitlement, LedgerTransaction, Payment, PromoCode, Wallet
 from app.models.quality import QualityCheck, VideoCriticResult
 from app.models.refreshtoken import RefreshToken
@@ -30,6 +31,10 @@ __all__ = [
     "GenerationFailure",
     "UserFeedback",
     "ModelProfile",
+    "LabScenario",
+    "LabPhoto",
+    "LabBenchmark",
+    "LabRecipeProposal",
     "User",
     "UserAuthIdentity",
     "UserPreferences",

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook, Gavel } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook, Gavel, FlaskConical } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 interface NavItem {
@@ -35,6 +35,7 @@ const navItems: NavItem[] = [
   { href: "/admin/audit-logs", i18nKey: "admin.sidebar.audit_logs", icon: Shield },
   { href: "/admin/system", i18nKey: "admin.sidebar.system", icon: Settings },
   { href: "/admin/help", i18nKey: "admin.sidebar.help", icon: LifeBuoy },
+  { href: "/admin/lab", i18nKey: "admin.sidebar.lab", icon: FlaskConical },
 ]
 
 export function AdminSidebar() {
