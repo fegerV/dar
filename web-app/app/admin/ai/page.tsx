@@ -1,5 +1,5 @@
-import { AdminAI } from "@/components/admin/ai-models"
+import { AdminAIModels } from "@/components/admin/ai-models"
 
-export default function AdminAIPage() {
-  return <AdminAI />
+export default function AdminAIModelsPage() {
+  return <AdminAIModels />
 }

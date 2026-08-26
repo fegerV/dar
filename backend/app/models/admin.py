@@ -85,3 +85,44 @@ class SystemSettings(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     value: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     description: Mapped[str | None] = mapped_column(Text)
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class AIProvider(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "ai_providers"
+
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    provider_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    base_url: Mapped[str] = mapped_column(String(500), nullable=False, default="https://polza.ai/api/v1")
+    api_key_encrypted: Mapped[str] = mapped_column("api_key", Text, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    default_model: Mapped[str | None] = mapped_column(String(100))
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    meta: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_test_status: Mapped[str | None] = mapped_column(String(20))
+    last_test_message: Mapped[str | None] = mapped_column(Text)
+
+
+class AIModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "ai_models"
+
+    provider_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ai_providers.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    model_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    max_prompt_length: Mapped[int] = mapped_column(Integer, nullable=False, default=4096)
+    supports_images: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    supports_video: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    supports_audio: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    default_parameters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    cost_per_unit: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    unit_type: Mapped[str] = mapped_column(String(20), nullable=False, default="token")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    provider = relationship("AIProvider", backref="models")

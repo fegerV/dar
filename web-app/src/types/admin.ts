@@ -21,7 +21,17 @@ export interface AdminTemplate {
   occasion_codes: string[]
   relationship_types: string[]
   moods: string[]
+  tags: string[]
   base_price_rub: number
+  cost_price_rub: number
+  estimated_duration_sec: number | null
+  difficulty: number | null
+  personalization_score: number | null
+  sort_order: number
+  success_rate: number | null
+  avg_rating: number | null
+  usage_count: number
+  completion_rate: number | null
   created_at: string
 }
 
@@ -34,7 +44,12 @@ export interface AdminTemplateCreate {
   occasion_codes: string[]
   relationship_types: string[]
   moods: string[]
+  tags: string[]
   base_price_rub: number
+  cost_price_rub?: number
+  estimated_duration_sec?: number | null
+  difficulty?: number | null
+  personalization_score?: number | null
 }
 
 export interface AdminGeneration {

@@ -1,4 +1,4 @@
-from app.models.admin import AdminUser, QueueJob, Role, SystemSettings, UserRole, Worker
+from app.models.admin import AdminUser, AIProvider, AIModel, QueueJob, Role, SystemSettings, UserRole, Worker
 from app.models.base import Base
 from app.models.email_verification import EmailVerification
 from app.models.generation import Generation, GenerationJob, GenerationStep
@@ -44,6 +44,8 @@ __all__ = [
     "Worker",
     "QueueJob",
     "SystemSettings",
+    "AIProvider",
+    "AIModel",
     "RefreshToken",
     "EmailVerification",
     "WebhookEndpoint",

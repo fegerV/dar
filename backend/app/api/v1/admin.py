@@ -44,6 +44,12 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
+    AIProviderCreate,
+    AIProviderResponse,
+    AIProviderUpdate,
+    AIModelCreate,
+    AIModelResponse,
+    AIModelUpdate,
     QueueJobAction,
     QueueJobBulkAction,
     QueueJobPriorityUpdate,
@@ -1031,3 +1037,132 @@ async def create_webhook(
         return {"id": str(wh.id), "url": wh.url, "events": wh.events, "is_active": wh.is_active, "created_at": wh.created_at.isoformat()}
     except ImportError:
         return {"status": "ok", "message": "Webhook model not available"}
+
+
+@router.get("/ai/providers")
+async def list_ai_providers(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_ai_providers()
+
+
+@router.post("/ai/providers")
+async def create_ai_provider(
+    body: AIProviderCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.create_ai_provider(body)
+
+
+@router.get("/ai/providers/{provider_id}")
+async def get_ai_provider(
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    provider = await service.get_ai_provider(provider_id)
+    if not provider:
+        raise NotFoundException("Provider not found")
+    return provider
+
+
+@router.patch("/ai/providers/{provider_id}")
+async def update_ai_provider(
+    provider_id: UUID,
+    body: AIProviderUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_ai_provider(provider_id, body)
+
+
+@router.delete("/ai/providers/{provider_id}")
+async def delete_ai_provider(
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    await service.delete_ai_provider(provider_id)
+    return {"status": "ok"}
+
+
+@router.post("/ai/providers/{provider_id}/test")
+async def test_ai_provider(
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.test_ai_provider(provider_id)
+
+
+@router.get("/ai/models")
+async def list_ai_models(
+    provider_id: UUID | None = None,
+    model_type: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.list_ai_models(provider_id=provider_id, model_type=model_type)
+
+
+@router.post("/ai/models")
+async def create_ai_model(
+    body: AIModelCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.create_ai_model(body)
+
+
+@router.get("/ai/models/{model_id}")
+async def get_ai_model(
+    model_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    model = await service.get_ai_model(model_id)
+    if not model:
+        raise NotFoundException("Model not found")
+    return model
+
+
+@router.patch("/ai/models/{model_id}")
+async def update_ai_model(
+    model_id: UUID,
+    body: AIModelUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.update_ai_model(model_id, body)
+
+
+@router.delete("/ai/models/{model_id}")
+async def delete_ai_model(
+    model_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    await service.delete_ai_model(model_id)
+    return {"status": "ok"}
+
+
+@router.get("/ai/health")
+async def ai_health_check(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.ai_health_check()

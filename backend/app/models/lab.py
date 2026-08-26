@@ -53,7 +53,7 @@ class LabPhoto(Base, UUIDPrimaryKeyMixin):
     height: Mapped[int | None] = mapped_column(Integer)
     quality_score: Mapped[float | None] = mapped_column(Float)
     face_count: Mapped[int | None] = mapped_column(Integer)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    meta_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -108,7 +108,7 @@ class LabRecipeProposal(Base, UUIDPrimaryKeyMixin):
     approved_by: Mapped[str | None] = mapped_column(String(100))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     applied_to_production: Mapped[bool] = mapped_column(Integer, nullable=False, default=0)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    meta_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

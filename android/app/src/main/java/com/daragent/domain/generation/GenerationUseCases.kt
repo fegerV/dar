@@ -1,21 +1,21 @@
 package com.daragent.domain.generation
 
-import com.daragent.data.generation.GenerationRepository
-import com.daragent.core.network.model.GenerationDto
+import com.daragent.domain.model.Generation
+import com.daragent.domain.repository.GenerationRepository
 import javax.inject.Inject
 
 class GetGenerationsUseCase @Inject constructor(
     private val generationRepository: GenerationRepository,
 ) {
-    suspend operator fun invoke(status: String? = null): Result<List<GenerationDto>> {
-        return generationRepository.getGenerations(status)
+    suspend operator fun invoke(): Result<List<Generation>> {
+        return generationRepository.listGenerations()
     }
 }
 
 class GetGenerationUseCase @Inject constructor(
     private val generationRepository: GenerationRepository,
 ) {
-    suspend operator fun invoke(id: String): Result<GenerationDto> {
+    suspend operator fun invoke(id: String): Result<Generation> {
         return generationRepository.getGeneration(id)
     }
 }
@@ -24,14 +24,12 @@ class CreateGenerationUseCase @Inject constructor(
     private val generationRepository: GenerationRepository,
 ) {
     suspend operator fun invoke(
-        type: String,
-        briefId: String?,
-        photoUrl: String?,
-    ): Result<GenerationDto> {
+        projectId: String,
+        templateVersionId: String? = null,
+    ): Result<Generation> {
         return generationRepository.createGeneration(
-            type = type,
-            briefId = briefId,
-            photoUrl = photoUrl,
+            projectId = projectId,
+            templateVersionId = templateVersionId,
         )
     }
 }

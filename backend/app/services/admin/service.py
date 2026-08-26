@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
-from app.models.admin import AdminUser, QueueJob, SystemSettings, Worker
+from app.models.admin import AdminUser, AIProvider, AIModel, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
 from app.models.payment import LedgerTransaction, Payment, Wallet
 from app.models.project import Project
@@ -43,6 +43,12 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
+    AIProviderCreate,
+    AIProviderResponse,
+    AIProviderUpdate,
+    AIModelCreate,
+    AIModelResponse,
+    AIModelUpdate,
     WorkerRestartResponse,
 )
 
@@ -235,7 +241,12 @@ class AdminService:
             occasion_codes=body.occasion_codes,
             relationship_types=body.relationship_types,
             moods=body.moods,
+            tags=body.tags,
             base_price_rub=body.base_price_rub,
+            cost_price_rub=body.cost_price_rub,
+            estimated_duration_sec=body.estimated_duration_sec,
+            difficulty=body.difficulty,
+            personalization_score=body.personalization_score,
         )
         self.db.add(template)
         await self.db.flush()
@@ -712,3 +723,156 @@ class AdminService:
             "daily_revenue": daily_revenue,
             "daily_generations": daily_generations,
         }
+
+    async def list_ai_providers(self) -> list[AIProviderResponse]:
+        result = await self.db.execute(
+            select(AIProvider).order_by(AIProvider.priority.desc(), AIProvider.name)
+        )
+        return [AIProviderResponse.model_validate(p) for p in result.scalars().all()]
+
+    async def create_ai_provider(self, body: AIProviderCreate) -> AIProviderResponse:
+        existing = await self.db.execute(
+            select(AIProvider).where(AIProvider.name == body.name)
+        )
+        if existing.scalar_one_or_none():
+            raise ConflictException("Provider with this name already exists")
+
+        provider = AIProvider(
+            name=body.name,
+            provider_type=body.provider_type,
+            base_url=body.base_url,
+            api_key_encrypted=body.api_key,
+            enabled=body.enabled,
+            priority=body.priority,
+            default_model=body.default_model,
+            config=body.config,
+        )
+        self.db.add(provider)
+        await self.db.flush()
+        return AIProviderResponse.model_validate(provider)
+
+    async def get_ai_provider(self, provider_id: UUID) -> AIProviderResponse | None:
+        provider = await self.db.get(AIProvider, provider_id)
+        if provider:
+            return AIProviderResponse.model_validate(provider)
+        return None
+
+    async def update_ai_provider(
+        self, provider_id: UUID, body: AIProviderUpdate
+    ) -> AIProviderResponse:
+        provider = await self.db.get(AIProvider, provider_id)
+        if not provider:
+            raise NotFoundException("Provider not found")
+
+        update_data = body.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(provider, key, value)
+
+        await self.db.flush()
+        return AIProviderResponse.model_validate(provider)
+
+    async def delete_ai_provider(self, provider_id: UUID) -> None:
+        provider = await self.db.get(AIProvider, provider_id)
+        if not provider:
+            raise NotFoundException("Provider not found")
+        await self.db.delete(provider)
+        await self.db.flush()
+
+    async def test_ai_provider(self, provider_id: UUID) -> dict:
+        provider = await self.db.get(AIProvider, provider_id)
+        if not provider:
+            raise NotFoundException("Provider not found")
+
+        import time
+        start = time.time()
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{provider.base_url}/health",
+                    headers={"Authorization": f"Bearer {provider.api_key_encrypted}"},
+                )
+                latency_ms = int((time.time() - start) * 1000)
+                if response.status_code == 200:
+                    provider.last_test_status = "ok"
+                    provider.last_test_message = "Connection successful"
+                else:
+                    provider.last_test_status = "error"
+                    provider.last_test_message = f"HTTP {response.status_code}"
+                provider.last_tested_at = datetime.now(timezone.utc)
+                await self.db.flush()
+                return {
+                    "provider_id": str(provider.id),
+                    "provider_name": provider.name,
+                    "status": provider.last_test_status,
+                    "message": provider.last_test_message,
+                    "latency_ms": latency_ms,
+                    "tested_at": provider.last_tested_at,
+                }
+        except Exception as e:
+            provider.last_test_status = "error"
+            provider.last_test_message = str(e)
+            provider.last_tested_at = datetime.now(timezone.utc)
+            await self.db.flush()
+            return {
+                "provider_id": str(provider.id),
+                "provider_name": provider.name,
+                "status": "error",
+                "message": str(e),
+                "latency_ms": None,
+                "tested_at": provider.last_tested_at,
+            }
+
+    async def list_ai_models(
+        self, provider_id: UUID | None = None, model_type: str | None = None
+    ) -> list[AIModelResponse]:
+        query = select(AIModel).order_by(AIModel.name)
+        if provider_id:
+            query = query.where(AIModel.provider_id == provider_id)
+        if model_type:
+            query = query.where(AIModel.model_type == model_type)
+        result = await self.db.execute(query)
+        return [AIModelResponse.model_validate(m) for m in result.scalars().all()]
+
+    async def create_ai_model(self, body: AIModelCreate) -> AIModelResponse:
+        model = AIModel(**body.model_dump())
+        self.db.add(model)
+        await self.db.flush()
+        return AIModelResponse.model_validate(model)
+
+    async def get_ai_model(self, model_id: UUID) -> AIModelResponse | None:
+        model = await self.db.get(AIModel, model_id)
+        if model:
+            return AIModelResponse.model_validate(model)
+        return None
+
+    async def update_ai_model(
+        self, model_id: UUID, body: AIModelUpdate
+    ) -> AIModelResponse:
+        model = await self.db.get(AIModel, model_id)
+        if not model:
+            raise NotFoundException("Model not found")
+
+        update_data = body.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(model, key, value)
+
+        await self.db.flush()
+        return AIModelResponse.model_validate(model)
+
+    async def delete_ai_model(self, model_id: UUID) -> None:
+        model = await self.db.get(AIModel, model_id)
+        if not model:
+            raise NotFoundException("Model not found")
+        await self.db.delete(model)
+        await self.db.flush()
+
+    async def ai_health_check(self) -> list[dict]:
+        providers = await self.list_ai_providers()
+        results = []
+        for provider in providers:
+            if not provider.enabled:
+                continue
+            result = await self.test_ai_provider(provider.id)
+            results.append(result)
+        return results

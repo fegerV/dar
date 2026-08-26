@@ -2,7 +2,8 @@ package com.daragent.presentation.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daragent.core.network.model.PersonDto
+import com.daragent.domain.model.Person
+import com.daragent.domain.repository.ChatMessage
 import com.daragent.presentation.chat.model.ConversationState
 import com.daragent.presentation.chat.model.Message
 import com.daragent.presentation.chat.model.SuggestionAction
@@ -22,7 +23,7 @@ data class ConversationUiState(
     val currentState: ConversationState = ConversationState.IDLE,
     val inputText: String = "",
     val isRecording: Boolean = false,
-    val people: List<PersonDto> = emptyList(),
+    val people: List<Person> = emptyList(),
     val error: String? = null,
     val currentProjectId: String? = null,
 )
@@ -74,7 +75,7 @@ class ConversationViewModel @Inject constructor(
         }
     }
 
-    private fun createChipsFromPeople(people: List<PersonDto>): List<String> {
+    private fun createChipsFromPeople(people: List<Person>): List<String> {
         if (people.isEmpty()) {
             return listOf("Маму", "Папу", "Друга", "Коллегу", "Вторую половинку")
         }
@@ -152,7 +153,7 @@ class ConversationViewModel @Inject constructor(
         }
     }
 
-    private fun parseResponseToMessages(response: com.daragent.core.network.model.chat.ChatMessageResponse): List<Message> {
+    private fun parseResponseToMessages(response: ChatMessage): List<Message> {
         val messages = mutableListOf<Message>()
 
         messages.add(

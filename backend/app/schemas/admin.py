@@ -149,7 +149,12 @@ class AdminTemplateCreate(BaseModel):
     occasion_codes: list[str] = []
     relationship_types: list[str] = []
     moods: list[str] = []
+    tags: list[str] = []
     base_price_rub: float = 0
+    cost_price_rub: float = 0
+    estimated_duration_sec: int | None = None
+    difficulty: int | None = None
+    personalization_score: int | None = None
 
 
 class AdminTemplateResponse(BaseModel):
@@ -163,7 +168,17 @@ class AdminTemplateResponse(BaseModel):
     occasion_codes: list[str] = []
     relationship_types: list[str] = []
     moods: list[str] = []
+    tags: list[str] = []
     base_price_rub: float
+    cost_price_rub: float
+    estimated_duration_sec: int | None = None
+    difficulty: int | None = None
+    personalization_score: int | None = None
+    sort_order: int
+    success_rate: float | None = None
+    avg_rating: float | None = None
+    usage_count: int
+    completion_rate: float | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -387,11 +402,18 @@ class AdminTemplateUpdate(BaseModel):
     occasion_codes: list[str] | None = None
     relationship_types: list[str] | None = None
     moods: list[str] | None = None
+    tags: list[str] | None = None
     base_price_rub: float | None = None
+    cost_price_rub: float | None = None
     min_price_rub: float | None = None
     estimated_duration_sec: int | None = None
     difficulty: int | None = None
     personalization_score: int | None = None
+    sort_order: int | None = None
+    success_rate: float | None = None
+    avg_rating: float | None = None
+    usage_count: int | None = None
+    completion_rate: float | None = None
     metadata_: dict | None = Field(default=None, alias="metadata")
 
     model_config = {"populate_by_name": True}
@@ -570,3 +592,111 @@ class AdminPromptTemplateUpdate(BaseModel):
 
 class AdminSystemSettingsUpdate(BaseModel):
     value: dict
+
+
+class AIProviderResponse(BaseModel):
+    id: UUID
+    name: str
+    provider_type: str
+    base_url: str
+    enabled: bool
+    priority: int
+    default_model: str | None = None
+    config: dict
+    meta: dict
+    last_tested_at: datetime | None = None
+    last_test_status: str | None = None
+    last_test_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AIProviderCreate(BaseModel):
+    name: str
+    provider_type: str
+    base_url: str = "https://polza.ai/api/v1"
+    api_key: str
+    enabled: bool = True
+    priority: int = 0
+    default_model: str | None = None
+    config: dict = {}
+
+
+class AIProviderUpdate(BaseModel):
+    name: str | None = None
+    provider_type: str | None = None
+    base_url: str | None = None
+    api_key: str | None = None
+    enabled: bool | None = None
+    priority: int | None = None
+    default_model: str | None = None
+    config: dict | None = None
+
+
+class AIModelResponse(BaseModel):
+    id: UUID
+    provider_id: UUID
+    name: str
+    display_name: str
+    model_type: str
+    model_id: str
+    max_prompt_length: int
+    supports_images: bool
+    supports_video: bool
+    supports_audio: bool
+    default_parameters: dict
+    cost_per_unit: float
+    unit_type: str
+    enabled: bool
+    is_default: bool
+    config: dict
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AIModelCreate(BaseModel):
+    provider_id: UUID
+    name: str
+    display_name: str
+    model_type: str
+    model_id: str
+    max_prompt_length: int = 4096
+    supports_images: bool = False
+    supports_video: bool = False
+    supports_audio: bool = False
+    default_parameters: dict = {}
+    cost_per_unit: float = 0
+    unit_type: str = "token"
+    enabled: bool = True
+    is_default: bool = False
+    config: dict = {}
+
+
+class AIModelUpdate(BaseModel):
+    name: str | None = None
+    display_name: str | None = None
+    model_type: str | None = None
+    model_id: str | None = None
+    max_prompt_length: int | None = None
+    supports_images: bool | None = None
+    supports_video: bool | None = None
+    supports_audio: bool | None = None
+    default_parameters: dict | None = None
+    cost_per_unit: float | None = None
+    unit_type: str | None = None
+    enabled: bool | None = None
+    is_default: bool | None = None
+    config: dict | None = None
+
+
+class AIProviderHealthResponse(BaseModel):
+    provider_id: UUID
+    provider_name: str
+    status: str
+    message: str | None = None
+    latency_ms: int | None = None
+    tested_at: datetime

@@ -8,9 +8,7 @@ class LoginUseCase @Inject constructor(
     private val authRepository: AuthRepository,
 ) {
     suspend operator fun invoke(email: String, password: String): Result<AuthResponse> {
-        return runCatching {
-            throw NotImplementedError("Requires API integration")
-        }
+        return authRepository.login(email, password)
     }
 }
 
@@ -18,9 +16,7 @@ class RegisterUseCase @Inject constructor(
     private val authRepository: AuthRepository,
 ) {
     suspend operator fun invoke(email: String, password: String, name: String?): Result<AuthResponse> {
-        return runCatching {
-            throw NotImplementedError("Requires API integration")
-        }
+        return authRepository.register(email, password, name)
     }
 }
 
