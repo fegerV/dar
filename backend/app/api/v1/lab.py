@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_admin, get_db
 from app.models.admin import AdminUser
+from app.models.lab import LabBenchmark, LabRecipeProposal
 from app.schemas.lab import (
     LabBenchmarkCreate,
     LabBenchmarkRead,
@@ -16,6 +18,7 @@ from app.schemas.lab import (
     LabScenarioRead,
     LabStatsResponse,
 )
+from app.services.lab.runner import BenchmarkRunner
 from app.services.lab.service import LabService
 
 router = APIRouter()
@@ -160,9 +163,6 @@ async def list_proposals(
     db: AsyncSession = Depends(get_db),
     _: AdminUser = Depends(get_current_admin),
 ):
-    from sqlalchemy import select
-    from app.models.lab import LabRecipeProposal
-
     stmt = select(LabRecipeProposal).order_by(LabRecipeProposal.created_at.desc())
     if approved is not None:
         stmt = stmt.where(LabRecipeProposal.approved == (1 if approved else 0))
@@ -208,7 +208,11 @@ async def get_stats(
     return await service.get_stats()
 
 
-@router.post("/benchmarks/run-all", response_model=list[LabBenchmarkRead], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/benchmarks/run-all",
+    response_model=list[LabBenchmarkRead],
+    status_code=status.HTTP_201_CREATED,
+)
 async def run_all_benchmarks(
     db: AsyncSession = Depends(get_db),
     _: AdminUser = Depends(get_current_admin),
@@ -224,8 +228,18 @@ async def run_all_benchmarks(
     ]
     benchmarks: list[LabBenchmark] = []
     for scenario in scenarios:
-        photo = next((p for p in photos if p.scenario_code == scenario.code), photos[0] if photos else None)
+        photo = next(
+            (p for p in photos if p.scenario_code == scenario.code),
+            photos[0] if photos else None,
+        )
         for model_name, model_version in models:
+            existing = await service.list_benchmarks(scenario_id=scenario.id)
+            already_exists = any(
+                b.model_name == model_name and b.model_version == model_version
+                for b in existing
+            )
+            if already_exists:
+                continue
             bm = await service.create_benchmark(
                 LabBenchmarkCreate(
                     scenario_id=scenario.id,
@@ -241,3 +255,38 @@ async def run_all_benchmarks(
             )
             benchmarks.append(bm)
     return benchmarks
+
+
+@router.post("/benchmarks/{benchmark_id}/run", response_model=LabBenchmarkRead)
+async def run_benchmark(
+    benchmark_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin),
+):
+    service = LabService(db)
+    benchmark = await service.get_benchmark(benchmark_id)
+    if not benchmark:
+        raise HTTPException(status_code=404, detail="Benchmark not found")
+
+    runner = BenchmarkRunner(db)
+    await runner.run_benchmark(benchmark_id)
+
+    return await service.get_benchmark(benchmark_id)
+
+
+@router.post("/benchmarks/run-pending", response_model=dict)
+async def run_pending_benchmarks(
+    db: AsyncSession = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin),
+):
+    runner = BenchmarkRunner(db)
+    results = await runner.run_all_pending()
+
+    successful = sum(1 for r in results if r.success)
+    failed = sum(1 for r in results if not r.success)
+
+    return {
+        "total": len(results),
+        "successful": successful,
+        "failed": failed,
+    }

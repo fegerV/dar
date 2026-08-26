@@ -15,6 +15,7 @@ from app.schemas.quality import QualityCheckRequest
 from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeService
 from app.services.intelligence.preflight import ImagePreflightService
 from app.services.intelligence.prompt_repair import PromptRepairService
+from app.services.lab.runner import run_benchmark_task
 from app.services.preview.service import generate_preview_for_generation
 from app.services.quality.service import QualityGateService
 from app.services.script_generation.service import ScriptGenerationService
@@ -242,3 +243,9 @@ async def _targeted_regeneration(db, generation: Generation, quality_response) -
     await db.commit()
 
     execute_pipeline.apply_async(args=[str(generation.id)], countdown=10)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=30)
+def run_benchmark(self, benchmark_id: str):
+    """Run a single benchmark asynchronously."""
+    return asyncio.run(run_benchmark_task(benchmark_id))
