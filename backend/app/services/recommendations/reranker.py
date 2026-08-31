@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.recommendation import Recommendation
-from app.models.template import Template, TemplateVersion
-from app.repositories.recommendations import RecommendationRepository, TemplateRepository
 from app.repositories.projects import ProjectRepository
 from app.repositories.recipients import RecipientRepository
+from app.repositories.recommendations import RecommendationRepository, TemplateRepository
 from app.schemas.recommendation_v2 import RecommendationItem, RecommendationListResponseV2
 
 
@@ -29,11 +26,11 @@ class AIReranker:
     async def rerank(self, project_id: UUID, user_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
         candidates = await self.repo.list_by_project(project_id)
         if not candidates:
-            return RecommendationListResponseV2(items=[], generated_at=datetime.now(timezone.utc))
+            return RecommendationListResponseV2(items=[], generated_at=datetime.now(UTC))
 
         project = await self.project_repo.get_by_id(project_id, user_id)
         if project is None:
-            return RecommendationListResponseV2(items=[], generated_at=datetime.now(timezone.utc))
+            return RecommendationListResponseV2(items=[], generated_at=datetime.now(UTC))
 
         brief = await self.project_repo.get_brief(project_id)
         recipient = None
@@ -118,7 +115,7 @@ class AIReranker:
 
         return RecommendationListResponseV2(
             items=items,
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             model_version="ai_rerank_v1",
         )
 
@@ -164,7 +161,7 @@ class AIReranker:
                     explanation=c.explanation,
                 )
             )
-        return RecommendationListResponseV2(items=items, generated_at=datetime.now(timezone.utc))
+        return RecommendationListResponseV2(items=items, generated_at=datetime.now(UTC))
 
 
 class DiversityFilter:

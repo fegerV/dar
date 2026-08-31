@@ -1,9 +1,7 @@
 """API dependencies for v1 endpoints."""
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import ForbiddenException
 from app.models.admin import AdminUser

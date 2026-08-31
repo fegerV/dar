@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.admin import AdminUser, QueueJob, Role, SystemSettings, UserRole, Worker
+from app.models.admin import AdminUser, QueueJob, Role, SystemSettings, Worker
 
 
 class AdminRepository:
@@ -53,7 +53,7 @@ class AdminRepository:
             existing.jobs_today = worker.jobs_today
             existing.failures_today = worker.failures_today
             existing.avg_generation_time_sec = worker.avg_generation_time_sec
-            existing.last_heartbeat_at = worker.last_heartbeat_at or datetime.now(timezone.utc)
+            existing.last_heartbeat_at = worker.last_heartbeat_at or datetime.now(UTC)
             existing.metadata_ = worker.metadata_
             await self.db.flush()
             return existing

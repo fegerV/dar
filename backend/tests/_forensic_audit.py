@@ -28,7 +28,7 @@ def parse_file(filepath):
     try:
         with open(filepath, encoding='utf-8') as f:
             return ast.parse(f.read(), filename=filepath)
-    except Exception as e:
+    except Exception:
         return None
 
 def collect_definitions(root_dir):
@@ -123,7 +123,7 @@ print("Router files and their registration status:")
 for relpath, prefix in sorted(router_defs.items()):
     # Simpler check: see if the router variable name is mentioned
     varname = os.path.splitext(os.path.basename(relpath))[0] + '_router'
-    included = varname in router_content or basename in router_content
+    included = varname in router_content or os.path.basename(relpath) in router_content
     status = "REGISTERED" if included else "NOT REGISTERED"
     print(f"  {relpath} (prefix={prefix}): {status}")
 

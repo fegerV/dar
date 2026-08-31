@@ -1,12 +1,11 @@
 """Polza.ai API integration service."""
 
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 
-from app.models.admin import AIProvider, AIModel
+from app.models.admin import AIModel, AIProvider
 
 
 class PolzaAIService:

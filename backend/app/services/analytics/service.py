@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics import AnalyticsEvent
@@ -32,7 +31,7 @@ class AnalyticsService:
             app_version=app_version,
             anonymous_id=anonymous_id,
             properties=properties or {},
-            occurred_at=datetime.now(timezone.utc),
+            occurred_at=datetime.now(UTC),
         )
         self.db.add(event)
         await self.db.flush()

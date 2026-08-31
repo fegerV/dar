@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from uuid import UUID
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -13,7 +12,6 @@ from app.core.dependencies import get_current_user
 from app.core.exceptions import ForbiddenException
 from app.models.admin import Role, UserRole
 from app.models.user import User
-
 
 SYSTEM_ROLES = {
     "owner": {

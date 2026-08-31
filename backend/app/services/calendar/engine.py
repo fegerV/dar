@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -141,7 +141,7 @@ class CalendarEngine:
         self.db = db
 
     async def get_todays_holidays(self, today: date | None = None) -> list[dict]:
-        today = today or datetime.now(timezone.utc).date()
+        today = today or datetime.now(UTC).date()
         results = []
 
         holiday_result = await self.db.execute(
@@ -206,7 +206,7 @@ class CalendarEngine:
         return results
 
     async def get_today_pack(self, user_id: UUID) -> dict:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         holidays = await self.get_todays_holidays(today)
 
         upcoming_events = []
@@ -223,7 +223,7 @@ class CalendarEngine:
             select(Project).where(
                 Project.owner_user_id == user_id,
                 Project.status.in_(["draft", "brief_completed"]),
-                Project.requested_delivery_at >= datetime.now(timezone.utc),
+                Project.requested_delivery_at >= datetime.now(UTC),
             )
         )
         active_projects = active_projects_result.scalars().all()

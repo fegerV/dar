@@ -1,10 +1,10 @@
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.models.payment import Entitlement
@@ -38,8 +38,8 @@ async def _friday_bonus():
                 quantity=30,
                 consumed=0,
                 source="friday_bonus",
-                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-                created_at=datetime.now(timezone.utc),
+                expires_at=datetime.now(UTC) + timedelta(days=7),
+                created_at=datetime.now(UTC),
             )
             await repo.create(entitlement)
         await db.commit()

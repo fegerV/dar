@@ -1,10 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationException
-from app.models.generation import Generation
 from app.models.quality import VideoCriticResult
 from app.repositories.generations import GenerationRepository
 from app.repositories.quality import QualityRepository
@@ -49,7 +48,7 @@ class VideoCriticService:
                 "threshold": self.CRITIC_THRESHOLD,
                 "prompt": prompt,
                 "video_url": payload.get("video_url"),
-                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "evaluated_at": datetime.now(UTC).isoformat(),
             },
         )
         self.db.add(critic)

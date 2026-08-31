@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from celery import shared_task
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
@@ -45,7 +45,7 @@ async def _process_generation_job(job_id: str):
             return
 
         generation.status = "processing"
-        generation.started_at = datetime.now(timezone.utc)
+        generation.started_at = datetime.now(UTC)
         await db.flush()
 
         steps = await _get_steps(db, generation.id)
@@ -53,14 +53,14 @@ async def _process_generation_job(job_id: str):
 
         for idx, step in enumerate(steps):
             step.status = "processing"
-            step.started_at = datetime.now(timezone.utc)
+            step.started_at = datetime.now(UTC)
             await db.flush()
 
             await asyncio.sleep(2)
 
             step.status = "completed"
             step.output_json = {"result": "ok"}
-            step.completed_at = datetime.now(timezone.utc)
+            step.completed_at = datetime.now(UTC)
             await db.flush()
 
             generation.progress = int((idx + 1) / total_steps * 100)
@@ -70,7 +70,7 @@ async def _process_generation_job(job_id: str):
 
         generation.status = "completed"
         generation.progress = 100
-        generation.completed_at = datetime.now(timezone.utc)
+        generation.completed_at = datetime.now(UTC)
         try:
             urls = await upload_placeholder_video(generation)
         except Exception as e:
@@ -89,7 +89,7 @@ async def _process_generation_job(job_id: str):
             "face_count": 1,
         }
         job.status = "finished"
-        job.finished_at = datetime.now(timezone.utc)
+        job.finished_at = datetime.now(UTC)
         await db.commit()
         logger.info("Generation %s completed", generation.id)
 

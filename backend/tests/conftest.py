@@ -16,7 +16,6 @@ from app.main import app
 from app.models.base import Base
 from app.models.user import User
 
-
 _test_db = settings.DATABASE_URL
 # Use shared in-memory SQLite so tables persist across connections
 engine = create_async_engine(
@@ -30,8 +29,8 @@ TestSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_com
 # SQLite doesn't natively understand postgresql JSONB or ARRAY types.
 # Replace them with SQLite-compatible JSON types for test schema creation.
 def _replace_pg_types(metadata):
-    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
     from sqlalchemy import BigInteger
+    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
     from sqlalchemy.types import JSON as SQLA_JSON
     from sqlalchemy.types import Integer as SQLA_Integer
 

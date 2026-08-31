@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException
 from app.models.payment import Entitlement
 from app.repositories.entitlements import EntitlementRepository
 from app.schemas.payment import EntitlementResponse
@@ -27,7 +27,7 @@ class EntitlementService:
             quantity=quantity,
             consumed=0,
             source=source,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         entitlement = await self.repo.create(entitlement)
         await self.db.commit()

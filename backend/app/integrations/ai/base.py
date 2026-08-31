@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from uuid import UUID
 from typing import Any
+from uuid import UUID
+
 
 class BaseProvider(ABC):
     provider_id: UUID

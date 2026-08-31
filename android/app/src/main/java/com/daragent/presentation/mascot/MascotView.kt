@@ -1,15 +1,20 @@
 package com.daragent.presentation.mascot
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -81,24 +86,56 @@ fun MascotRiveView(
     state: MascotState,
     modifier: Modifier = Modifier,
 ) {
-    val isInspection = LocalInspectionMode.current
-
-    if (isInspection) {
-        Box(
-            modifier = modifier
-                .background(Color.Transparent)
-                .size(120.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("🦊", fontSize = 48.sp)
-        }
-        return
+    val emoji = when (state) {
+        is MascotState.Hello -> "👋"
+        is MascotState.Listen -> "👂"
+        is MascotState.Think -> "🤔"
+        is MascotState.Write -> "✍️"
+        is MascotState.Read -> "📖"
+        is MascotState.LookUp -> "👀"
+        is MascotState.Happy -> "😊"
+        is MascotState.Surprised -> "😮"
+        is MascotState.Wink -> "😉"
+        is MascotState.Point -> "👉"
+        is MascotState.Celebrate -> "🎉"
+        is MascotState.Working -> "⚙️"
+        is MascotState.Success -> "✅"
+        is MascotState.Error -> "❌"
+        is MascotState.Sorry -> "😔"
+        is MascotState.Goodbye -> "👋"
+        else -> "🦊"
     }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "mascot_pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (state.isLoop) 1.1f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "scale",
+    )
 
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        Text(state.riveStateName, fontSize = 24.sp)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = emoji,
+                fontSize = (64 * scale).sp,
+            )
+            if (state.riveStateName != "idle") {
+                Text(
+                    text = state.riveStateName,
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                )
+            }
+        }
     }
 }

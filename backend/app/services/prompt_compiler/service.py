@@ -1,11 +1,12 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any
 
 from app.core.exceptions import NotFoundException
+from app.models.project import Project
 from app.models.template import Scene, TemplateVersion
 from app.repositories.projects import ProjectRepository
 from app.schemas.brief import CreativeBriefRead
@@ -101,7 +102,7 @@ class PromptCompilerService:
         if hasattr(recipient, "nickname"):
             context["nickname"] = recipient.nickname or ""
         if hasattr(recipient, "birth_date"):
-            today = datetime.now(timezone.utc).date()
+            today = datetime.now(UTC).date()
             if recipient.birth_date:
                 age = today.year - recipient.birth_date.year
                 if (today.month, today.day) < (recipient.birth_date.month, recipient.birth_date.day):
@@ -169,7 +170,7 @@ class PromptCompilerService:
                     system_prompt="TEMPLATE_CONDITION_SKIPPED",
                     user_prompt="",
                     constraints={"skipped": True, "reason": should_skip},
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
 
             scene_rows = await self.db.execute(
@@ -196,7 +197,7 @@ class PromptCompilerService:
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             constraints={},
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     def _evaluate_conditions(self, template_version: TemplateVersion, project: Project, brief: CreativeBriefRead) -> str | None:

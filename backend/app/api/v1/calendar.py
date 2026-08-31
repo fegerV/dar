@@ -1,5 +1,4 @@
-from datetime import date
-from uuid import UUID
+from datetime import UTC, date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,8 +42,8 @@ async def get_nearby_holidays(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     service = CalendarEngine(db)
     return await service.find_holiday_near(today, days_ahead)

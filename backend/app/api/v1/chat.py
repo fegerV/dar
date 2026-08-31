@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -43,36 +43,36 @@ def _generate_response(user_id: str, text: str, project_id: str | None) -> tuple
 
         if any(w in lower for w in ["мам", "маму", "маме"]):
             return (
-                f"Мама ❤️ — это всегда особенный повод!\n\n"
-                f"Какой у неё праздник?",
+                "Мама ❤️ — это всегда особенный повод!\n\n"
+                "Какой у неё праздник?",
                 ["День рождения 🎂", "Юбилей 🎉", "8 Марта 🌸", "Просто так 💝"],
                 project_id or str(uuid4()),
             )
         elif any(w in lower for w in ["пап", "папу", "папе"]):
             return (
-                f"Папа 💙 — нужно что-то мужское и запоминающееся!\n\n"
-                f"Что празднуем?",
+                "Папа 💙 — нужно что-то мужское и запоминающееся!\n\n"
+                "Что празднуем?",
                 ["День рождения 🎂", "Юбилей 🎉", "23 Февраля 🎖️", "Без повода"],
                 project_id or str(uuid4()),
             )
         elif any(w in lower for w in ["друг", "друга", "подруга", "подругу"]):
             return (
-                f"Друг 🤝 — давай придумаем что-то классное!\n\n"
-                f"Какой повод?",
+                "Друг 🤝 — давай придумаем что-то классное!\n\n"
+                "Какой повод?",
                 ["День рождения 🎂", "Выпускной 🎓", "Свадьба 💒", "Без повода 🎉"],
                 project_id or str(uuid4()),
             )
         elif any(w in lower for w in ["жен", "жену", "любимая", "девушк"]):
             return (
-                f"Любимая 💕 — романтично!\n\n"
-                f"Что планируем?",
+                "Любимая 💕 — романтично!\n\n"
+                "Что планируем?",
                 ["День рождения 🎂", "Годовщина 💍", "День Валентинка 💌", "Просто так 💝"],
                 project_id or str(uuid4()),
             )
         elif any(w in lower for w in ["коллег", "коллега", "начальн", "босс"]):
             return (
-                f"Коллега 👔 — держим формальтон!\n\n"
-                f"Какой повод?",
+                "Коллега 👔 — держим формальтон!\n\n"
+                "Какой повод?",
                 ["День рождения 🎂", "Профессиональный праздник 🏆", "Выпуск на пенсию 🎖️"],
                 project_id or str(uuid4()),
             )
@@ -127,8 +127,8 @@ def _generate_response(user_id: str, text: str, project_id: str | None) -> tuple
         state["step"] = "generating"
         _conversation_state[user_id] = state
         return (
-            f"Отлично! Запускаю генерацию видеопоздравления 🎬\n\n"
-            f"Это займёт около 2-5 минут. Я пришлю уведомление, когда будет готово!",
+            "Отлично! Запускаю генерацию видеопоздравления 🎬\n\n"
+            "Это займёт около 2-5 минут. Я пришлю уведомление, когда будет готово!",
             ["Следить за прогрессом 📊"],
             project_id or str(uuid4()),
         )
@@ -144,8 +144,8 @@ def _generate_response(user_id: str, text: str, project_id: str | None) -> tuple
         )
 
     return (
-        f"Интересно! 😊\n\n"
-        f"Мы уже почти закончили. Хочешь начать генерацию или изменить что-то?",
+        "Интересно! 😊\n\n"
+        "Мы уже почти закончили. Хочешь начать генерацию или изменить что-то?",
         ["Начать генерацию 🚀", "Начать заново 🔄"],
         project_id or str(uuid4()),
     )
@@ -168,7 +168,7 @@ async def send_message(
         text=response_text,
         sender="daragent",
         suggestions=suggestions,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -186,7 +186,7 @@ async def create_project(
         recipient_name=body.recipient_name,
         occasion=body.occasion,
         mood=body.mood,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -201,5 +201,5 @@ async def get_project(
         status="draft",
         recipient_name="Елена",
         occasion="День рождения",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )

@@ -1,7 +1,7 @@
 """Check p99 latency from Locust stats CSV."""
 
-import sys
 import csv
+import sys
 
 
 def check_p99_latency(csv_file: str, max_p99_ms: int) -> bool:
@@ -15,7 +15,7 @@ def check_p99_latency(csv_file: str, max_p99_ms: int) -> bool:
     Returns:
         True if p99 is below threshold, False otherwise
     """
-    with open(csv_file, "r") as f:
+    with open(csv_file) as f:
         reader = csv.DictReader(f)
         for row in reader:
             if row["Name"] == "Aggregated":
@@ -25,7 +25,7 @@ def check_p99_latency(csv_file: str, max_p99_ms: int) -> bool:
                 num_requests = int(row["# requests"])
                 num_failures = int(row["# failures"])
 
-                print(f"Load Test Results:")
+                print("Load Test Results:")
                 print(f"  Requests: {num_requests}")
                 print(f"  Failures: {num_failures}")
                 print(f"  Average:  {avg:.1f}ms")

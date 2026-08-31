@@ -16,6 +16,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.daragent.presentation.chat.components.MessageBubble
+import com.daragent.presentation.mascot.MascotController
+import com.daragent.presentation.mascot.MascotEvent
+import com.daragent.presentation.mascot.MascotRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +33,17 @@ fun ConversationScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val mascotRepository = remember { MascotRepository() }
+
+    LaunchedEffect(Unit) {
+        mascotRepository.handleEvent(MascotEvent.SHOW_HELLO)
+    }
+
+    LaunchedEffect(uiState.isLoading) {
+        if (uiState.isLoading) {
+            mascotRepository.handleEvent(MascotEvent.ANSWER_RECEIVED)
+        }
+    }
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -70,13 +84,23 @@ fun ConversationScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("message_list"),
-                contentPadding = PaddingValues(vertical = 8.dp),
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (uiState.messages.size <= 2) {
+                    MascotController(
+                        repository = mascotRepository,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                    )
+                }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("message_list"),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
                 items(
                     items = uiState.messages,
                     key = { it.id },
@@ -98,20 +122,21 @@ fun ConversationScreen(
                         TypingIndicator()
                     }
                 }
-            }
+                }
 
-            if (uiState.error != null && !uiState.isLoading) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp),
-                    action = {
-                        TextButton(onClick = viewModel::clearError) {
-                            Text("OK")
-                        }
-                    },
-                ) {
-                    Text(uiState.error!!)
+                if (uiState.error != null && !uiState.isLoading) {
+                    Snackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                        action = {
+                            TextButton(onClick = viewModel::clearError) {
+                                Text("OK")
+                            }
+                        },
+                    ) {
+                        Text(uiState.error!!)
+                    }
                 }
             }
         }

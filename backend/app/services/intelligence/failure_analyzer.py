@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from app.models.intelligence import ModelProfile, VideoRecipe
+from app.models.intelligence import VideoRecipe
 from app.repositories.generations import GenerationRepository
 
 

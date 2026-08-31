@@ -1,11 +1,9 @@
-from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.generation import Generation, GenerationStep, GenerationJob
-from app.models.project import Project
+from app.models.generation import Generation, GenerationJob, GenerationStep
 
 
 class GenerationRepository:

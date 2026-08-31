@@ -1,12 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.security import decode_token
-from app.models.user import User, UserAuthIdentity
+from app.models.user import User
 from app.repositories.users import UserRepository
 from app.schemas.auth import (
     AuthResponse,

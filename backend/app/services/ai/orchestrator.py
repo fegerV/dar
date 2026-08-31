@@ -1,9 +1,7 @@
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.integrations.ai.base import ProviderRegistry
 from app.integrations.ai.registry import create_provider_registry
 
 

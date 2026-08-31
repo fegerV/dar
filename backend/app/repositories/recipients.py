@@ -1,3 +1,4 @@
+from datetime import UTC
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -80,8 +81,8 @@ class RecipientRepository:
         return recipient
 
     async def archive(self, recipient: Recipient) -> Recipient:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        recipient.archived_at = datetime.now(timezone.utc)
+        recipient.archived_at = datetime.now(UTC)
         await self.db.flush()
         return recipient

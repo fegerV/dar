@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,8 +10,8 @@ from app.schemas.lab import (
     LabBenchmarkCreate,
     LabBenchmarkResultUpdate,
     LabRecipeProposalApprove,
-    LabStatsResponse,
     LabScenarioCreate,
+    LabStatsResponse,
 )
 
 
@@ -142,9 +142,9 @@ class LabService:
         if "status" in update_data:
             new_status = update_data["status"]
             if new_status == "running" and not benchmark.started_at:
-                benchmark.started_at = datetime.now(timezone.utc)
+                benchmark.started_at = datetime.now(UTC)
             elif new_status in ("completed", "failed"):
-                benchmark.completed_at = datetime.now(timezone.utc)
+                benchmark.completed_at = datetime.now(UTC)
                 if "status" not in update_data or update_data["status"] == "completed":
                     benchmark.status = new_status
                 else:
@@ -193,7 +193,7 @@ class LabService:
         proposal.approved = data.approved
         if data.approved:
             proposal.approved_by = approved_by
-            proposal.approved_at = datetime.now(timezone.utc)
+            proposal.approved_at = datetime.now(UTC)
             if data.recipe_name:
                 proposal.recipe_name = data.recipe_name
             if data.confidence_score is not None:

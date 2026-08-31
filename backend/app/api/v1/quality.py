@@ -1,18 +1,17 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
-from app.models.quality import VideoCriticResult
 from app.repositories.projects import ProjectRepository
 from app.repositories.quality import QualityRepository
 from app.schemas.quality import (
     ManualReviewRequest,
     ManualReviewResponse,
     QualityCheckRequest,
-    QualityCheckResponse,
     QualityGateResponse,
     VideoCriticResponse,
 )

@@ -1,31 +1,38 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.exceptions import ConflictException, ForbiddenException, NotFoundException, ValidationException
-from app.core.rbac import get_user_permissions, permission_allowed, require_permission, SYSTEM_ROLES
+from app.core.exceptions import (
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+    ValidationException,
+)
+from app.core.rbac import SYSTEM_ROLES, require_permission
 from app.models.admin import Role, UserRole
-from app.models.payment import Wallet, LedgerTransaction, PromoCode
-from app.models.template import Template, PromptTemplate
+from app.models.payment import LedgerTransaction, Payment, PromoCode, Wallet
+from app.models.template import PromptTemplate
 from app.models.user import User
-from app.schemas.admin import RoleResponse, UserRoleAssign, RoleCreate, RoleUpdate, WalletAdjustmentRequest, WalletLedgerEntryResponse, AdminPromoCodeCreate, AdminPromoCodeResponse, AdminPromoCodeUpdate
 from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
     AdminGenerationDetailResponse,
     AdminGenerationResponse,
     AdminLedgerResponse,
+    AdminOrderResponse,
+    AdminPaymentResponse,
+    AdminPromoCodeCreate,
+    AdminPromoCodeResponse,
+    AdminPromoCodeUpdate,
     AdminPromptTemplateCreate,
     AdminPromptTemplateResponse,
     AdminPromptTemplateUpdate,
-    AdminOrderResponse,
-    AdminPaymentResponse,
     AdminQueueJobResponse,
     AdminReferralCodeResponse,
     AdminReferralResponse,
@@ -44,15 +51,18 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
-    AIProviderCreate,
-    AIProviderResponse,
-    AIProviderUpdate,
     AIModelCreate,
-    AIModelResponse,
     AIModelUpdate,
+    AIProviderCreate,
+    AIProviderUpdate,
     QueueJobAction,
     QueueJobBulkAction,
     QueueJobPriorityUpdate,
+    RoleCreate,
+    RoleResponse,
+    RoleUpdate,
+    UserRoleAssign,
+    WalletAdjustmentRequest,
     WorkerRestartResponse,
     WorkerStatusUpdate,
 )
@@ -176,7 +186,7 @@ async def retry_generation(
     from app.services.audit.service import AuditService
 
     service = AdminService(db)
-    gen = await service.get_generation_detail(gen_id)
+    await service.get_generation_detail(gen_id)
     audit = AuditService(db)
     await audit.log(
         actor_user_id=current_user.id, action="generation_retry",
@@ -195,7 +205,7 @@ async def cancel_generation(
     from app.services.audit.service import AuditService
 
     service = AdminService(db)
-    gen = await service.get_generation_detail(gen_id)
+    await service.get_generation_detail(gen_id)
     from app.models.generation import Generation as GenerationModel
     generation = await db.get(GenerationModel, gen_id)
     if generation and generation.status in ("running", "pending", "queued", "processing"):
@@ -305,7 +315,7 @@ async def refund_payment(
 
     refund_amount = amount_rub or float(payment.amount_rub)
     payment.status = "refunded"
-    payment.refunded_at = datetime.now(timezone.utc)
+    payment.refunded_at = datetime.now(UTC)
 
     wallet = await db.get(Wallet, None)
     result = await db.execute(select(Wallet).where(Wallet.user_id == payment.user_id))
@@ -441,7 +451,10 @@ async def impersonate_user(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    from app.core.security import create_access_token, create_impersonation_token, create_refresh_token
+    from app.core.security import (
+        create_impersonation_token,
+        create_refresh_token,
+    )
     from app.services.audit.service import AuditService
 
     if not mfa_token:
@@ -554,6 +567,7 @@ async def list_errors(
     current_user=Depends(require_admin),
 ):
     from sqlalchemy import or_
+
     from app.models import Generation as GenerationModel
 
     query = select(GenerationModel).where(
@@ -819,7 +833,6 @@ async def create_role(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("settings.manage")),
 ):
-    existing = await db.get(Role, None)
     result = await db.execute(select(Role).where(Role.code == body.code))
     if result.scalar_one_or_none():
         raise ConflictException(f"Role '{body.code}' already exists")
@@ -977,7 +990,6 @@ async def update_prompt_template(
     prompt = await db.get(PromptTemplate, prompt_id)
     if prompt is None:
         raise NotFoundException("Prompt not found")
-    is_system = prompt.is_active
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(prompt, key, value)

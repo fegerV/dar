@@ -1,11 +1,9 @@
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analytics import AnalyticsEvent
-from app.models.project import Project
-from app.models.user import User
 from app.repositories.projects import ProjectRepository
 from app.services.analytics.service import AnalyticsService
 

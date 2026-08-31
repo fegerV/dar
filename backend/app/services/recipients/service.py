@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -12,8 +12,13 @@ from app.integrations.storage.factory import get_storage_provider
 from app.models.asset import Asset, StorageObject
 from app.models.recipient import Recipient, RecipientAsset
 from app.repositories.recipients import RecipientRepository
-from app.schemas.recipient import RecipientCreate, RecipientUpdate, RecipientResponse
-from app.schemas.recipient import RecipientPhotoUploadRequest, RecipientPhotoUploadResponse
+from app.schemas.recipient import (
+    RecipientCreate,
+    RecipientPhotoUploadRequest,
+    RecipientPhotoUploadResponse,
+    RecipientResponse,
+    RecipientUpdate,
+)
 
 ALLOWED_PHOTO_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
@@ -60,7 +65,7 @@ class RecipientService:
         for key, value in update_data.items():
             setattr(recipient, key, value)
 
-        recipient.updated_at = datetime.now(timezone.utc)
+        recipient.updated_at = datetime.now(UTC)
         await self.repo.update(recipient)
         await self.db.flush()
         return RecipientResponse.model_validate(recipient)

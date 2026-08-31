@@ -514,10 +514,6 @@ class AdminSceneUpdate(BaseModel):
     condition: dict | None = None
 
 
-class AdminSystemSettingsUpdate(BaseModel):
-    value: dict
-
-
 class AdminPromoCodeResponse(BaseModel):
     id: UUID
     code: str
@@ -588,10 +584,6 @@ class AdminPromptTemplateUpdate(BaseModel):
     compatible_models: list[str] | None = None
     is_active: bool | None = None
     version: int | None = None
-
-
-class AdminSystemSettingsUpdate(BaseModel):
-    value: dict
 
 
 class AIProviderResponse(BaseModel):

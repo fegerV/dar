@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -10,8 +10,6 @@ from starlette.responses import StreamingResponse
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
-from app.models.generation import Generation, GenerationStep
-from app.models.project import Project
 from app.repositories.generations import GenerationRepository
 from app.repositories.projects import ProjectRepository
 
@@ -67,7 +65,7 @@ async def stream_generation_progress(
                         }
                         for s in steps
                     ],
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
                 yield f"data: {json.dumps(payload)}\n\n"
                 last_progress = progress

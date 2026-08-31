@@ -1,10 +1,8 @@
 """Integration tests for contact import API."""
 
-import io
 import json
 
 import pytest
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
@@ -7,12 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
-from app.models.admin import AdminUser, AIProvider, AIModel, QueueJob, SystemSettings, Worker
+from app.models.admin import AdminUser, AIModel, AIProvider, QueueJob, SystemSettings, Worker
 from app.models.generation import Generation
 from app.models.payment import LedgerTransaction, Payment, Wallet
 from app.models.project import Project
 from app.models.referral import Referral, ReferralCode
-from app.models.template import Template, TemplateVersion, Scene
+from app.models.template import Scene, Template, TemplateVersion
 from app.models.user import User, UserAuthIdentity
 from app.repositories.recommendations import TemplateRepository
 from app.schemas.admin import (
@@ -28,10 +28,9 @@ from app.schemas.admin import (
     AdminQueueJobResponse,
     AdminReferralCodeResponse,
     AdminReferralResponse,
-    AdminSceneResponse,
     AdminSceneCreate,
+    AdminSceneResponse,
     AdminSceneUpdate,
-    AdminSetupRequest,
     AdminSystemSettingsResponse,
     AdminSystemSettingsUpdate,
     AdminTemplateCreate,
@@ -43,15 +42,14 @@ from app.schemas.admin import (
     AdminUserResponse,
     AdminUserWalletResponse,
     AdminWorkerResponse,
-    AIProviderCreate,
-    AIProviderResponse,
-    AIProviderUpdate,
     AIModelCreate,
     AIModelResponse,
     AIModelUpdate,
+    AIProviderCreate,
+    AIProviderResponse,
+    AIProviderUpdate,
     WorkerRestartResponse,
 )
-
 
 SYSTEM_SETTING_SCHEMAS: dict[str, type[BaseModel]] = {}
 
@@ -105,7 +103,6 @@ class AdminService:
     ) -> dict:
         from app.core.security import hash_password
 
-        existing_admin = await self.db.execute(select(AdminUser))
         admin_exists = (await self.db.execute(select(func.count()).select_from(AdminUser))).scalar() or 0
         if admin_exists > 0:
             raise ConflictException("Admin already exists; setup is only allowed for first admin")
@@ -121,7 +118,6 @@ class AdminService:
             if last_name:
                 user.last_name = last_name
         else:
-            from app.core.config import settings
             user = User(
                 email=email,
                 display_name=display_name or email,
@@ -177,7 +173,7 @@ class AdminService:
             select(func.count()).select_from(QueueJob).where(QueueJob.status == "failed")
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         ai_cost_today = await self.db.execute(
             select(func.coalesce(func.sum(Generation.cost_rub), 0)).where(Generation.started_at >= today_start)
@@ -393,8 +389,8 @@ class AdminService:
 
         _validate_system_setting(key, body.value)
         setting.value = body.value
-        from datetime import datetime as _dt, timezone as _tz
-        setting.updated_at = _dt.now(_tz.utc)
+        from datetime import datetime as _dt
+        setting.updated_at = _dt.now(UTC)
         await self.db.flush()
         return AdminSystemSettingsResponse.model_validate(setting)
 
@@ -462,7 +458,7 @@ class AdminService:
             raise NotFoundException("Submission not found")
         submission.status = GalleryStatus.approved if approve else GalleryStatus.rejected
         submission.moderator_id = moderator_id
-        submission.reviewed_at = datetime.now(timezone.utc)
+        submission.reviewed_at = datetime.now(UTC)
         if approve:
             submission.is_public = make_public
         await self.db.flush()
@@ -654,7 +650,7 @@ class AdminService:
         return AdminQueueJobResponse.model_validate(job)
 
     async def get_analytics(self, days: int = 7) -> dict:
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since = datetime.now(UTC) - timedelta(days=days)
 
         total_generations = await self.db.execute(
             select(func.count()).select_from(Generation).where(Generation.created_at >= since)
@@ -799,7 +795,7 @@ class AdminService:
                 else:
                     provider.last_test_status = "error"
                     provider.last_test_message = f"HTTP {response.status_code}"
-                provider.last_tested_at = datetime.now(timezone.utc)
+                provider.last_tested_at = datetime.now(UTC)
                 await self.db.flush()
                 return {
                     "provider_id": str(provider.id),
@@ -812,7 +808,7 @@ class AdminService:
         except Exception as e:
             provider.last_test_status = "error"
             provider.last_test_message = str(e)
-            provider.last_tested_at = datetime.now(timezone.utc)
+            provider.last_tested_at = datetime.now(UTC)
             await self.db.flush()
             return {
                 "provider_id": str(provider.id),

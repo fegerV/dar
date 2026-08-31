@@ -3,10 +3,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ValidationException
-from app.models.payment import Entitlement
+from app.core.exceptions import NotFoundException
 from app.repositories.pricing import PricingRepository
-from app.schemas.pricing import PriceRequest, PriceResponse, PromoCodeValidateRequest, PromoCodeValidateResponse
+from app.schemas.pricing import (
+    PriceRequest,
+    PriceResponse,
+    PromoCodeValidateRequest,
+    PromoCodeValidateResponse,
+)
 
 
 class PricingService:
@@ -137,7 +141,8 @@ class PricingService:
         )
 
     async def _apply_bundle_discount(self, user_id: UUID, price: Decimal) -> Decimal:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from app.models.project import Project
 
         completed_projects = await self.db.execute(

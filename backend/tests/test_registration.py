@@ -1,7 +1,8 @@
 """Integration tests for the user registration flow."""
+from uuid import UUID
+
 import pytest
 from sqlalchemy import select
-from uuid import UUID
 
 
 @pytest.mark.asyncio
@@ -189,9 +190,10 @@ async def test_register_without_display_name(client):
 
 @pytest.mark.asyncio
 async def test_register_email_verification_record(client, db_session):
+    from sqlalchemy import select
+
     from app.models.email_verification import EmailVerification
     from app.models.user import User
-    from sqlalchemy import select
 
     response = await client.post("/api/v1/auth/register", json={
         "email": "verify@test.com",
@@ -205,7 +207,6 @@ async def test_register_email_verification_record(client, db_session):
     )
     user = user_result.scalar_one()
 
-    from app.core.security import verify_password
 
     verif_result = await db_session.execute(
         select(EmailVerification).where(EmailVerification.user_id == user.id)
@@ -218,8 +219,9 @@ async def test_register_email_verification_record(client, db_session):
 
 @pytest.mark.asyncio
 async def test_register_referral_code_is_unique(client, db_session):
-    from app.models.referral import ReferralCode
     from sqlalchemy import select
+
+    from app.models.referral import ReferralCode
 
     codes = []
     for i in range(5):

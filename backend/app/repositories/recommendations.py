@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -48,7 +48,7 @@ class RecommendationRepository:
         rec = await self.get_by_id(recommendation_id, project_id)
         if rec:
             rec.status = "selected"
-            rec.selected_at = datetime.now(timezone.utc)
+            rec.selected_at = datetime.now(UTC)
         return rec
 
 

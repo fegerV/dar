@@ -1,10 +1,10 @@
-from datetime import timedelta, datetime, timezone
 import csv
 import io
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditLog
@@ -12,7 +12,7 @@ from app.models.generation import Generation
 from app.models.payment import Payment, Wallet
 from app.models.project import Project
 from app.models.recipient import Recipient
-from app.models.referral import Referral, ReferralCode
+from app.models.referral import Referral
 from app.models.user import User, UserAuthIdentity, UserPreferences
 
 logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ class AccountDeletionService:
         user.birth_date = None
         user.metadata_ = {}
         user.status = "deleted"
-        user.deleted_at = datetime.now(timezone.utc)
+        user.deleted_at = datetime.now(UTC)
 
         from app.services.audit.service import AuditService
 
@@ -295,7 +295,7 @@ class AccountDeletionService:
             return {
                 "deleted": False,
                 "scheduled": True,
-                "deletion_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+                "deletion_date": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
                 "message": "Data anonymized. Hard deletion scheduled after 30-day grace period.",
             }
 

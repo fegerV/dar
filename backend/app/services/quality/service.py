@@ -1,19 +1,19 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException
 from app.models.generation import Generation
 from app.models.quality import QualityCheck, VideoCriticResult
 from app.repositories.generations import GenerationRepository
 from app.repositories.quality import QualityRepository
 from app.schemas.quality import (
+    ManualReviewRequest,
+    ManualReviewResponse,
     QualityCheckRequest,
     QualityCheckResponse,
     QualityGateResponse,
-    ManualReviewRequest,
-    ManualReviewResponse,
     VideoCriticResponse,
 )
 from app.services.quality.critic import VideoCriticService
@@ -82,7 +82,7 @@ class QualityGateService:
                         status="passed" if chk["passed"] else "failed",
                         checks=chk,
                         passed=chk["passed"],
-                        created_at=datetime.now(timezone.utc),
+                        created_at=datetime.now(UTC),
                     )
                     for asset_id, chk in checks.items()
                 ],
@@ -115,7 +115,7 @@ class QualityGateService:
                     status="passed" if chk["passed"] else "failed",
                     checks=chk,
                     passed=chk["passed"],
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
                 for asset_id, chk in checks.items()
             ],
@@ -145,7 +145,7 @@ class QualityGateService:
         output["manual_review"] = {
             "passed": body.passed,
             "comment": body.comment,
-            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed_at": datetime.now(UTC).isoformat(),
             "internal": False,
         }
         await self.repo.update_generation_status(generation.id, final_status, output_json=output)
@@ -155,7 +155,7 @@ class QualityGateService:
             status=final_status,
             passed=body.passed,
             review_comment=body.comment,
-            reviewed_at=datetime.now(timezone.utc),
+            reviewed_at=datetime.now(UTC),
         )
 
     async def _check_asset(self, asset_id: UUID, generation: Generation) -> dict:

@@ -1,6 +1,4 @@
-from io import BytesIO
-from pathlib import Path
-from uuid import UUID
+from io import BinaryIO, BytesIO
 
 try:
     from minio import Minio

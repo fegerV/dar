@@ -1,9 +1,6 @@
-import os
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user

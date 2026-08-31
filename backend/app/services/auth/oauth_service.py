@@ -1,12 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, UserAuthIdentity
-from app.core.security import create_access_token, create_refresh_token
+from app.models.user import UserAuthIdentity
 
 
 class OAuthService:
@@ -32,7 +31,7 @@ class OAuthService:
         if identity and identity.user_id != user_id:
             raise ValueError("Provider already linked to another account")
         if identity:
-            identity.last_login_at = datetime.now(timezone.utc)
+            identity.last_login_at = datetime.now(UTC)
             await self.db.flush()
             return identity
 

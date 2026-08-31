@@ -1,20 +1,18 @@
 """Tests for benchmark runner service."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.models.lab import LabScenario
 from app.services.lab.models import (
-    BENCHMARK_MODELS,
     ModelConfig,
     estimate_generation_cost,
     get_model_config,
     list_benchmark_models,
 )
 from app.services.lab.runner import BenchmarkResult, BenchmarkRunner
-from app.services.lab.seed_data import get_scenario_data, get_scenario_by_code
+from app.services.lab.seed_data import get_scenario_by_code, get_scenario_data
 
 
 class TestModelConfig:

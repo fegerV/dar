@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -117,9 +117,9 @@ class TemplateVersionService:
             )
 
         if new_status == "published":
-            version.published_at = datetime.now(timezone.utc)
+            version.published_at = datetime.now(UTC)
         if new_status == "archived":
-            version.retired_at = datetime.now(timezone.utc)
+            version.retired_at = datetime.now(UTC)
 
         version.status = new_status
         await self.db.flush()

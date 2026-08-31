@@ -162,10 +162,11 @@ class AuthService:
             if "user.registered" not in endpoint.events:
                 continue
             try:
-                import httpx
-                import json as _json
                 import hashlib
                 import hmac as _hmac
+                import json as _json
+
+                import httpx
 
                 body = _json.dumps(
                     {"event": "user.registered", "data": webhook_payload},

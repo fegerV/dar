@@ -1,12 +1,11 @@
 import html
 import logging
-from datetime import datetime, timezone
-from urllib.parse import urlparse
-from uuid import UUID
-
-import aiosmtplib
+from datetime import UTC, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import urlparse
+
+import aiosmtplib
 
 from app.core.config import settings
 from app.models.delivery import Delivery
@@ -68,14 +67,14 @@ class EmailDeliveryService:
                 use_tls=settings.SMTP_USE_TLS,
             )
             delivery.status = "sent"
-            delivery.sent_at = datetime.now(timezone.utc)
+            delivery.sent_at = datetime.now(UTC)
             await self.repo.create_delivery(delivery)
             logger.info("Email sent to %s", recipient)
         except Exception as e:  # noqa: BLE001
             logger.error("Failed to send email to %s: %s", recipient, e)
             delivery.status = "failed"
             delivery.error_message = str(e)
-            delivery.failed_at = datetime.now(timezone.utc)
+            delivery.failed_at = datetime.now(UTC)
             await self.repo.create_delivery(delivery)
 
     def _render_html(self, recipient: str, video_url: str | None, thumbnail_url: str | None, title: str, tracking_url: str) -> str:

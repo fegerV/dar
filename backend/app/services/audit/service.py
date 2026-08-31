@@ -1,9 +1,8 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ValidationException
 from app.models.audit import AuditLog
 from app.repositories.audit import AuditRepository
 
@@ -22,7 +21,7 @@ class AuditService:
             ip_address=ip_address,
             user_agent=user_agent,
             metadata_=metadata or {},
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         return await self.repo.create(log)
 

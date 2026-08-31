@@ -1,22 +1,19 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException
 from app.models.brief import CreativeBrief
-from app.models.project import Project
 from app.models.recommendation import Recommendation
 from app.repositories.projects import ProjectRepository
-from app.repositories.recommendations import RecommendationRepository, TemplateRepository
 from app.repositories.recipients import RecipientRepository
+from app.repositories.recommendations import RecommendationRepository, TemplateRepository
 from app.schemas.recommendation import (
     RecommendationListResponse,
-    RecommendationResponse,
     RecommendationSelectResponse,
 )
 from app.schemas.recommendation_v2 import (
-    RecommendationItem,
     RecommendationListResponseV2,
 )
 from app.services.recommendations.reranker import AIReranker, DiversityFilter
@@ -97,7 +94,7 @@ class RecommendationService:
         await self.db.commit()
         return RecommendationListResponseV2(
             items=diversified,
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             model_version="ai_rerank_v1",
         )
 
@@ -126,7 +123,7 @@ class RecommendationService:
         project.selected_recommendation_id = recommendation_id
         project.selected_template_version_id = rec.template_version_id
         project.status = "template_selected"
-        project.updated_at = datetime.now(timezone.utc)
+        project.updated_at = datetime.now(UTC)
         await self.project_repo.update(project)
         await self.db.commit()
 

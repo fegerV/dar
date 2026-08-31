@@ -1,5 +1,6 @@
 import logging
 import shutil
+from datetime import UTC
 
 from fastapi import Depends, FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,8 @@ from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.database import async_session_factory, engine
+from app.core.dependencies import get_current_user
+from app.core.exceptions import ForbiddenException
 from app.core.lifespan import lifespan
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware
@@ -160,10 +163,6 @@ async def metrics():
         return Response(content=monitor.get_metrics(), media_type=MonitoringService.CONTENT_TYPE)
 
 
-from app.core.dependencies import get_current_user
-from app.core.exceptions import ForbiddenException
-
-
 @app.get("/admin/events/stream")
 async def admin_events_stream(request: Request, current_user=Depends(get_current_user)):
     if not getattr(current_user, "is_admin", False):
@@ -171,7 +170,7 @@ async def admin_events_stream(request: Request, current_user=Depends(get_current
 
     import asyncio
     import json
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     async def event_generator():
         yield "retry: 5000\n\n"
@@ -183,9 +182,9 @@ async def admin_events_stream(request: Request, current_user=Depends(get_current
                     from app.services.admin.service import AdminService
                     service = AdminService(session)
                     stats = await service.get_dashboard_stats()
-                    yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
+                    yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
             except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
             await asyncio.sleep(5)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})

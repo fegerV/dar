@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
-from app.models.user import User
 from app.repositories.users import UserRepository
 from app.services.account.deletion import AccountDeletionService
 from app.services.audit.service import AuditService
@@ -66,7 +64,7 @@ async def delete_my_account(
     if not user:
         raise NotFoundException("User not found")
 
-    user.deleted_at = datetime.now(timezone.utc)
+    user.deleted_at = datetime.now(UTC)
     user.email = None
     user.phone = None
     user.display_name = None

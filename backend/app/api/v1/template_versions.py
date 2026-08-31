@@ -1,14 +1,11 @@
-from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import NotFoundException
-from app.models.template import TemplateVersion
-from app.schemas.prompt_compiler import PromptPlanScene
 from app.services.templates.versioning import TemplateVersionService
 
 router = APIRouter(prefix="/template-versions", tags=["Template Versioning & QA"])

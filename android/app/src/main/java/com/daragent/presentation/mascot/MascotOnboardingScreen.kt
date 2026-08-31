@@ -24,7 +24,8 @@ fun MascotOnboardingScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(240.dp)

@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -7,6 +6,12 @@ from pydantic import BaseModel, Field
 class ChatMessageRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
     project_id: str | None = None
+
+
+class ChatAction(BaseModel):
+    type: str
+    label: str
+    payload: dict = {}
 
 
 class ChatMessageResponse(BaseModel):
@@ -17,12 +22,6 @@ class ChatMessageResponse(BaseModel):
     suggestions: list[str] = []
     actions: list[ChatAction] = []
     created_at: datetime
-
-
-class ChatAction(BaseModel):
-    type: str
-    label: str
-    payload: dict = {}
 
 
 class ProjectCreateRequest(BaseModel):

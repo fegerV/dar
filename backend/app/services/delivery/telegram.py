@@ -1,6 +1,5 @@
 import logging
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -59,7 +58,7 @@ class TelegramDeliveryService:
                 response.raise_for_status()
                 result = response.json()
                 delivery.status = "sent"
-                delivery.sent_at = datetime.now(timezone.utc)
+                delivery.sent_at = datetime.now(UTC)
                 delivery.external_message_id = str(result.get("result", {}).get("message_id"))
                 await self.repo.create_delivery(delivery)
                 logger.info("Telegram message sent to %s", chat_id)
@@ -67,5 +66,5 @@ class TelegramDeliveryService:
             logger.error("Failed to send telegram to %s: %s", chat_id, e)
             delivery.status = "failed"
             delivery.error_message = str(e)
-            delivery.failed_at = datetime.now(timezone.utc)
+            delivery.failed_at = datetime.now(UTC)
             await self.repo.create_delivery(delivery)

@@ -1,6 +1,5 @@
 import os
 import uuid
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +8,12 @@ from app.core.exceptions import NotFoundException, ValidationException
 from app.integrations.storage.factory import get_storage_provider
 from app.models.asset import Asset, StorageObject
 from app.repositories.storage import StorageRepository
-from app.schemas.asset import AssetUploadRequest, AssetUploadResponse, AssetResponse, AssetListResponse
+from app.schemas.asset import (
+    AssetListResponse,
+    AssetResponse,
+    AssetUploadRequest,
+    AssetUploadResponse,
+)
 
 ALLOWED_FILE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".avi", ".mp3", ".wav", ".ogg", ".pdf", ".txt"}
 
@@ -66,7 +70,8 @@ class AssetService:
     async def list_assets(
         self, user_id: UUID, page: int = 1, page_size: int = 20
     ) -> AssetListResponse:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from app.models.asset import Asset
 
         count_query = select(func.count()).select_from(Asset).where(Asset.owner_user_id == user_id)
