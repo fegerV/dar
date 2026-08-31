@@ -128,7 +128,7 @@ export function AdminLedger() {
                         <td className="py-2 font-mono">{tx.id.slice(0, 8)}…</td>
                         <td className="py-2">
                           <Badge variant="outline">{getTypeLabel(tx.type)}</Badge>
-                          {tx.is_bonus && <Badge variant="secondary ml-1">Bonus</Badge>}
+                          {tx.is_bonus && <Badge variant="secondary" className="ml-1">Bonus</Badge>}
                         </td>
                         <td className="py-2 text-right">{formatAmount(tx.amount_rub, tx.is_bonus)}</td>
                         <td className="py-2">{tx.user_id ? tx.user_id.slice(0, 8) + "…" : "—"}</td>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select } from "@/components/ui/select"
 import { Plus, Trash2, Zap, Check, X, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
@@ -253,18 +253,15 @@ export function AdminAIModels() {
               <Select
                 value={selectedProvider || "all"}
                 onValueChange={(v) => setSelectedProvider(v === "all" ? null : v)}
+                className="w-48"
+                aria-label="Filter by provider"
               >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <option value="all">All Providers</option>
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
               </Select>
               <Button size="sm" onClick={() => setCreatingModel(true)} disabled={providers.length === 0}>
                 <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -404,15 +401,11 @@ function ProviderForm({
             <Select
               value={form.provider_type}
               onValueChange={(v) => setForm({ ...form, provider_type: v })}
+              id="provider-type"
             >
-              <SelectTrigger id="provider-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="polza">Polza AI</SelectItem>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
-              </SelectContent>
+              <option value="polza">Polza AI</option>
+              <option value="openai">OpenAI</option>
+              <option value="custom">Custom</option>
             </Select>
           </div>
         </div>
@@ -522,17 +515,13 @@ function ModelForm({
             <Select
               value={form.provider_id}
               onValueChange={(v) => setForm({ ...form, provider_id: v })}
+              id="model-provider"
             >
-              <SelectTrigger id="model-provider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
             </Select>
           </div>
           <div>
@@ -540,17 +529,13 @@ function ModelForm({
             <Select
               value={form.model_type}
               onValueChange={(v) => setForm({ ...form, model_type: v })}
+              id="model-type"
             >
-              <SelectTrigger id="model-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MODEL_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              {MODEL_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
             </Select>
           </div>
         </div>
@@ -608,16 +593,12 @@ function ModelForm({
             <Select
               value={form.unit_type}
               onValueChange={(v) => setForm({ ...form, unit_type: v })}
+              id="model-unit"
             >
-              <SelectTrigger id="model-unit">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="token">Token</SelectItem>
-                <SelectItem value="second">Second</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-                <SelectItem value="request">Request</SelectItem>
-              </SelectContent>
+              <option value="token">Token</option>
+              <option value="second">Second</option>
+              <option value="image">Image</option>
+              <option value="request">Request</option>
             </Select>
           </div>
         </div>

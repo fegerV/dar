@@ -49,7 +49,7 @@ export default function AboutMePage() {
       setAgeError(true)
       return
     }
-    const selectedGender = gender === "prefer_not" ? undefined : gender
+    const selectedGender = gender === "prefer_not" || gender === null ? undefined : gender
     setUser({ gender: selectedGender, age: age ? Number(age) : undefined })
     router.push("/onboarding/photos")
   }

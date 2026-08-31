@@ -393,7 +393,7 @@ export function AdminSystem() {
                           <CardDescription className="mt-1">{t(groupInfo.description)}</CardDescription>
                         )}
                       </div>
-                      {renderSettingFields(setting, settingDescriptions[setting.key])}
+                      {renderSettingFields(setting, settingDescriptions[setting.key], t)}
                       <input type="hidden" id={`setting-${setting.key}`} defaultValue={JSON.stringify(setting.value)} />
                     </div>
                   )
@@ -432,7 +432,7 @@ export function AdminSystem() {
   )
 }
 
-function renderSettingFields(setting: SystemSetting, fieldInfo?: Record<string, { label: string; description: string; recommended: string }>) {
+function renderSettingFields(setting: SystemSetting, fieldInfo?: Record<string, { label: string; description: string; recommended: string }>, t?: (key: string) => string) {
   const value = setting.value as Record<string, unknown>
   return Object.entries(value).map(([key, val]) => {
       const info = fieldInfo?.[key]
@@ -440,21 +440,21 @@ function renderSettingFields(setting: SystemSetting, fieldInfo?: Record<string, 
       return (
       <div key={key} className="grid gap-2">
         <Label htmlFor={inputId} className="flex items-center gap-2">
-          {info ? t(info.label) : key}
+          {info ? t!(info.label) : key}
           <Info className="h-4 w-4 text-muted-foreground" />
         </Label>
         <div className="text-xs text-muted-foreground space-y-1">
           {info && (
             <>
-              <p>{t(info.description)}</p>
-              <p className="text-blue-500">{t(info.recommended)}</p>
+              <p>{t!(info.description)}</p>
+              <p className="text-blue-500">{t!(info.recommended)}</p>
             </>
           )}
         </div>
         <Input
           id={inputId}
           defaultValue={typeof val === "object" ? JSON.stringify(val) : String(val)}
-          aria-label={info ? t(info.label) : key}
+          aria-label={info ? t!(info.label) : key}
         />
       </div>
     )
