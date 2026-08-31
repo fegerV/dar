@@ -1,9 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useTranslation } from "react-i18next"
 import { Upload, X, Image as ImageIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface PhotoUploaderProps {
@@ -14,8 +12,7 @@ interface PhotoUploaderProps {
   className?: string
 }
 
-export function PhotoUploader({ photos, onPhotosChange, max = 10, min = 1, className }: PhotoUploaderProps) {
-  const { t } = useTranslation()
+export function PhotoUploader({ photos, onPhotosChange, max = 10, className }: PhotoUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
 
   const handleFiles = useCallback(

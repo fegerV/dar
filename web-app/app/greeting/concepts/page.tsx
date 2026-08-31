@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react"
+import { ArrowLeft, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConceptCard } from "@/components/concept-card"
 import { useAppStore } from "@/store/app-store"
@@ -17,7 +17,7 @@ const mockConcepts: { id: string; title: string; description: string; tags: stri
 export default function GreetingConceptsPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { updateCurrentGreeting, state } = useAppStore()
+  const { updateCurrentGreeting } = useAppStore()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [concepts, setConcepts] = useState(mockConcepts)
 
@@ -32,7 +32,6 @@ export default function GreetingConceptsPage() {
 
   const handleNext = () => {
     if (selectedId) {
-      const selected = concepts.find((c) => c.id === selectedId)
       updateCurrentGreeting({ selectedConceptId: selectedId, concepts })
       router.push("/greeting/text")
     }

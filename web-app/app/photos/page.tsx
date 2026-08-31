@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslation } from "react-i18next"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { BottomNav } from "@/components/bottom-nav"
 import { useAppStore } from "@/store/app-store"
 

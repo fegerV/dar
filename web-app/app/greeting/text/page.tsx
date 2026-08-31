@@ -3,16 +3,12 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react"
+import { ArrowLeft, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { useAppStore } from "@/store/app-store"
-
-const styleOptions = [
-  "formal", "informal", "funny", "emotional", "poetic", "short"
-]
 
 export default function GreetingTextPage() {
   const { t } = useTranslation()

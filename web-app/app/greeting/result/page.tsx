@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { ArrowLeft, Play, Share2, Star, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Rating } from "@/components/rating"
+import { Card, CardContent } from "@/components/ui/card"
 import { useAppStore } from "@/store/app-store"
 
 export default function GreetingResultPage() {

@@ -20,7 +20,6 @@ export function ShareResult({
   videoUrl,
   thumbnailUrl,
   title,
-  durationSec,
   referralCode,
 }: ShareResultProps) {
   const { t } = useTranslation()

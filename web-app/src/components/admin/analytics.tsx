@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -43,12 +42,10 @@ export function AdminAnalytics() {
 
   useEffect(() => {
     if (user) loadAnalytics()
-  }, [user, period])
+  }, [user, period, loadAnalytics])
 
-  function BarChart({ data: chartData, keyField = "value", height = 200 }: {
+  function BarChart({ data: chartData }: {
     data: Array<{ label: string; value: number }>;
-    keyField?: string;
-    height?: number;
   }) {
     const maxVal = Math.max(...chartData.map(d => d.value), 1)
     return (

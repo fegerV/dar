@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

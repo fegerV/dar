@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight, Cake, Gift, Heart } from "lucide-react"
+import { ArrowLeft, Cake, Gift, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { OptionCard } from "@/components/option-card"
 import { useAppStore } from "@/store/app-store"
@@ -28,7 +28,7 @@ export default function GreetingOccasionPage() {
 
   const handleNext = () => {
     if (selected) {
-      updateCurrentGreeting({ occasion: selected as any })
+      updateCurrentGreeting({ occasion: selected as "birthday" | "new_year" | "march_8" | "february_23" | "wedding" | "anniversary" | "graduation" | "defender_day" | "custom" })
       router.push("/greeting/relationship")
     }
   }

@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { User } from "lucide-react"
 import { OptionCard } from "@/components/option-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

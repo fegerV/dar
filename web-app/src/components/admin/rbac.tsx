@@ -19,7 +19,6 @@ interface PermissionsResponse {
 
 export function AdminRBAC() {
   const [roles, setRoles] = useState<AdminRole[]>([])
-  const [allPermissions, setAllPermissions] = useState<string[]>([])
   const [systemRoles, setSystemRoles] = useState<Record<string, SystemRoleDef>>({})
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -39,7 +38,6 @@ export function AdminRBAC() {
         apiFetch<PermissionsResponse>("/admin/rbac/permissions"),
       ])
       setRoles(rolesData)
-      setAllPermissions(permsData.permissions)
       setSystemRoles(permsData.roles)
     } catch {
       setRoles([])

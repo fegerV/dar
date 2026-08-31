@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight, CreditCard, Coins } from "lucide-react"
+import { ArrowLeft, CreditCard, Coins } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -13,7 +13,7 @@ import { useAppStore } from "@/store/app-store"
 export default function GreetingPaymentPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { state, updateCurrentGreeting } = useAppStore()
+  const { updateCurrentGreeting } = useAppStore()
   const [useBonus, setUseBonus] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)

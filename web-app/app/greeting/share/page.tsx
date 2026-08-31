@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, Share2, MessageCircle, Send, Link2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { ArrowLeft, MessageCircle, Send, Link2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import { useAppStore } from "@/store/app-store"
 
 export default function GreetingSharePage() {

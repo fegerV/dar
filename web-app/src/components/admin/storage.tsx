@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -12,14 +11,6 @@ interface StorageStats {
   used_bytes: number
   total_bytes: number | null
   file_count: number
-}
-
-interface WebhookEndpoint {
-  id: string
-  url: string
-  events: string[]
-  is_active: boolean
-  created_at: string
 }
 
 export function AdminStorage() {

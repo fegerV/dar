@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslation } from "react-i18next"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 interface OptionCardProps {

@@ -26,8 +26,8 @@ export default function AuthPage() {
     try {
       await register(email, password, displayName || undefined)
       router.push("/onboarding/about-me")
-    } catch (err: any) {
-      const msg = err?.message || t("auth.register_error")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t("auth.register_error")
       if (msg.includes("already exists")) {
         setStep("login")
         setError(t("auth.already_have_account_prompt"))
@@ -47,8 +47,8 @@ export default function AuthPage() {
       const { login } = await import("@/lib/api")
       await login(email, password)
       router.push("/onboarding/about-me")
-    } catch (err: any) {
-      setError(err?.message || t("auth.login_error"))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.login_error"))
     } finally {
       setIsLoading(false)
     }

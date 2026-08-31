@@ -366,7 +366,7 @@ export function AdminTemplates() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <Badge variant="outline">{t(`admin.templates.categories.${tmpl.category || "all}`)}</Badge>
+                        <Badge variant="outline">{t(`admin.templates.categories.${tmpl.category || "all"}`)}</Badge>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge className={tmpl.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { CheckCircle2, Star } from "lucide-react"
+import { Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"

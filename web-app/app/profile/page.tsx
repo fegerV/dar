@@ -11,7 +11,7 @@ import { useAppStore } from "@/store/app-store"
 export default function ProfilePage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { state, setUser, deleteRecipient } = useAppStore()
+  const { state, deleteRecipient } = useAppStore()
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">

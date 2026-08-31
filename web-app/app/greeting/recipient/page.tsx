@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,6 @@ export default function GreetingRecipientPage() {
   const [nickname, setNickname] = useState("")
 
   const handleNext = () => {
-    const recipientData = { name, age: age ? Number(age) : undefined, nickname }
     updateCurrentGreeting({
       recipientName: name,
       recipientAge: age ? Number(age) : undefined,

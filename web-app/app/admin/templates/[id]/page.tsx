@@ -77,7 +77,7 @@ export default function AdminTemplateDetailPage() {
 
   useEffect(() => {
     if (user && templateId) loadTemplate()
-  }, [user, templateId])
+  }, [user, templateId, loadTemplate])
 
   const saveStatus = async () => {
     if (!template) return

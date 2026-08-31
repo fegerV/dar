@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +19,7 @@ const personalities = [
 export default function GreetingRelationshipPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { updateCurrentGreeting, state } = useAppStore()
+  const { updateCurrentGreeting } = useAppStore()
   const [relationship, setRelationship] = useState("")
   const [selectedPersonality, setSelectedPersonality] = useState<string[]>([])
 

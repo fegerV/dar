@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
-import type { AppState, User, Recipient, Greeting, Mood, Occasion, Concept, GreetingText, TemplateConcept, RatingValue } from "@/types"
+import type { AppState, User, Recipient, Greeting, RatingValue } from "@/types"
 
 const STORAGE_KEY = "daragent_app_state"
 
