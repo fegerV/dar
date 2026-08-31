@@ -5,16 +5,16 @@ Revises: 021_add_promo_codes
 Create Date: 2026-08-19
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "022_add_relationship_context"
-down_revision: Union[str, None] = "021_add_promo_codes"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "021_add_promo_codes"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -50,7 +51,7 @@ async def seed_scenarios():
             logger.info("Created scenario: %s", data["code"])
 
         await db.commit()
-        logger.info("Seeded %d new scenarios (total: %d)", created_count, len(scenario_data)))
+        logger.info("Seeded %d new scenarios (total: %d)", created_count, len(scenario_data))
 
         await engine.dispose()
 

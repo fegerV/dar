@@ -5,15 +5,14 @@ Revises: 018_add_is_admin_to_users
 Create Date: 2026-08-18
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "019_add_deleted_archived_indexes"
-down_revision: Union[str, None] = "018_add_is_admin_to_users"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "018_add_is_admin_to_users"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

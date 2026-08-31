@@ -5,16 +5,17 @@ Revises: 032_template_catalog_fields
 Create Date: 2026-08-26
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy import Text
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "033_ai_providers_models"
-down_revision: Union[str, None] = "032_template_catalog_fields"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "032_template_catalog_fields"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

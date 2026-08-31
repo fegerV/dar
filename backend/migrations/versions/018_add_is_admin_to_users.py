@@ -5,15 +5,15 @@ Revises: 017_create_admin_tables
 Create Date: 2026-08-18
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "018_add_is_admin_to_users"
-down_revision: Union[str, None] = "017_create_admin_tables"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "017_create_admin_tables"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

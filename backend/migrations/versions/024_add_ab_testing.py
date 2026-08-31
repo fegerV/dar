@@ -5,15 +5,15 @@ Revises: 023_add_viewing_reactions
 Create Date: 2026-08-19
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "024_add_ab_testing"
-down_revision: Union[str, None] = "023_add_viewing_reactions"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "023_add_viewing_reactions"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

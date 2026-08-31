@@ -5,15 +5,15 @@ Revises: 025_add_share_referral_tracking
 Create Date: 2026-08-19
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "026_create_gallery"
-down_revision: Union[str, None] = "025_add_share_referral_tracking"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "025_add_share_referral_tracking"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

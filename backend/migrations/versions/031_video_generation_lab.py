@@ -5,16 +5,16 @@ Revises: 030_create_ledger_transactions
 Create Date: 2026-08-24
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "031_video_generation_lab"
-down_revision: Union[str, None] = "030_create_ledger_transactions"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, None] = None
+down_revision: str | None = "030_create_ledger_transactions"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-import uuid
 
 from sqlalchemy import func, select
 
@@ -20,7 +19,6 @@ from app.core.database import async_session_factory
 from app.core.security import hash_password
 from app.models.admin import AdminUser
 from app.models.user import User
-from app.repositories.users import UserRepository
 
 
 async def create_admin(

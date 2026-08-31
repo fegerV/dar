@@ -1,9 +1,7 @@
 """Seed script: relationship_types, holidays, first templates."""
 import asyncio
 import uuid
-from datetime import datetime, timezone
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.core.database import async_session_factory
 from app.models.holiday import Holiday
@@ -766,7 +764,7 @@ FIRST_TEMPLATES = [
         "personalization_score": 8,
         "sort_order": 100,
     },
-]ar_award", "title": "Оскар", "kind": "video", "category": "cinematic", "occasion_codes": ["birthday", "anniversary", "achievement"], "relationship_types": RELATIONSHIP_TYPES, "moods": ["epic", "official"], "base_price_rub": 799, "estimated_duration_sec": 55, "difficulty": 3, "personalization_score": 8},
+    {"code": "oscar_award", "title": "Оскар", "kind": "video", "category": "cinematic", "occasion_codes": ["birthday", "anniversary", "achievement"], "relationship_types": RELATIONSHIP_TYPES, "moods": ["epic", "official"], "base_price_rub": 799, "estimated_duration_sec": 55, "difficulty": 3, "personalization_score": 8},
     {"code": "president_address", "title": "Президентское обращение", "kind": "video", "category": "humor", "occasion_codes": ["birthday", "anniversary"], "relationship_types": ["boss", "colleague", "parent"], "moods": ["official", "funny"], "base_price_rub": 699, "estimated_duration_sec": 45, "difficulty": 2, "personalization_score": 7},
     {"code": "space_mission", "title": "Космическая миссия", "kind": "video", "category": "cinematic", "occasion_codes": ["birthday", "new_year"], "relationship_types": ["friend", "partner", "spouse"], "moods": ["epic", "warm"], "base_price_rub": 799, "estimated_duration_sec": 60, "difficulty": 3, "personalization_score": 9},
     {"code": "alien_greeting", "title": "Инопланетяне", "kind": "video", "category": "humor", "occasion_codes": ["birthday"], "relationship_types": ["friend", "classmate", "sibling"], "moods": ["funny", "surprising"], "base_price_rub": 599, "estimated_duration_sec": 45, "difficulty": 2, "personalization_score": 7},
@@ -873,7 +871,7 @@ async def seed():
                 },
                 variant_group=f"{tpl_data['category']}_v1",
                 variant_name="control",
-                published_at=datetime.now(timezone.utc),
+                published_at=datetime.now(UTC),
             )
             db.add(version)
             await db.flush()

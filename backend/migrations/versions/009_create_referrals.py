@@ -5,15 +5,15 @@ Revises: 008_add_scene_condition
 Create Date: 2026-08-17
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "009_create_referrals"
-down_revision: Union[str, None] = "008_add_scene_condition"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "008_add_scene_condition"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
