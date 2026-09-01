@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Users, ShoppingCart, Sparkles, Cpu, DollarSign, TrendingUp, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { apiFetch } from "@/lib/api"
 import { useAdminEvents } from "@/hooks/use-admin-events"
 import type { DashboardStats } from "@/types/admin"
@@ -12,6 +13,7 @@ import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useRouter } from "next/navigation"
 
 export function AdminDashboard() {
+  const { t } = useTranslation()
   const { user, loading: authLoading, error } = useAdminAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -50,8 +52,8 @@ export function AdminDashboard() {
       <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Operational center overview</p>
+              <h1 className="text-3xl font-bold">{t("admin.sidebar.dashboard")}</h1>
+              <p className="text-muted-foreground mt-1">{t("admin.pages.dashboard")}</p>
             </div>
             {realtimeBadge}
           </div>
@@ -90,8 +92,8 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Operational center overview</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.dashboard")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.dashboard")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

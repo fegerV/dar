@@ -6,14 +6,18 @@ import { useTranslation } from "react-i18next"
 import { Home, PlusCircle, Sparkles, User } from "lucide-react"
 
 const navItems = [
-  { href: "/", label: "home", icon: Home },
-  { href: "/dashboard", label: "dashboard", icon: Sparkles },
-  { href: "/create", label: "new_greeting", icon: PlusCircle },
-  { href: "/profile", label: "profile", icon: User },
+  { href: "/", label: "home.title", icon: Home },
+  { href: "/dashboard", label: "dashboard.title", icon: Sparkles },
+  { href: "/create", label: "home.new_greeting", icon: PlusCircle },
+  { href: "/profile", label: "profile.title", icon: User },
 ]
 
 export function Navbar() {
   const pathname = usePathname()
+
+  if (pathname?.startsWith("/admin")) {
+    return null
+  }
   const { t } = useTranslation()
 
   return (

@@ -4,6 +4,7 @@ import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/admin-auth-context"
 import { Moon, Sun, User } from "lucide-react"
 import { useTheme } from "next-themes"
+import { usePathname } from "next/navigation"
 
 function AdminHeader() {
   const { user, logout } = useAdminAuth()
@@ -37,6 +38,19 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isLoginPage = pathname === "/admin/login"
+
+  if (isLoginPage) {
+    return (
+      <AdminAuthProvider>
+        <div className="min-h-screen bg-muted/30">
+          {children}
+        </div>
+      </AdminAuthProvider>
+    )
+  }
+
   return (
     <AdminAuthProvider>
       <div className="min-h-screen bg-muted/30">

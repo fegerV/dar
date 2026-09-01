@@ -11,8 +11,10 @@ import { apiFetch } from "@/lib/api"
 import type { AdminUser, UserWallet, AdminPayment } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 export function AdminUsers() {
+  const { t } = useTranslation()
   const [search, setSearch] = useState("")
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,8 +92,8 @@ export function AdminUsers() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Users</h1>
-          <p className="text-muted-foreground mt-1">Manage users and segments</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.users")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.users")}</p>
         </div>
         <Card>
           <CardContent>
@@ -105,8 +107,8 @@ export function AdminUsers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Users</h1>
-        <p className="text-muted-foreground mt-1">Manage users and segments</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.users")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.users")}</p>
       </div>
 
       <Card>

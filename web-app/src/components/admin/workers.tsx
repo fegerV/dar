@@ -9,8 +9,10 @@ import { apiFetch } from "@/lib/api"
 import type { AdminWorker } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 export function AdminWorkers() {
+  const { t } = useTranslation()
   const [workers, setWorkers] = useState<AdminWorker[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -34,8 +36,8 @@ export function AdminWorkers() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">AI / Workers</h1>
-          <p className="text-muted-foreground mt-1">GPU workers and model status</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.workers")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.workers")}</p>
         </div>
         <Card>
           <CardContent>
@@ -49,8 +51,8 @@ export function AdminWorkers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">AI / Workers</h1>
-        <p className="text-muted-foreground mt-1">GPU workers and model status</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.workers")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.workers")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

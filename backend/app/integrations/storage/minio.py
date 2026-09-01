@@ -1,4 +1,5 @@
-from io import BinaryIO, BytesIO
+from io import BytesIO
+from typing import BinaryIO
 
 try:
     from minio import Minio

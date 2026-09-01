@@ -156,7 +156,8 @@ export function AdminSystem() {
   useEffect(() => {
     if (!user) return
     setHealthLoading(true)
-    apiFetch<DetailedHealthResponse>("/health/detailed")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:8000"}/health/detailed`)
+      .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         setHealth(data)
       })
@@ -208,8 +209,8 @@ export function AdminSystem() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">{t("admin.system.title")}</h1>
-        <p className="text-muted-foreground mt-1">{t("admin.system.subtitle")}</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.system")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.system")}</p>
       </div>
 
       <Tabs defaultValue="health">

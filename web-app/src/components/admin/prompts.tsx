@@ -11,6 +11,7 @@ import { Search, Plus, Save, X } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface PromptTemplate {
   id: string
@@ -31,10 +32,12 @@ interface PromptTemplate {
 }
 
 export function AdminPrompts() {
+  const { t } = useTranslation()
   const [prompts, setPrompts] = useState<PromptTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<PromptTemplate | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
   const [draft, setDraft] = useState<Partial<PromptTemplate>>({})
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -64,6 +67,7 @@ export function AdminPrompts() {
 
   const startEdit = (prompt: PromptTemplate | null) => {
     setEditing(prompt)
+    setIsCreating(prompt === null)
     setDraft(prompt || { code: "", name: "", text: "", variables: [], compatible_models: [], is_active: true, category: "", description: "" })
   }
 
@@ -93,6 +97,7 @@ export function AdminPrompts() {
         })
       }
       setEditing(null)
+      setIsCreating(false)
       setDraft({})
       loadPrompts()
     } catch (e: unknown) {
@@ -110,8 +115,8 @@ export function AdminPrompts() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Prompt Library</h1>
-          <p className="text-muted-foreground mt-1">Manage prompt templates with versioning</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.prompts")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.prompts")}</p>
         </div>
         <Button onClick={() => startEdit(null)}>
           <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -130,7 +135,7 @@ export function AdminPrompts() {
         />
       </div>
 
-      {editing !== null && (
+      {(editing !== null || isCreating) && (
         <Card>
           <CardHeader>
             <CardTitle>{editing ? "Edit Prompt" : "New Prompt"}</CardTitle>
@@ -161,7 +166,7 @@ export function AdminPrompts() {
             </div>
             <div className="flex gap-2">
               <Button onClick={savePrompt} disabled={saving}>{saving ? "Saving..." : <><Save className="h-4 w-4 mr-2" aria-hidden="true" />Save</>}</Button>
-              <Button variant="ghost" onClick={() => { setEditing(null); setDraft({}) }}>
+              <Button variant="ghost" onClick={() => { setEditing(null); setIsCreating(false); setDraft({}) }}>
                 <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>

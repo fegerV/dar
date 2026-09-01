@@ -6,10 +6,10 @@ import { Home, History, Image, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { href: "/home", label: "home", icon: Home },
-  { href: "/photos", label: "photos", icon: Image },
-  { href: "/history", label: "history", icon: History },
-  { href: "/profile", label: "profile", icon: User },
+  { href: "/home", label: "home.title", icon: Home },
+  { href: "/photos", label: "photos.title", icon: Image },
+  { href: "/history", label: "history.title", icon: History },
+  { href: "/profile", label: "profile.title", icon: User },
 ]
 
 export function BottomNav() {
@@ -17,8 +17,9 @@ export function BottomNav() {
   const { t } = useTranslation()
   const router = useRouter()
 
-  const isGreetingFlow = pathname.startsWith("/greeting")
-  if (isGreetingFlow) return null
+  const isGreetingFlow = pathname?.startsWith("/greeting")
+  const isAdminPage = pathname?.startsWith("/admin")
+  if (isGreetingFlow || isAdminPage) return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">

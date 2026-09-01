@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface ErrorEntry {
   id: string
@@ -42,6 +43,7 @@ const GROUP_LABELS: Record<string, string> = {
 }
 
 export function AdminErrors() {
+  const { t } = useTranslation()
   const [errorsData, setErrorsData] = useState<ErrorsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
@@ -74,7 +76,7 @@ export function AdminErrors() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold">Error Center</h1><p className="text-muted-foreground mt-1">Grouped generation errors</p></div>
+      <div><h1 className="text-3xl font-bold">{t("admin.sidebar.errors")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.errors")}</p></div>
 
       {errorsData && (
         <>

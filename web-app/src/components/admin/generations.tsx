@@ -9,6 +9,7 @@ import { apiFetch } from "@/lib/api"
 import type { AdminGeneration } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 const statusColors: Record<string, string> = {
   SUCCESS: "bg-green-100 text-green-800",
@@ -18,6 +19,7 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminGenerations() {
+  const { t } = useTranslation()
   const [generations, setGenerations] = useState<AdminGeneration[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -41,8 +43,8 @@ export function AdminGenerations() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Generations</h1>
-          <p className="text-muted-foreground mt-1">All generation attempts and their details</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.generations")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.generations")}</p>
         </div>
         <Card>
           <CardContent>
@@ -56,8 +58,8 @@ export function AdminGenerations() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Generations</h1>
-        <p className="text-muted-foreground mt-1">All generation attempts and their details</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.generations")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.generations")}</p>
       </div>
 
       <div className="grid gap-4">

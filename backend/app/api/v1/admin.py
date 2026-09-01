@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import async_session_factory, get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import (
     ConflictException,
@@ -1178,3 +1179,42 @@ async def ai_health_check(
 ):
     service = AdminService(db)
     return await service.ai_health_check()
+
+
+@router.get("/events/stream-token")
+async def admin_events_stream_token(request: Request):
+    from app.core.security import decode_token
+    from app.models.user import User
+    from sqlalchemy import select
+    import asyncio
+    import json
+    from datetime import datetime
+    
+    token = request.query_params.get("token")
+    if not token:
+        raise ForbiddenException("Token required")
+    payload = decode_token(token)
+    if not payload:
+        raise ForbiddenException("Invalid token")
+    user_id = payload.get("sub")
+    async with async_session_factory() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user or not getattr(user, "is_admin", False):
+            raise ForbiddenException("Admin access required")
+
+    async def event_generator():
+        yield "retry: 5000\n\n"
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                async with async_session_factory() as session:
+                    service = AdminService(session)
+                    stats = await service.get_dashboard_stats()
+                    yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
+            await asyncio.sleep(5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})

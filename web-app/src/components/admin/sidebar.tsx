@@ -2,8 +2,9 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook, Gavel, FlaskConical } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Sparkles, GitBranch, Users, FileText, Edit3, CreditCard, Bot, Settings, ClipboardList, Shield, ShieldCheck, AlertCircle, Percent, BarChart3, LifeBuoy, HardDrive, Webhook, Gavel, FlaskConical, Globe } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import i18n from "@/i18n"
 
 interface NavItem {
   href: string
@@ -69,6 +70,25 @@ export function AdminSidebar() {
           )
         })}
       </nav>
+      <div className="p-2 border-t mt-auto">
+        <div className="flex items-center gap-1 px-3 py-2">
+          <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <button
+            onClick={() => i18n.changeLanguage("ru")}
+            className={`text-xs px-2 py-1 rounded ${i18n.language === "ru" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+            aria-pressed={i18n.language === "ru"}
+          >
+            RU
+          </button>
+          <button
+            onClick={() => i18n.changeLanguage("en")}
+            className={`text-xs px-2 py-1 rounded ${i18n.language === "en" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+            aria-pressed={i18n.language === "en"}
+          >
+            EN
+          </button>
+        </div>
+      </div>
     </aside>
   )
 }

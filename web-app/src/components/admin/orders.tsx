@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Search, Play, Eye } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { apiFetch } from "@/lib/api"
 import type { AdminOrder } from "@/types/admin"
 import { useRouter } from "next/navigation"
@@ -20,6 +21,7 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminOrders() {
+  const { t } = useTranslation()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [orders, setOrders] = useState<AdminOrder[]>([])
@@ -51,8 +53,8 @@ export function AdminOrders() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Orders</h1>
-          <p className="text-muted-foreground mt-1">Manage customer orders</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.orders")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.orders")}</p>
         </div>
         <Card>
           <CardContent>
@@ -66,8 +68,8 @@ export function AdminOrders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Orders</h1>
-        <p className="text-muted-foreground mt-1">Manage customer orders</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.orders")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.orders")}</p>
       </div>
 
       <Card>

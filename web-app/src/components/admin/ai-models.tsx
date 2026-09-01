@@ -11,6 +11,7 @@ import { Plus, Trash2, Zap, Check, X, Loader2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface AIProvider {
   id: string
@@ -55,6 +56,7 @@ const MODEL_TYPES = [
 ]
 
 export function AdminAIModels() {
+  const { t } = useTranslation()
   const [providers, setProviders] = useState<AIProvider[]>([])
   const [models, setModels] = useState<AIModel[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,8 +134,8 @@ export function AdminAIModels() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">AI Models</h1>
-          <p className="text-muted-foreground mt-1">Manage AI providers and API keys</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.ai_models")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.ai_models")}</p>
         </div>
         <Card>
           <CardContent>
@@ -148,8 +150,8 @@ export function AdminAIModels() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">AI Models</h1>
-          <p className="text-muted-foreground mt-1">Manage AI providers and API keys</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.ai_models")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.ai_models")}</p>
         </div>
         <Button onClick={() => setCreatingProvider(true)}>
           <Plus className="h-4 w-4 mr-2" aria-hidden="true" />

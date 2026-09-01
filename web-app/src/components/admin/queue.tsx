@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
@@ -12,8 +12,10 @@ import { apiFetch } from "@/lib/api"
 import type { AdminQueueJob } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 export function AdminQueue() {
+  const { t } = useTranslation()
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [jobs, setJobs] = useState<AdminQueueJob[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +29,7 @@ export function AdminQueue() {
     }
   }, [authLoading, user, router])
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     if (!user) return
     setLoading(true)
     try {
@@ -39,11 +41,11 @@ export function AdminQueue() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, statusFilter])
 
   useEffect(() => {
     loadJobs()
-  }, [user, statusFilter, loadJobs])
+  }, [loadJobs])
 
   const runningJobs = jobs.filter((j) => j.status === "running")
   const pendingJobs = jobs.filter((j) => j.status === "pending" || j.status === "queued")
@@ -52,8 +54,8 @@ export function AdminQueue() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Generation Queue</h1>
-          <p className="text-muted-foreground mt-1">Dispatch and monitor generation jobs</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.queue")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.queue")}</p>
         </div>
         <Card>
           <CardContent>
@@ -67,8 +69,8 @@ export function AdminQueue() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Generation Queue</h1>
-        <p className="text-muted-foreground mt-1">Dispatch and monitor generation jobs</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.queue")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.queue")}</p>
       </div>
 
       <Select value={statusFilter || ""} onValueChange={(v) => setStatusFilter(v || null)} className="w-[180px]" aria-label="Filter by status">

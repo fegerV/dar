@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 import type { AdminLedgerResponse } from "@/types/admin"
 
 const TRANSACTION_TYPES = ["adjustment", "bonus", "refund", "penalty", "payment", "spend"]
 
 export function AdminLedger() {
+  const { t } = useTranslation()
   const [data, setData] = useState<AdminLedgerResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<string>("")
@@ -66,8 +68,8 @@ export function AdminLedger() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Transaction History</h1>
-        <p className="text-muted-foreground mt-1">Ledger transactions and wallet adjustments</p>
+        <h1 className="text-3xl font-bold">{t("admin.sidebar.ledger")}</h1>
+        <p className="text-muted-foreground mt-1">{t("admin.pages.ledger")}</p>
       </div>
 
       <Card>

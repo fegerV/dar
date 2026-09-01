@@ -53,7 +53,7 @@ export default function AdminHelpPage() {
     if (!user) return
     setLoading(true)
     Promise.all([
-      apiFetch<HealthResponse>("/health/detailed").catch(() => null),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:8000"}/health/detailed`).then(r => r.ok ? r.json() : null).catch(() => null),
       apiFetch<DashboardStats>("/admin/stats").catch(() => null),
     ]).then(([h, s]) => {
       setHealth(h)

@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 import type { AdminPayment } from "@/types/admin"
 
 export function AdminPayments() {
+  const { t } = useTranslation()
   const [payments, setPayments] = useState<AdminPayment[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -52,7 +54,7 @@ export function AdminPayments() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold">Payments</h1><p className="text-muted-foreground mt-1">Payment transactions and refunds</p></div>
+      <div><h1 className="text-3xl font-bold">{t("admin.sidebar.payments")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.payments")}</p></div>
       <Card>
         <CardHeader><CardTitle>Payments ({payments.length})</CardTitle></CardHeader>
         <CardContent>

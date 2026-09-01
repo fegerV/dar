@@ -115,8 +115,8 @@ export function AdminTemplates() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">{t("admin.templates.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("admin.templates.subtitle")}</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.templates")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.templates")}</p>
         </div>
         <Card>
           <CardContent>
@@ -131,8 +131,8 @@ export function AdminTemplates() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{t("admin.templates.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("admin.templates.subtitle")}</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.templates")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.templates")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button

@@ -61,11 +61,6 @@ app.add_middleware(
 )
 
 
-from app.api.v1.router import v1_router  # noqa: E402
-
-app.include_router(v1_router)
-
-
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -161,6 +156,11 @@ async def metrics():
         monitor = MonitoringService(session)
         await monitor.collect_system_metrics()
         return Response(content=monitor.get_metrics(), media_type=MonitoringService.CONTENT_TYPE)
+
+
+from app.api.v1.router import v1_router  # noqa: E402
+
+app.include_router(v1_router)
 
 
 @app.get("/admin/events/stream")

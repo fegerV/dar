@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface StorageStats {
   provider: string
@@ -14,6 +15,7 @@ interface StorageStats {
 }
 
 export function AdminStorage() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -37,7 +39,7 @@ export function AdminStorage() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold">Storage</h1><p className="text-muted-foreground mt-1">Storage provider status and usage</p></div>
+      <div><h1 className="text-3xl font-bold">{t("admin.sidebar.storage")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.storage")}</p></div>
       {stats && (
         <Card>
           <CardHeader><CardTitle>Storage Provider</CardTitle></CardHeader>
