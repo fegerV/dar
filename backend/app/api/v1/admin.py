@@ -1329,11 +1329,11 @@ async def admin_events_stream_token(request: Request):
                     service = AdminService(session)
                     stats = await service.get_dashboard_stats()
                     yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-             except Exception as e:
-                 yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-             await asyncio.sleep(5)
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
+            await asyncio.sleep(5)
 
-     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
 
 @router.get("/support/tickets")
