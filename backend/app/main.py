@@ -161,30 +161,3 @@ async def metrics():
 from app.api.v1.router import v1_router  # noqa: E402
 
 app.include_router(v1_router)
-
-
-@app.get("/admin/events/stream")
-async def admin_events_stream(request: Request, current_user=Depends(get_current_user)):
-    if not getattr(current_user, "is_admin", False):
-        raise ForbiddenException("Admin access required")
-
-    import asyncio
-    import json
-    from datetime import datetime
-
-    async def event_generator():
-        yield "retry: 5000\n\n"
-        while True:
-            if await request.is_disconnected():
-                break
-            try:
-                async with async_session_factory() as session:
-                    from app.services.admin.service import AdminService
-                    service = AdminService(session)
-                    stats = await service.get_dashboard_stats()
-                    yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-            await asyncio.sleep(5)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface ModerationItem {
   id: string
@@ -18,6 +19,7 @@ interface ModerationItem {
 }
 
 export function AdminModeration() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<ModerationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("pending")
@@ -31,7 +33,7 @@ export function AdminModeration() {
   useEffect(() => {
     if (!user) return
     setLoading(true)
-    apiFetch<ModerationItem[]>(`/moderation/items?status=${filter}&limit=100`)
+    apiFetch<ModerationItem[]>(`/admin/moderation/items?status=${filter}`)
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
@@ -43,7 +45,7 @@ export function AdminModeration() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold">Moderation</h1><p className="text-muted-foreground mt-1">Content moderation queue</p></div>
+      <div><h1 className="text-3xl font-bold">{t("admin.sidebar.moderation")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.moderation")}</p></div>
       <div className="flex gap-2">
         {["pending", "approved", "rejected", "escalated"].map((s) => (
           <Button key={s} variant={filter === s ? "default" : "ghost"} onClick={() => setFilter(s)}>

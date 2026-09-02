@@ -1017,6 +1017,30 @@ async def get_storage_stats(
         return {"provider": "unknown", "healthy": False, "used_bytes": 0, "total_bytes": None, "file_count": 0, "error": str(e)}
 
 
+@router.get("/storage/yandex/config")
+async def get_yandex_config(
+    current_user=Depends(require_admin),
+):
+    from app.core.config import settings
+    return {
+        "oauth_token_set": bool(settings.YANDEX_DISK_OAUTH_TOKEN),
+        "base_path": settings.YANDEX_DISK_BASE_PATH,
+    }
+
+
+@router.post("/storage/yandex/test")
+async def test_yandex_connection(
+    current_user=Depends(require_admin),
+):
+    from app.integrations.storage.yandex_disk import YandexDiskProvider
+    from app.core.config import settings
+    if not settings.YANDEX_DISK_OAUTH_TOKEN:
+        raise ValidationException("Yandex Disk OAuth token not configured")
+    provider = YandexDiskProvider()
+    healthy = await provider.healthcheck()
+    return {"success": healthy, "message": "Connection successful" if healthy else "Connection failed"}
+
+
 class WebhookCreate(PydanticBaseModel):
     url: str
     events: list[str] = []
@@ -1213,8 +1237,91 @@ async def admin_events_stream_token(request: Request):
                     service = AdminService(session)
                     stats = await service.get_dashboard_stats()
                     yield f"data: {json.dumps({'type': 'stats', 'data': stats.model_dump(mode='json'), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
-            await asyncio.sleep(5)
+             except Exception as e:
+                 yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'timestamp': datetime.now(UTC).isoformat()})}\n\n"
+             await asyncio.sleep(5)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
+
+@router.get("/support/tickets")
+async def list_support_tickets(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.feedback import Feedback
+        result = await db.execute(select(Feedback).order_by(Feedback.created_at.desc()).limit(100))
+        feedbacks = list(result.scalars().all())
+        return [
+            {
+                "id": str(f.id),
+                "user_id": str(f.user_id),
+                "generation_id": str(f.generation_id) if f.generation_id else None,
+                "subject": f.reaction,
+                "status": "open",
+                "priority": "medium",
+                "created_at": f.created_at.isoformat() if f.created_at else None,
+                "updated_at": f.created_at.isoformat() if f.created_at else None,
+                "messages_count": 1,
+            }
+            for f in feedbacks
+        ]
+    except Exception:
+        return []
+
+
+@router.get("/moderation/items")
+async def list_moderation_items(
+    status: str = Query("pending", pattern="^(pending|approved|rejected|escalated)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.gallery import GallerySubmission
+        query = select(GallerySubmission)
+        if status == "pending":
+            query = query.where(GallerySubmission.status == "pending")
+        elif status == "approved":
+            query = query.where(GallerySubmission.status == "approved")
+        elif status == "rejected":
+            query = query.where(GallerySubmission.status == "rejected")
+        result = await db.execute(query.order_by(GallerySubmission.created_at.desc()).limit(100))
+        submissions = list(result.scalars().all())
+        return [
+            {
+                "id": str(s.id),
+                "type": "photo",
+                "status": s.status,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "updated_at": s.updated_at.isoformat() if hasattr(s, "updated_at") and s.updated_at else None,
+                "content_preview": f"Gallery submission {s.id}",
+            }
+            for s in submissions
+        ]
+    except Exception:
+        return []
+
+
+@router.get("/analytics")
+async def get_analytics(
+    days: int = Query(7, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from datetime import datetime, timedelta
+        from app.models.analytics import AnalyticsEvent
+        from sqlalchemy import func as sql_func
+        since = datetime.now() - timedelta(days=days)
+        result = await db.execute(select(sql_func.count()).select_from(AnalyticsEvent).where(AnalyticsEvent.created_at >= since))
+        total_events = result.scalar() or 0
+        result = await db.execute(select(AnalyticsEvent.event_type, sql_func.count()).where(AnalyticsEvent.created_at >= since).group_by(AnalyticsEvent.event_type))
+        events_by_type = {row[0]: row[1] for row in result.all()}
+        return {
+            "total_events": total_events,
+            "events_by_type": events_by_type,
+            "days": days,
+        }
+    except Exception:
+        return {"total_events": 0, "events_by_type": {}, "days": days}

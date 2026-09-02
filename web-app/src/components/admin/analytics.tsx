@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
 
 interface AnalyticsData {
   total_generations: number
@@ -18,6 +19,7 @@ interface AnalyticsData {
 }
 
 export function AdminAnalytics() {
+  const { t } = useTranslation()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("7")
@@ -74,23 +76,16 @@ export function AdminAnalytics() {
 
   if (!data) return null
 
-  const generationEntries = Object.entries(data.generation_status_breakdown || {})
-    .map(([status, count]) => ({ label: status, value: count }))
+  const eventEntries = Object.entries(data.events_by_type || {})
+    .map(([type, count]) => ({ label: type, value: count }))
     .sort((a, b) => b.value - a.value)
-
-  const modelEntries = Object.entries(data.cost_by_model || {})
-    .map(([model, info]) => ({ label: model, value: info.count }))
-    .sort((a, b) => b.value - a.value)
-
-  const dailyRevenueEntries = Object.entries(data.daily_revenue || {})
-    .map(([date, revenue]) => ({ label: date.slice(5), value: Math.round(revenue) }))
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground mt-1">Business and operational analytics</p>
+          <h1 className="text-3xl font-bold">{t("admin.sidebar.analytics")}</h1>
+          <p className="text-muted-foreground mt-1">{t("admin.pages.analytics")}</p>
         </div>
         <Select value={period} onValueChange={setPeriod} className="w-[120px]" aria-label="Period selector">
           <option value="7">7 days</option>
@@ -101,53 +96,25 @@ export function AdminAnalytics() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader><CardTitle>Generations</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{data.total_generations}</p></CardContent>
+          <CardHeader><CardTitle>Total Events</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold">{data.total_events.toLocaleString()}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Revenue</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{data.total_revenue.toLocaleString()} ₽</p></CardContent>
+          <CardHeader><CardTitle>Event Types</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold">{eventEntries.length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>New Users</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold">{data.total_new_users}</p></CardContent>
+          <CardHeader><CardTitle>Period</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold">{data.days || period} days</p></CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Generation Status Breakdown</CardTitle></CardHeader>
-          <CardContent>
-            {generationEntries.length > 0 ? <BarChart data={generationEntries} /> : <p className="text-sm text-muted-foreground">No data</p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Generations by Model</CardTitle></CardHeader>
-          <CardContent>
-            {modelEntries.length > 0 ? <BarChart data={modelEntries} /> : <p className="text-sm text-muted-foreground">No data</p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Daily Revenue</CardTitle></CardHeader>
-          <CardContent>
-            {dailyRevenueEntries.length > 0 ? <BarChart data={dailyRevenueEntries} /> : <p className="text-sm text-muted-foreground">No data</p>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Cost by Model</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {Object.entries(data.cost_by_model || {}).map(([model, info]) => (
-              <div key={model} className="flex justify-between">
-                <span>{model}</span>
-                <span>{info.cost.toFixed(2)} ₽ ({info.count} gens)</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader><CardTitle>Events by Type</CardTitle></CardHeader>
+        <CardContent>
+          {eventEntries.length > 0 ? <BarChart data={eventEntries} /> : <p className="text-sm text-muted-foreground">No data</p>}
+        </CardContent>
+      </Card>
     </div>
   )
 }

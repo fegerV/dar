@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
 
 interface SupportTicket {
   id: string
@@ -20,6 +21,7 @@ interface SupportTicket {
 }
 
 export function AdminSupport() {
+  const { t } = useTranslation()
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -31,7 +33,7 @@ export function AdminSupport() {
 
   useEffect(() => {
     if (!user) return
-    apiFetch<SupportTicket[]>("/support/tickets?limit=100")
+    apiFetch<SupportTicket[]>("/admin/support/tickets")
       .then(setTickets)
       .catch(() => setTickets([]))
       .finally(() => setLoading(false))
@@ -50,7 +52,7 @@ export function AdminSupport() {
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-3xl font-bold">Support</h1><p className="text-muted-foreground mt-1">User support tickets and conversations</p></div>
+      <div><h1 className="text-3xl font-bold">{t("admin.sidebar.support")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.support")}</p></div>
       <Card>
         <CardHeader><CardTitle>Tickets ({tickets.length})</CardTitle></CardHeader>
         <CardContent>
