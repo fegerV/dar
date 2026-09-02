@@ -18,7 +18,7 @@ from app.core.exceptions import (
 from app.core.rbac import SYSTEM_ROLES, require_permission
 from app.models.admin import Role, UserRole
 from app.models.payment import LedgerTransaction, Payment, PromoCode, Wallet
-from app.models.template import PromptTemplate
+from app.models.template import PromptTemplate, PromptTemplateVersion
 from app.models.user import User
 from app.schemas.admin import (
     AdminAuditLogResponse,
@@ -974,6 +974,18 @@ async def create_prompt_template(
     prompt = PromptTemplate(**body.model_dump())
     db.add(prompt)
     await db.flush()
+    version = PromptTemplateVersion(
+        prompt_id=prompt.id,
+        version=1,
+        name=prompt.name,
+        description=prompt.description,
+        category=prompt.category,
+        text=prompt.text,
+        variables=prompt.variables,
+        compatible_models=prompt.compatible_models,
+    )
+    db.add(version)
+    await db.flush()
     from app.services.audit.service import AuditService
     audit = AuditService(db)
     await audit.log(actor_user_id=current_user.id, action="prompt_created", target_type="prompt", target_id=prompt.id)
@@ -996,11 +1008,91 @@ async def update_prompt_template(
         setattr(prompt, key, value)
     prompt.version += 1
     await db.flush()
+    version = PromptTemplateVersion(
+        prompt_id=prompt.id,
+        version=prompt.version,
+        name=prompt.name,
+        description=prompt.description,
+        category=prompt.category,
+        text=prompt.text,
+        variables=prompt.variables,
+        compatible_models=prompt.compatible_models,
+    )
+    db.add(version)
+    await db.flush()
     from app.services.audit.service import AuditService
     audit = AuditService(db)
     await audit.log(actor_user_id=current_user.id, action="prompt_updated", target_type="prompt", target_id=prompt_id, metadata=update_data)
     await db.commit()
     return AdminPromptTemplateResponse.model_validate(prompt)
+
+
+@router.get("/prompts/{prompt_id}/versions")
+async def list_prompt_versions(
+    prompt_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    prompt = await db.get(PromptTemplate, prompt_id)
+    if prompt is None:
+        raise NotFoundException("Prompt not found")
+    result = await db.execute(select(PromptTemplateVersion).where(PromptTemplateVersion.prompt_id == prompt_id).order_by(PromptTemplateVersion.version.desc()))
+    versions = list(result.scalars().all())
+    return [
+        {
+            "id": str(v.id),
+            "prompt_id": str(v.prompt_id),
+            "version": v.version,
+            "status": v.status,
+            "name": v.name,
+            "description": v.description,
+            "category": v.category,
+            "text": v.text,
+            "variables": v.variables,
+            "compatible_models": v.compatible_models,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "published_at": v.published_at.isoformat() if v.published_at else None,
+            "retired_at": v.retired_at.isoformat() if v.retired_at else None,
+        }
+        for v in versions
+    ]
+
+
+@router.post("/prompts/{prompt_id}/versions", status_code=201)
+async def create_prompt_version(
+    prompt_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    prompt = await db.get(PromptTemplate, prompt_id)
+    if prompt is None:
+        raise NotFoundException("Prompt not found")
+    prompt.version += 1
+    version = PromptTemplateVersion(
+        prompt_id=prompt.id,
+        version=prompt.version,
+        name=prompt.name,
+        description=prompt.description,
+        category=prompt.category,
+        text=prompt.text,
+        variables=prompt.variables,
+        compatible_models=prompt.compatible_models,
+        status="published",
+        published_at=datetime.now(UTC),
+    )
+    db.add(version)
+    await db.flush()
+    from app.services.audit.service import AuditService
+    audit = AuditService(db)
+    await audit.log(actor_user_id=current_user.id, action="prompt_version_created", target_type="prompt", target_id=prompt_id, metadata={"version": prompt.version})
+    await db.commit()
+    return {
+        "id": str(version.id),
+        "prompt_id": str(version.prompt_id),
+        "version": version.version,
+        "status": version.status,
+        "created_at": version.created_at.isoformat() if version.created_at else None,
+    }
 
 
 @router.get("/storage/stats")

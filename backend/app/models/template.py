@@ -155,3 +155,27 @@ class PromptTemplate(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     success_rate: Mapped[float | None] = mapped_column(Float)
     usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     rating: Mapped[float | None] = mapped_column(Float)
+    versions = relationship("PromptTemplateVersion", back_populates="prompt", cascade="all, delete-orphan")
+
+
+class PromptTemplateVersion(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "prompt_template_versions"
+
+    prompt_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("prompt_templates.id", ondelete="CASCADE"), nullable=False
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(String(50))
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    variables: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    compatible_models: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    prompt = relationship("PromptTemplate", back_populates="versions")

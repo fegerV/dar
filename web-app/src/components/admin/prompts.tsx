@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Save, X } from "lucide-react"
+import { Search, Plus, Save, X, History } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -40,6 +40,9 @@ export function AdminPrompts() {
   const [isCreating, setIsCreating] = useState(false)
   const [draft, setDraft] = useState<Partial<PromptTemplate>>({})
   const [saving, setSaving] = useState(false)
+  const [versions, setVersions] = useState<any[]>([])
+  const [loadingVersions, setLoadingVersions] = useState(false)
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -104,6 +107,19 @@ export function AdminPrompts() {
       alert((e as Error)?.message || "Save failed")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const loadVersions = async (promptId: string) => {
+    setLoadingVersions(true)
+    try {
+      const data = await apiFetch<any[]>(`/admin/prompts/${promptId}/versions`)
+      setVersions(data)
+      setSelectedPromptId(promptId)
+    } catch {
+      setVersions([])
+    } finally {
+      setLoadingVersions(false)
     }
   }
 
@@ -192,7 +208,12 @@ export function AdminPrompts() {
                   <td className="py-2 text-center">{prompt.version}</td>
                   <td className="py-2 text-right">{prompt.usage_count}</td>
                   <td className="py-2 text-right">
-                    <Button size="sm" variant="ghost" aria-label={`Edit prompt ${prompt.code}`} onClick={() => startEdit(prompt)}>Edit</Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" aria-label={`View versions for ${prompt.code}`} onClick={() => loadVersions(prompt.id)}>
+                        <History className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button size="sm" variant="ghost" aria-label={`Edit prompt ${prompt.code}`} onClick={() => startEdit(prompt)}>Edit</Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -200,6 +221,35 @@ export function AdminPrompts() {
           </table>
         </CardContent>
       </Card>
+
+      {selectedPromptId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Version History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingVersions ? (
+              <p className="text-sm text-muted-foreground">Loading versions...</p>
+            ) : versions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No versions found</p>
+            ) : (
+              <div className="space-y-2">
+                {versions.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="font-medium">Version {v.version}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {v.created_at ? new Date(v.created_at).toLocaleString() : "—"}
+                      </div>
+                    </div>
+                    <Badge variant={v.status === "published" ? "default" : "secondary"}>{v.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
