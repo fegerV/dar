@@ -7,11 +7,13 @@ import { apiFetch } from "@/lib/api"
 import type { AuditLog } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
 
 export function AdminAuditLogs() {
+  const { t } = useTranslation()
   const [search, setSearch] = useState("")
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -21,18 +23,19 @@ export function AdminAuditLogs() {
     }
   }, [authLoading, user, router])
 
-  useEffect(() => {
-    if (!user) return
-    apiFetch<AuditLog[]>("/admin/audit-logs")
-      .then(setLogs)
-      .catch(() => setLogs([]))
-      .finally(() => setLoading(false))
-  }, [user])
-
-  const filtered = logs.filter((log) => {
-    if (search && !log.action.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+  const { items: logs, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters } = useAdminList<AuditLog>({
+    endpoint: "/admin/audit-logs",
+    pageSize: 20,
+    filters: search ? { search } : {},
+    transform: (raw) => {
+      const paginated = raw as { items: AuditLog[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
   })
+
+  useEffect(() => {
+    setFilters(search ? { search } : {})
+  }, [search, setFilters])
 
   if (authLoading || loading) {
     return (
@@ -82,7 +85,7 @@ export function AdminAuditLogs() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((log) => (
+                {logs.map((log) => (
                   <tr key={log.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4">{new Date(log.created_at).toLocaleString()}</td>
                     <td className="py-3 px-4 font-mono">{log.action}</td>
@@ -98,10 +101,11 @@ export function AdminAuditLogs() {
                 ))}
               </tbody>
             </table>
-            {filtered.length === 0 && (
+            {logs.length === 0 && (
               <p className="py-6 text-center text-muted-foreground">No audit logs found.</p>
             )}
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
     </div>

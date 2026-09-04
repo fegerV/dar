@@ -83,6 +83,9 @@ export interface AdminOrder {
   output_json?: Record<string, unknown> | null
 }
 
+export interface AdminOrderDetailResponse extends AdminOrder {
+}
+
 export interface AdminWorker {
   id: string
   name: string
@@ -96,6 +99,9 @@ export interface AdminWorker {
   avg_generation_time_sec: number | null
   last_heartbeat_at: string | null
   created_at: string
+}
+
+export interface AdminWorkerDetailResponse extends AdminWorker {
 }
 
 export interface AdminQueueJob {
@@ -122,6 +128,9 @@ export interface AdminPayment {
   external_payment_id: string | null
   created_at: string
   paid_at: string | null
+}
+
+export interface AdminPaymentDetailResponse extends AdminPayment {
 }
 
 export interface AdminLedgerTransaction {

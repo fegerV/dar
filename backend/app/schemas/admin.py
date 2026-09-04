@@ -115,6 +115,15 @@ class AdminLedgerResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AdminPaginatedResponse(BaseModel):
+    items: list
+    total: int
+    page: int
+    page_size: int
+
+    model_config = {"from_attributes": True}
+
+
 class AdminReferralCodeResponse(BaseModel):
     id: UUID
     code: str

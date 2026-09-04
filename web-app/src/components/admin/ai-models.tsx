@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,9 @@ import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 interface AIProvider {
   id: string
@@ -57,9 +60,8 @@ const MODEL_TYPES = [
 
 export function AdminAIModels() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [providers, setProviders] = useState<AIProvider[]>([])
-  const [models, setModels] = useState<AIModel[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
   const [creatingProvider, setCreatingProvider] = useState(false)
   const [creatingModel, setCreatingModel] = useState(false)
@@ -73,38 +75,51 @@ export function AdminAIModels() {
     }
   }, [authLoading, user, router])
 
-  const loadData = async () => {
-    setLoading(true)
+  const loadProviders = useCallback(async () => {
     try {
-      const [providersData, modelsData] = await Promise.all([
-        apiFetch<AIProvider[]>("/admin/ai/providers"),
-        apiFetch<AIModel[]>("/admin/ai/models"),
-      ])
-      setProviders(providersData)
-      setModels(modelsData)
+      const data = await apiFetch<AIProvider[]>("/admin/ai/providers")
+      setProviders(data)
     } catch {
-      setProviders([])
-      setModels([])
-    } finally {
-      setLoading(false)
+      // error handled by API
     }
-  }
+  }, [])
+
+  const { items: models, loading: modelsLoading, page, pageSize, total, setPage, setPageSize, setFilters, refetch: refetchModels } = useAdminList<AIModel>({
+    endpoint: "/admin/ai/models",
+    pageSize: 20,
+    filters: selectedProvider ? { provider_id: selectedProvider } : {},
+    transform: (raw) => {
+      const paginated = raw as { items: AIModel[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
-    if (user) loadData()
-  }, [user])
+    setFilters(selectedProvider ? { provider_id: selectedProvider } : {})
+  }, [selectedProvider, setFilters])
 
-  const filteredModels = selectedProvider
-    ? models.filter((m) => m.provider_id === selectedProvider)
-    : models
+  useEffect(() => {
+    if (user) {
+      loadProviders()
+    }
+  }, [user, loadProviders])
 
   const handleTestProvider = async (providerId: string) => {
     setTestingProvider(providerId)
     try {
       await apiFetch(`/admin/ai/providers/${providerId}/test`, { method: "POST" })
-      await loadData()
+      await loadProviders()
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Provider test completed",
+        variant: "success",
+      })
     } catch {
-      // Error handled by API
+      toast({
+        title: t("notification.error") || "Error",
+        description: "Provider test failed",
+        variant: "error",
+      })
     } finally {
       setTestingProvider(null)
     }
@@ -114,9 +129,19 @@ export function AdminAIModels() {
     if (!confirm("Delete this provider and all its models?")) return
     try {
       await apiFetch(`/admin/ai/providers/${providerId}`, { method: "DELETE" })
-      await loadData()
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Provider deleted",
+        variant: "success",
+      })
+      await loadProviders()
+      if (selectedProvider === providerId) setSelectedProvider(null)
     } catch {
-      // Error handled by API
+      toast({
+        title: t("notification.error") || "Error",
+        description: "Failed to delete provider",
+        variant: "error",
+      })
     }
   }
 
@@ -124,13 +149,24 @@ export function AdminAIModels() {
     if (!confirm("Delete this model?")) return
     try {
       await apiFetch(`/admin/ai/models/${modelId}`, { method: "DELETE" })
-      await loadData()
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Model deleted",
+        variant: "success",
+      })
+      refetchModels()
     } catch {
-      // Error handled by API
+      toast({
+        title: t("notification.error") || "Error",
+        description: "Failed to delete model",
+        variant: "error",
+      })
     }
   }
 
-  if (authLoading || loading) {
+  const loading = authLoading
+
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -162,9 +198,9 @@ export function AdminAIModels() {
       {creatingProvider && (
         <ProviderForm
           onCancel={() => setCreatingProvider(false)}
-          onSuccess={() => {
+          onSuccess={async () => {
             setCreatingProvider(false)
-            loadData()
+            await loadProviders()
           }}
         />
       )}
@@ -276,15 +312,15 @@ export function AdminAIModels() {
             <ModelForm
               providers={providers}
               onCancel={() => setCreatingModel(false)}
-              onSuccess={() => {
+              onSuccess={async () => {
                 setCreatingModel(false)
-                loadData()
+                refetchModels()
               }}
             />
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredModels.map((model) => (
+            {models.map((model) => (
               <Card key={model.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
@@ -334,13 +370,15 @@ export function AdminAIModels() {
             ))}
           </div>
 
-          {filteredModels.length === 0 && (
+          {models.length === 0 && (
             <Card>
               <CardContent>
                 <p className="py-8 text-center text-muted-foreground">No models found</p>
               </CardContent>
             </Card>
           )}
+
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
       </div>
     </div>

@@ -24,9 +24,9 @@ from app.schemas.admin import (
     AdminAuditLogResponse,
     AdminDashboardStats,
     AdminGenerationDetailResponse,
-    AdminGenerationResponse,
     AdminLedgerResponse,
-    AdminOrderResponse,
+    AdminOrderDetailResponse,
+    AdminPaginatedResponse,
     AdminPaymentResponse,
     AdminPromoCodeCreate,
     AdminPromoCodeResponse,
@@ -121,7 +121,7 @@ async def get_analytics(
     return await service.get_analytics(days)
 
 
-@router.get("/users", response_model=list[AdminUserResponse])
+@router.get("/users", response_model=AdminPaginatedResponse)
 async def list_users(
     page: int = 1,
     page_size: int = 20,
@@ -129,11 +129,11 @@ async def list_users(
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    users, _ = await service.list_users(page, page_size)
-    return users
+    users, total = await service.list_users(page, page_size)
+    return {"items": users, "total": total, "page": page, "page_size": page_size}
 
 
-@router.get("/templates", response_model=list[AdminTemplateResponse])
+@router.get("/templates", response_model=AdminPaginatedResponse)
 async def list_templates(
     page: int = 1,
     page_size: int = 20,
@@ -141,8 +141,8 @@ async def list_templates(
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    templates, _ = await service.list_templates(page, page_size)
-    return templates
+    templates, total = await service.list_templates(page, page_size)
+    return {"items": templates, "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/templates", response_model=AdminTemplateResponse, status_code=201)
@@ -155,7 +155,7 @@ async def create_template(
     return await service.create_template(body)
 
 
-@router.get("/generations", response_model=list[AdminGenerationResponse])
+@router.get("/generations", response_model=AdminPaginatedResponse)
 async def list_generations(
     page: int = 1,
     page_size: int = 20,
@@ -164,8 +164,8 @@ async def list_generations(
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    generations, _ = await service.list_generations(page, page_size, status)
-    return generations
+    generations, total = await service.list_generations(page, page_size, status)
+    return {"items": generations, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/generations/{gen_id}", response_model=AdminGenerationDetailResponse)
@@ -221,7 +221,7 @@ async def cancel_generation(
     return {"status": "canceled", "generation_id": str(gen_id)}
 
 
-@router.get("/orders", response_model=list[AdminOrderResponse])
+@router.get("/orders", response_model=AdminPaginatedResponse)
 async def list_orders(
     page: int = 1,
     page_size: int = 20,
@@ -229,8 +229,18 @@ async def list_orders(
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    orders, _ = await service.list_orders(page, page_size)
-    return orders
+    orders, total = await service.list_orders(page, page_size)
+    return {"items": orders, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/orders/{order_id}", response_model=AdminOrderDetailResponse)
+async def get_order(
+    order_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_order(order_id)
 
 
 @router.get("/queue", response_model=list[AdminQueueJobResponse])
@@ -250,6 +260,16 @@ async def list_workers(
 ):
     service = AdminService(db)
     return await service.list_workers()
+
+
+@router.get("/workers/{worker_id}", response_model=AdminWorkerResponse)
+async def get_worker(
+    worker_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_worker(worker_id)
 
 
 @router.post("/workers/{worker_id}/status", response_model=AdminWorkerResponse)
@@ -274,7 +294,7 @@ async def queue_job_action(
     return await service.queue_job_action(job_id, body.action)
 
 
-@router.get("/payments", response_model=list[AdminPaymentResponse])
+@router.get("/payments", response_model=AdminPaginatedResponse)
 async def list_payments(
     page: int = 1,
     page_size: int = 20,
@@ -282,8 +302,18 @@ async def list_payments(
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    payments, _ = await service.list_payments(page, page_size)
-    return payments
+    payments, total = await service.list_payments(page, page_size)
+    return {"items": payments, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/payments/{payment_id}", response_model=AdminPaymentResponse)
+async def get_payment(
+    payment_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_payment(payment_id)
 
 
 @router.get("/ledger/transactions", response_model=AdminLedgerResponse)
@@ -634,13 +664,6 @@ async def list_errors(
         "total": sum(len(v) for v in grouped.values()),
         "occurrences": {k: len(v) for k, v in grouped.items()},
     }
-async def get_order(
-    order_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_admin),
-):
-    service = AdminService(db)
-    return await service.get_order(order_id)
 
 
 @router.get("/gallery/pending")
@@ -1124,8 +1147,8 @@ async def get_yandex_config(
 async def test_yandex_connection(
     current_user=Depends(require_admin),
 ):
-    from app.integrations.storage.yandex_disk import YandexDiskProvider
     from app.core.config import settings
+    from app.integrations.storage.yandex_disk import YandexDiskProvider
     if not settings.YANDEX_DISK_OAUTH_TOKEN:
         raise ValidationException("Yandex Disk OAuth token not configured")
     provider = YandexDiskProvider()
@@ -1299,13 +1322,15 @@ async def ai_health_check(
 
 @router.get("/events/stream-token")
 async def admin_events_stream_token(request: Request):
-    from app.core.security import decode_token
-    from app.models.user import User
-    from sqlalchemy import select
     import asyncio
     import json
     from datetime import datetime
-    
+
+    from sqlalchemy import select
+
+    from app.core.security import decode_token
+    from app.models.user import User
+
     token = request.query_params.get("token")
     if not token:
         raise ForbiddenException("Token required")
@@ -1395,25 +1420,3 @@ async def list_moderation_items(
         return []
 
 
-@router.get("/analytics")
-async def get_analytics(
-    days: int = Query(7, ge=1, le=365),
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_admin),
-):
-    try:
-        from datetime import datetime, timedelta
-        from app.models.analytics import AnalyticsEvent
-        from sqlalchemy import func as sql_func
-        since = datetime.now() - timedelta(days=days)
-        result = await db.execute(select(sql_func.count()).select_from(AnalyticsEvent).where(AnalyticsEvent.created_at >= since))
-        total_events = result.scalar() or 0
-        result = await db.execute(select(AnalyticsEvent.event_type, sql_func.count()).where(AnalyticsEvent.created_at >= since).group_by(AnalyticsEvent.event_type))
-        events_by_type = {row[0]: row[1] for row in result.all()}
-        return {
-            "total_events": total_events,
-            "events_by_type": events_by_type,
-            "days": days,
-        }
-    except Exception:
-        return {"total_events": 0, "events_by_type": {}, "days": days}

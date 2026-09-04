@@ -13,12 +13,14 @@ import type { AdminQueueJob } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 export function AdminQueue() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
-  const [jobs, setJobs] = useState<AdminQueueJob[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
@@ -29,23 +31,19 @@ export function AdminQueue() {
     }
   }, [authLoading, user, router])
 
-  const loadJobs = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
-    try {
-      const params = statusFilter ? `?status=${statusFilter}` : ""
-      const data = await apiFetch<AdminQueueJob[]>(`/admin/queue${params}`)
-      setJobs(data)
-    } catch {
-      setJobs([])
-    } finally {
-      setLoading(false)
-    }
-  }, [user, statusFilter])
+  const { items: jobs, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters, refetch } = useAdminList<AdminQueueJob>({
+    endpoint: "/admin/queue",
+    pageSize: 20,
+    filters: statusFilter ? { status: statusFilter } : {},
+    transform: (raw) => {
+      const paginated = raw as { items: AdminQueueJob[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
-    loadJobs()
-  }, [loadJobs])
+    setFilters(statusFilter ? { status: statusFilter } : {})
+  }, [statusFilter, setFilters])
 
   const runningJobs = jobs.filter((j) => j.status === "running")
   const pendingJobs = jobs.filter((j) => j.status === "pending" || j.status === "queued")
@@ -102,11 +100,23 @@ export function AdminQueue() {
                     size="sm"
                     variant="outline"
                     aria-label={`Cancel job ${job.id}`}
-                    onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ action: "cancel" }),
-                    }).then(() => setJobs(jobs.map(j => j.id === job.id ? { ...j, status: "canceled" } : j))).catch(() => {})}
+                    onClick={async () => {
+                      try {
+                        await apiFetch(`/admin/queue/${job.id}/action`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "cancel" }),
+                        })
+                        toast({
+                          title: t("notification.success") || "Success",
+                          description: `Job ${job.id.slice(0, 8)} canceled`,
+                          variant: "success",
+                        })
+                        refetch()
+                      } catch {
+                        // error handled by API
+                      }
+                    }}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </Button>
@@ -135,10 +145,20 @@ export function AdminQueue() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ action: "cancel", job_ids: Array.from(selectedJobs) }),
                       })
-                      setJobs(jobs.filter(j => !selectedJobs.has(j.id)))
                       setSelectedJobs(new Set())
+                      toast({
+                        title: t("notification.success") || "Success",
+                        description: `${selectedJobs.size} jobs canceled`,
+                        variant: "success",
+                      })
+                      refetch()
                     } catch (e: unknown) {
-                      alert((e as Error)?.message || "Bulk cancel failed")
+                      const message = e instanceof Error ? e.message : "Bulk cancel failed"
+                      toast({
+                        title: t("notification.error") || "Error",
+                        description: message,
+                        variant: "error",
+                      })
                     }
                   }}
                 >
@@ -184,9 +204,14 @@ export function AdminQueue() {
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ priority: val }),
                           })
-                          setJobs(jobs.map(j => j.id === job.id ? { ...j, priority: val } : j))
+                          refetch()
                         } catch (e: unknown) {
-                          alert((e as Error)?.message || "Priority update failed")
+                          const message = e instanceof Error ? e.message : "Priority update failed"
+                          toast({
+                            title: t("notification.error") || "Error",
+                            description: message,
+                            variant: "error",
+                          })
                         }
                       }}
                     />
@@ -194,11 +219,23 @@ export function AdminQueue() {
                       size="sm"
                       variant="ghost"
                       aria-label={`Retry job ${job.id}`}
-                      onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "retry" }),
-                      }).then(() => setJobs(jobs.map(j => j.id === job.id ? { ...j, status: "pending", retry_count: 0 } : j))).catch(() => {})}
+                      onClick={async () => {
+                        try {
+                          await apiFetch(`/admin/queue/${job.id}/action`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "retry" }),
+                          })
+                          toast({
+                            title: t("notification.success") || "Success",
+                            description: `Job ${job.id.slice(0, 8)} retried`,
+                            variant: "success",
+                          })
+                          refetch()
+                        } catch {
+                          // error handled by API
+                        }
+                      }}
                     >
                       <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -206,11 +243,23 @@ export function AdminQueue() {
                       size="sm"
                       variant="ghost"
                       aria-label={`Cancel job ${job.id}`}
-                      onClick={() => apiFetch(`/admin/queue/${job.id}/action`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "cancel" }),
-                      }).then(() => setJobs(jobs.filter(j => j.id !== job.id))).catch(() => {})}
+                      onClick={async () => {
+                        try {
+                          await apiFetch(`/admin/queue/${job.id}/action`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "cancel" }),
+                          })
+                          toast({
+                            title: t("notification.success") || "Success",
+                            description: `Job ${job.id.slice(0, 8)} canceled`,
+                            variant: "success",
+                          })
+                          refetch()
+                        } catch {
+                          // error handled by API
+                        }
+                      }}
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -224,6 +273,7 @@ export function AdminQueue() {
           </CardContent>
         </Card>
       </div>
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
     </div>
   )
 }

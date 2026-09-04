@@ -1,18 +1,14 @@
 import logging
 import shutil
-from datetime import UTC
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.database import async_session_factory, engine
-from app.core.dependencies import get_current_user
-from app.core.exceptions import ForbiddenException
 from app.core.lifespan import lifespan
 from app.middleware.audit import AuditMiddleware
 from app.middleware.csrf import CSRFMiddleware

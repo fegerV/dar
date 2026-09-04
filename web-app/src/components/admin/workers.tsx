@@ -4,19 +4,32 @@ import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Cpu, HardDrive, Activity } from "lucide-react"
+import { Cpu, HardDrive, Activity, Eye } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import type { AdminWorker } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 export function AdminWorkers() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [workers, setWorkers] = useState<AdminWorker[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
+
+  const { items, loading: listLoading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<AdminWorker>({
+    endpoint: "/admin/workers",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: AdminWorker[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -24,15 +37,46 @@ export function AdminWorkers() {
     }
   }, [authLoading, user, router])
 
-  useEffect(() => {
-    if (!user) return
-    apiFetch<AdminWorker[]>("/admin/workers")
-      .then(setWorkers)
-      .catch(() => setWorkers([]))
-      .finally(() => setLoading(false))
-  }, [user])
+  const restart = async (id: string) => {
+    try {
+      await apiFetch(`/admin/workers/${id}/restart`, { method: "POST" })
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Worker restart initiated",
+        variant: "success",
+      })
+      refetch()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Restart failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
+    }
+  }
 
-  if (authLoading || loading) {
+  const shutdown = async (id: string) => {
+    if (!confirm(`Shutdown worker ${id}?`)) return
+    try {
+      await apiFetch(`/admin/workers/${id}/shutdown`, { method: "POST" })
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Worker shutdown initiated",
+        variant: "success",
+      })
+      refetch()
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Shutdown failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
+    }
+  }
+
+  if (authLoading || listLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -56,7 +100,7 @@ export function AdminWorkers() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {workers.map((worker) => (
+        {items.map((worker) => (
           <Card key={worker.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -94,14 +138,16 @@ export function AdminWorkers() {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={async () => {
-                    try {
-                      await apiFetch(`/admin/workers/${worker.id}/restart`, { method: "POST" })
-                      setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "restarting" } : w))
-                    } catch (e: unknown) {
-                      alert((e as Error)?.message || "Restart failed")
-                    }
-                  }}
+                  onClick={() => router.push(`/admin/workers/${worker.id}`)}
+                >
+                  <Eye className="h-4 w-4 mr-1" aria-hidden="true" />
+                  View
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => restart(worker.id)}
                 >
                   Restart
                 </Button>
@@ -109,15 +155,7 @@ export function AdminWorkers() {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={async () => {
-                    if (!confirm(`Shutdown worker ${worker.name}?`)) return
-                    try {
-                      await apiFetch(`/admin/workers/${worker.id}/shutdown`, { method: "POST" })
-                      setWorkers(workers.map(w => w.id === worker.id ? { ...w, status: "offline" } : w))
-                    } catch (e: unknown) {
-                      alert((e as Error)?.message || "Shutdown failed")
-                    }
-                  }}
+                  onClick={() => shutdown(worker.id)}
                 >
                   Shutdown
                 </Button>
@@ -125,10 +163,11 @@ export function AdminWorkers() {
             </CardContent>
           </Card>
         ))}
-        {workers.length === 0 && (
+        {items.length === 0 && (
           <p className="text-sm text-muted-foreground text-center col-span-2">No workers registered</p>
         )}
       </div>
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,9 @@ import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 interface PromptTemplate {
   id: string
@@ -33,8 +36,7 @@ interface PromptTemplate {
 
 export function AdminPrompts() {
   const { t } = useTranslation()
-  const [prompts, setPrompts] = useState<PromptTemplate[]>([])
-  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<PromptTemplate | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -50,23 +52,19 @@ export function AdminPrompts() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const loadPrompts = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (search) params.set("search", search)
-      const data = await apiFetch<PromptTemplate[]>(`/admin/prompts?${params.toString()}`)
-      setPrompts(data)
-    } catch {
-      setPrompts([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { items: prompts, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters, refetch } = useAdminList<PromptTemplate>({
+    endpoint: "/admin/prompts",
+    pageSize: 20,
+    filters: search ? { search } : {},
+    transform: (raw) => {
+      const paginated = raw as { items: PromptTemplate[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
-    if (user) loadPrompts()
-  }, [user, search])
+    setFilters(search ? { search } : {})
+  }, [search, setFilters])
 
   const startEdit = (prompt: PromptTemplate | null) => {
     setEditing(prompt)
@@ -102,9 +100,19 @@ export function AdminPrompts() {
       setEditing(null)
       setIsCreating(false)
       setDraft({})
-      loadPrompts()
+      toast({
+        title: t("notification.success") || "Success",
+        description: editing ? "Prompt updated" : "Prompt created",
+        variant: "success",
+      })
+      refetch()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Save failed")
+      const message = e instanceof Error ? e.message : "Save failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     } finally {
       setSaving(false)
     }
@@ -191,34 +199,42 @@ export function AdminPrompts() {
       )}
 
       <Card>
-        <CardHeader><CardTitle>Prompts ({prompts.length})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Prompts ({total})</CardTitle></CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Name</th><th className="text-left py-2">Category</th><th className="text-left py-2">Vars</th><th className="text-center py-2">Active</th><th className="text-center py-2">Version</th><th className="text-right py-2">Usage</th><th className="text-right py-2">Actions</th></tr></thead>
-            <tbody>
-              {prompts.map((prompt) => (
-                <tr key={prompt.id} className="border-b">
-                  <td className="py-2 font-mono">{prompt.code}</td>
-                  <td className="py-2">{prompt.name}</td>
-                  <td className="py-2">{prompt.category || "—"}</td>
-                  <td className="py-2">{(prompt.variables || []).join(", ") || "—"}</td>
-                  <td className="py-2 text-center">
-                    <Badge variant={prompt.is_active ? "default" : "secondary"}>{prompt.is_active ? "Yes" : "No"}</Badge>
-                  </td>
-                  <td className="py-2 text-center">{prompt.version}</td>
-                  <td className="py-2 text-right">{prompt.usage_count}</td>
-                  <td className="py-2 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" aria-label={`View versions for ${prompt.code}`} onClick={() => loadVersions(prompt.id)}>
-                        <History className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                      <Button size="sm" variant="ghost" aria-label={`Edit prompt ${prompt.code}`} onClick={() => startEdit(prompt)}>Edit</Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Name</th><th className="text-left py-2">Category</th><th className="text-left py-2">Vars</th><th className="text-center py-2">Active</th><th className="text-center py-2">Version</th><th className="text-right py-2">Usage</th><th className="text-right py-2">Actions</th></tr></thead>
+              <tbody>
+                {prompts.map((prompt) => (
+                  <tr key={prompt.id} className="border-b">
+                    <td className="py-2 font-mono">{prompt.code}</td>
+                    <td className="py-2">{prompt.name}</td>
+                    <td className="py-2">{prompt.category || "—"}</td>
+                    <td className="py-2">{(prompt.variables || []).join(", ") || "—"}</td>
+                    <td className="py-2 text-center">
+                      <Badge variant={prompt.is_active ? "default" : "secondary"}>{prompt.is_active ? "Yes" : "No"}</Badge>
+                    </td>
+                    <td className="py-2 text-center">{prompt.version}</td>
+                    <td className="py-2 text-right">{prompt.usage_count}</td>
+                    <td className="py-2 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" aria-label={`View versions for ${prompt.code}`} onClick={() => loadVersions(prompt.id)}>
+                          <History className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button size="sm" variant="ghost" aria-label={`Edit prompt ${prompt.code}`} onClick={() => startEdit(prompt)}>Edit</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {prompts.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">No prompts found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
 

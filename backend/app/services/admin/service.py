@@ -471,6 +471,18 @@ class AdminService:
             raise NotFoundException("Order not found")
         return AdminOrderDetailResponse.model_validate(generation)
 
+    async def get_payment(self, payment_id: UUID) -> AdminPaymentResponse:
+        payment = await self.db.get(Payment, payment_id)
+        if payment is None:
+            raise NotFoundException("Payment not found")
+        return AdminPaymentResponse.model_validate(payment)
+
+    async def get_worker(self, worker_id: UUID) -> AdminWorkerResponse:
+        worker = await self.db.get(Worker, worker_id)
+        if worker is None:
+            raise NotFoundException("Worker not found")
+        return AdminWorkerResponse.model_validate(worker)
+
     async def update_worker_status(self, worker_id: UUID, status: str) -> AdminWorkerResponse:
         worker = await self.db.get(Worker, worker_id)
         if worker is None:

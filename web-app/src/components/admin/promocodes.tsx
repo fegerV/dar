@@ -10,6 +10,10 @@ import { Plus, Save, X } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 interface PromoCode {
   id: string
@@ -24,8 +28,8 @@ interface PromoCode {
 }
 
 export function AdminPromoCodes() {
-  const [promos, setPromos] = useState<PromoCode[]>([])
-  const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
+  const { toast } = useToast()
   const [editing, setEditing] = useState<PromoCode | null>(null)
   const [draft, setDraft] = useState<Partial<PromoCode>>({})
   const [saving, setSaving] = useState(false)
@@ -36,21 +40,14 @@ export function AdminPromoCodes() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const loadPromos = async () => {
-    setLoading(true)
-    try {
-      const data = await apiFetch<PromoCode[]>("/admin/promo-codes")
-      setPromos(data)
-    } catch {
-      setPromos([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (user) loadPromos()
-  }, [user])
+  const { items: promos, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<PromoCode>({
+    endpoint: "/admin/promo-codes",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: PromoCode[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   const startEdit = (promo: PromoCode | null) => {
     setEditing(promo)
@@ -59,7 +56,11 @@ export function AdminPromoCodes() {
 
   const save = async () => {
     if (!draft.code || !draft.discount_type || !draft.discount_value) {
-      alert("Code, type, and value are required")
+      toast({
+        title: t("notification.error") || "Error",
+        description: "Code, type, and value are required",
+        variant: "error",
+      })
       return
     }
     setSaving(true)
@@ -91,9 +92,19 @@ export function AdminPromoCodes() {
       }
       setEditing(null)
       setDraft({})
-      loadPromos()
+      toast({
+        title: t("notification.success") || "Success",
+        description: editing ? "Promo code updated" : "Promo code created",
+        variant: "success",
+      })
+      refetch()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Save failed")
+      const message = e instanceof Error ? e.message : "Save failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     } finally {
       setSaving(false)
     }
@@ -103,9 +114,19 @@ export function AdminPromoCodes() {
     if (!confirm("Delete this promo code?")) return
     try {
       await apiFetch(`/admin/promo-codes/${id}`, { method: "DELETE" })
-      setPromos(promos.filter(p => p.id !== id))
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Promo code deleted",
+        variant: "success",
+      })
+      refetch()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Delete failed")
+      const message = e instanceof Error ? e.message : "Delete failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     }
   }
 
@@ -156,29 +177,37 @@ export function AdminPromoCodes() {
       )}
 
       <Card>
-        <CardHeader><CardTitle>Promo Codes ({promos.length})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Promo Codes ({total})</CardTitle></CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Type</th><th className="text-left py-2">Value</th><th className="text-center py-2">Used</th><th className="text-center py-2">Status</th><th className="text-center py-2">Expires</th><th className="text-right py-2">Actions</th></tr></thead>
-            <tbody>
-              {promos.map((promo) => (
-                <tr key={promo.id} className="border-b">
-                  <td className="py-2 font-mono">{promo.code}</td>
-                  <td className="py-2">{promo.discount_type}</td>
-                  <td className="py-2">{promo.discount_value}</td>
-                  <td className="py-2 text-center">{promo.used_count}{promo.max_uses ? `/${promo.max_uses}` : ""}</td>
-                  <td className="py-2 text-center">
-                    <Badge variant={promo.is_active ? "default" : "secondary"}>{promo.is_active ? "Active" : "Inactive"}</Badge>
-                  </td>
-                  <td className="py-2 text-center">{promo.expires_at ? new Date(promo.expires_at).toLocaleDateString() : "∞"}</td>
-                  <td className="py-2 text-right">
-                    <Button size="sm" variant="ghost" aria-label={`Edit promo ${promo.code}`} onClick={() => startEdit(promo)}>Edit</Button>
-                    <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" aria-label={`Delete promo ${promo.code}`} onClick={() => deletePromo(promo.id)}>Delete</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Type</th><th className="text-left py-2">Value</th><th className="text-center py-2">Used</th><th className="text-center py-2">Status</th><th className="text-center py-2">Expires</th><th className="text-right py-2">Actions</th></tr></thead>
+              <tbody>
+                {promos.map((promo) => (
+                  <tr key={promo.id} className="border-b">
+                    <td className="py-2 font-mono">{promo.code}</td>
+                    <td className="py-2">{promo.discount_type}</td>
+                    <td className="py-2">{promo.discount_value}</td>
+                    <td className="py-2 text-center">{promo.used_count}{promo.max_uses ? `/${promo.max_uses}` : ""}</td>
+                    <td className="py-2 text-center">
+                      <Badge variant={promo.is_active ? "default" : "secondary"}>{promo.is_active ? "Active" : "Inactive"}</Badge>
+                    </td>
+                    <td className="py-2 text-center">{promo.expires_at ? new Date(promo.expires_at).toLocaleDateString() : "∞"}</td>
+                    <td className="py-2 text-right">
+                      <Button size="sm" variant="ghost" aria-label={`Edit promo ${promo.code}`} onClick={() => startEdit(promo)}>Edit</Button>
+                      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700" aria-label={`Delete promo ${promo.code}`} onClick={() => deletePromo(promo.id)}>Delete</Button>
+                    </td>
+                  </tr>
+                ))}
+                {promos.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-muted-foreground">No promo codes found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
     </div>

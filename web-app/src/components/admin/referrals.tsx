@@ -7,6 +7,9 @@ import { apiFetch } from "@/lib/api"
 import type { Referral, ReferralCode } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
 
 const statusColors: Record<string, string> = {
   completed: "bg-green-100 text-green-800",
@@ -15,11 +18,27 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminReferrals() {
-  const [referrals, setReferrals] = useState<Referral[]>([])
-  const [codes, setCodes] = useState<ReferralCode[]>([])
-  const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
+
+  const { items: codes, loading: codesLoading, page: codesPage, pageSize: codesPageSize, total: codesTotal, setPage: setCodesPage, setPageSize: setCodesPageSize } = useAdminList<ReferralCode>({
+    endpoint: "/admin/referral-codes",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: ReferralCode[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
+
+  const { items: referrals, loading: referralsLoading, page: referralsPage, pageSize: referralsPageSize, total: referralsTotal, setPage: setReferralsPage, setPageSize: setReferralsPageSize } = useAdminList<Referral>({
+    endpoint: "/admin/referrals",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: Referral[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,17 +46,7 @@ export function AdminReferrals() {
     }
   }, [authLoading, user, router])
 
-  useEffect(() => {
-    if (!user) return
-    Promise.all([
-      apiFetch<Referral[]>("/admin/referrals").catch(() => []),
-      apiFetch<ReferralCode[]>("/admin/referral-codes").catch(() => []),
-    ]).then(([refs, cds]) => {
-      setReferrals(refs)
-      setCodes(cds)
-      setLoading(false)
-    })
-  }, [user])
+  const loading = codesLoading || referralsLoading
 
   if (authLoading || loading) {
     return (
@@ -100,6 +109,7 @@ export function AdminReferrals() {
               <p className="py-6 text-center text-muted-foreground">No referral codes found.</p>
             )}
           </div>
+          <Pagination page={codesPage} pageSize={codesPageSize} total={codesTotal} onPageChange={setCodesPage} onPageSizeChange={setCodesPageSize} />
         </CardContent>
       </Card>
 
@@ -151,6 +161,7 @@ export function AdminReferrals() {
               <p className="py-6 text-center text-muted-foreground">No referrals found.</p>
             )}
           </div>
+          <Pagination page={referralsPage} pageSize={referralsPageSize} total={referralsTotal} onPageChange={setReferralsPage} onPageSizeChange={setReferralsPageSize} />
         </CardContent>
       </Card>
     </div>

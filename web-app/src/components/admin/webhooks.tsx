@@ -10,6 +10,10 @@ import { Plus, Save, X } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 interface WebhookEndpoint {
   id: string
@@ -22,8 +26,8 @@ interface WebhookEndpoint {
 const EVENT_TYPES = ["payment.completed", "payment.failed", "generation.completed", "generation.failed", "webhook.delivery", "user.registered"]
 
 export function AdminWebhooks() {
-  const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([])
-  const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
+  const { toast } = useToast()
   const [editing, setEditing] = useState<WebhookEndpoint | null>(null)
   const [draft, setDraft] = useState<Partial<WebhookEndpoint>>({})
   const [saving, setSaving] = useState(false)
@@ -34,17 +38,22 @@ export function AdminWebhooks() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  useEffect(() => {
-    if (!user) return
-    apiFetch<WebhookEndpoint[]>("/admin/webhooks")
-      .then(setWebhooks)
-      .catch(() => setWebhooks([]))
-      .finally(() => setLoading(false))
-  }, [user])
+  const { items: webhooks, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<WebhookEndpoint>({
+    endpoint: "/admin/webhooks",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: WebhookEndpoint[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   const save = async () => {
     if (!draft.url) {
-      alert("URL is required")
+      toast({
+        title: t("notification.error") || "Error",
+        description: "URL is required",
+        variant: "error",
+      })
       return
     }
     setSaving(true)
@@ -64,9 +73,19 @@ export function AdminWebhooks() {
       }
       setEditing(null)
       setDraft({})
-      apiFetch<WebhookEndpoint[]>("/admin/webhooks").then(setWebhooks)
+      toast({
+        title: t("notification.success") || "Success",
+        description: editing ? "Webhook updated" : "Webhook created",
+        variant: "success",
+      })
+      refetch()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Save failed")
+      const message = e instanceof Error ? e.message : "Save failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     } finally {
       setSaving(false)
     }
@@ -125,25 +144,33 @@ export function AdminWebhooks() {
       )}
 
       <Card>
-        <CardHeader><CardTitle>Webhooks ({webhooks.length})</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Webhooks ({total})</CardTitle></CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">URL</th><th className="text-left py-2">Events</th><th className="text-center py-2">Status</th><th className="text-right py-2">Actions</th></tr></thead>
-            <tbody>
-              {webhooks.map((wh) => (
-                <tr key={wh.id} className="border-b">
-                  <td className="py-2 break-all">{wh.url}</td>
-                  <td className="py-2">{wh.events?.join(", ") || "—"}</td>
-                  <td className="py-2 text-center">
-                    <Badge variant={wh.is_active ? "default" : "secondary"}>{wh.is_active ? "Active" : "Inactive"}</Badge>
-                  </td>
-                  <td className="py-2 text-right">
-                    <Button size="sm" variant="ghost" aria-label={`Edit webhook ${wh.id}`} onClick={() => setEditing(wh)}>Edit</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b"><th className="text-left py-2">URL</th><th className="text-left py-2">Events</th><th className="text-center py-2">Status</th><th className="text-right py-2">Actions</th></tr></thead>
+              <tbody>
+                {webhooks.map((wh) => (
+                  <tr key={wh.id} className="border-b">
+                    <td className="py-2 break-all">{wh.url}</td>
+                    <td className="py-2">{wh.events?.join(", ") || "—"}</td>
+                    <td className="py-2 text-center">
+                      <Badge variant={wh.is_active ? "default" : "secondary"}>{wh.is_active ? "Active" : "Inactive"}</Badge>
+                    </td>
+                    <td className="py-2 text-right">
+                      <Button size="sm" variant="ghost" aria-label={`Edit webhook ${wh.id}`} onClick={() => setEditing(wh)}>Edit</Button>
+                    </td>
+                  </tr>
+                ))}
+                {webhooks.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">No webhooks found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
     </div>

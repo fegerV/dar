@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { useToast } from "@/components/ui/toast"
 
 interface ErrorEntry {
   id: string
@@ -44,6 +46,7 @@ const GROUP_LABELS: Record<string, string> = {
 
 export function AdminErrors() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [errorsData, setErrorsData] = useState<ErrorsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
@@ -61,6 +64,11 @@ export function AdminErrors() {
       setErrorsData(data)
     } catch {
       setErrorsData(null)
+      toast({
+        title: t("notification.error") || "Error",
+        description: "Failed to load errors",
+        variant: "error",
+      })
     } finally {
       setLoading(false)
     }
@@ -102,20 +110,22 @@ export function AdminErrors() {
             <Card>
               <CardHeader><CardTitle>{GROUP_LABELS[selectedGroup] || selectedGroup}</CardTitle></CardHeader>
               <CardContent>
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b"><th className="text-left py-2">Error ID</th><th className="text-left py-2">Code</th><th className="text-left py-2">Message</th><th className="text-left py-2">Model</th><th className="text-left py-2">Created</th></tr></thead>
-                  <tbody>
-                    {errorsData.groups[selectedGroup].map((err) => (
-                      <tr key={err.id} className="border-b">
-                        <td className="py-2 font-mono">{err.id.slice(0, 8)}…</td>
-                        <td className="py-2">{err.error_code || "—"}</td>
-                        <td className="py-2 max-w-xs truncate">{err.error_message || "—"}</td>
-                        <td className="py-2">{err.model_name || "—"}</td>
-                        <td className="py-2">{new Date(err.created_at).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b"><th className="text-left py-2">Error ID</th><th className="text-left py-2">Code</th><th className="text-left py-2">Message</th><th className="text-left py-2">Model</th><th className="text-left py-2">Created</th></tr></thead>
+                    <tbody>
+                      {errorsData.groups[selectedGroup].map((err) => (
+                        <tr key={err.id} className="border-b">
+                          <td className="py-2 font-mono">{err.id.slice(0, 8)}…</td>
+                          <td className="py-2">{err.error_code || "—"}</td>
+                          <td className="py-2 max-w-xs truncate">{err.error_message || "—"}</td>
+                          <td className="py-2">{err.model_name || "—"}</td>
+                          <td className="py-2">{new Date(err.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}

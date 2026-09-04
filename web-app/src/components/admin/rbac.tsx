@@ -10,6 +10,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 import type { AdminRole, SystemRoleDef } from "@/types/admin"
 
 interface PermissionsResponse {
@@ -18,9 +22,9 @@ interface PermissionsResponse {
 }
 
 export function AdminRBAC() {
-  const [roles, setRoles] = useState<AdminRole[]>([])
+  const { t } = useTranslation()
+  const { toast } = useToast()
   const [systemRoles, setSystemRoles] = useState<Record<string, SystemRoleDef>>({})
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ code: "", name: "", description: "", permissions: [] as string[] })
   const router = useRouter()
@@ -30,24 +34,20 @@ export function AdminRBAC() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const loadRoles = async () => {
-    setLoading(true)
-    try {
-      const [rolesData, permsData] = await Promise.all([
-        apiFetch<AdminRole[]>("/admin/roles"),
-        apiFetch<PermissionsResponse>("/admin/rbac/permissions"),
-      ])
-      setRoles(rolesData)
-      setSystemRoles(permsData.roles)
-    } catch {
-      setRoles([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { items: roles, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<AdminRole>({
+    endpoint: "/admin/roles",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: AdminRole[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
-    if (user) loadRoles()
+    if (!user) return
+    apiFetch<PermissionsResponse>("/admin/rbac/permissions")
+      .then(setSystemRoles)
+      .catch(() => setSystemRoles({}))
   }, [user])
 
   const createRole = async () => {
@@ -60,9 +60,19 @@ export function AdminRBAC() {
       })
       setCreating(false)
       setForm({ code: "", name: "", description: "", permissions: [] })
-      loadRoles()
+      toast({
+        title: t("notification.success") || "Success",
+        description: "Role created",
+        variant: "success",
+      })
+      refetch()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Failed to create role")
+      const message = e instanceof Error ? e.message : "Failed to create role"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     }
   }
 
@@ -115,19 +125,27 @@ export function AdminRBAC() {
       <Card>
         <CardHeader><CardTitle>Custom Roles</CardTitle></CardHeader>
         <CardContent>
-          <table className="w-full text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Name</th><th className="text-left py-2">Permissions</th><th className="text-right py-2">System</th></tr></thead>
-            <tbody>
-              {roles.map((role) => (
-                <tr key={role.id} className="border-b">
-                  <td className="py-2 font-mono">{role.code}</td>
-                  <td className="py-2">{role.name}</td>
-                  <td className="py-2">{role.permissions.join(", ") || "—"}</td>
-                  <td className="py-2 text-right">{role.is_system ? "Yes" : "No"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b"><th className="text-left py-2">Code</th><th className="text-left py-2">Name</th><th className="text-left py-2">Permissions</th><th className="text-right py-2">System</th></tr></thead>
+              <tbody>
+                {roles.map((role) => (
+                  <tr key={role.id} className="border-b">
+                    <td className="py-2 font-mono">{role.code}</td>
+                    <td className="py-2">{role.name}</td>
+                    <td className="py-2">{role.permissions.join(", ") || "—"}</td>
+                    <td className="py-2 text-right">{role.is_system ? "Yes" : "No"}</td>
+                  </tr>
+                ))}
+                {roles.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">No custom roles</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
     </div>

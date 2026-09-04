@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,12 +12,14 @@ import type { AdminUser, UserWallet, AdminPayment } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 export function AdminUsers() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [search, setSearch] = useState("")
-  const [users, setUsers] = useState<AdminUser[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [wallet, setWallet] = useState<UserWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
@@ -31,13 +33,19 @@ export function AdminUsers() {
     }
   }, [authLoading, user, router])
 
+  const { items: users, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters } = useAdminList<AdminUser>({
+    endpoint: "/admin/users",
+    pageSize: 20,
+    filters: search ? { search } : {},
+    transform: (raw) => {
+      const paginated = raw as { items: AdminUser[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
+
   useEffect(() => {
-    if (!user) return
-    apiFetch<AdminUser[]>("/admin/users")
-      .then(setUsers)
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false))
-  }, [user])
+    setFilters(search ? { search } : {})
+  }, [search, setFilters])
 
   const openWallet = async (userId: string) => {
     setSelectedUserId(userId)
@@ -72,21 +80,25 @@ export function AdminUsers() {
       )
       if (data.impersonation) {
         localStorage.setItem("impersonate_token", data.access_token)
-        alert("Impersonation started (5-min TTL)")
+        toast({
+          title: t("notification.success") || "Success",
+          description: "Impersonation started (5-min TTL)",
+          variant: "success",
+        })
       } else {
         localStorage.setItem("daragent_admin_access", data.access_token)
         document.cookie = `daragent_admin_access=${data.access_token}; path=/; max-age=300; SameSite=Lax; Secure`
         window.location.href = "/admin/dashboard"
       }
     } catch (err: unknown) {
-      console.error("Impersonate failed:", (err as Error)?.message)
+      const message = err instanceof Error ? err.message : "Impersonation failed"
+      toast({
+        title: t("notification.error") || "Error",
+        description: message,
+        variant: "error",
+      })
     }
   }
-
-  const filtered = users.filter((u) => {
-    if (search && !u.display_name?.toLowerCase().includes(search.toLowerCase()) && !u.email?.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
 
   if (authLoading || loading) {
     return (
@@ -141,7 +153,7 @@ export function AdminUsers() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((u) => (
+                {users.map((u) => (
                   <tr key={u.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4 font-mono">#{u.id}</td>
                     <td className="py-3 px-4">{u.display_name || "—"}</td>
@@ -160,9 +172,9 @@ export function AdminUsers() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" aria-label={`View user ${u.id}`} onClick={() => router.push(`/admin/users/${u.id}`)}>
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                      </Button>
+                        <Button size="sm" variant="ghost" aria-label={`View user ${u.id}`} onClick={() => router.push(`/admin/users/${u.id}`)}>
+                          <Eye className="h-4 w-4" aria-hidden="true" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -183,9 +195,15 @@ export function AdminUsers() {
                     </td>
                   </tr>
                 ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">No users found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
 

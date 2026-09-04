@@ -10,6 +10,9 @@ import type { AdminGeneration } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 const statusColors: Record<string, string> = {
   SUCCESS: "bg-green-100 text-green-800",
@@ -20,24 +23,24 @@ const statusColors: Record<string, string> = {
 
 export function AdminGenerations() {
   const { t } = useTranslation()
-  const [generations, setGenerations] = useState<AdminGeneration[]>([])
-  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
+
+  const { items: generations, loading, page, pageSize, total, totalPages, setPage, setPageSize } = useAdminList<AdminGeneration>({
+    endpoint: "/admin/generations",
+    pageSize: 20,
+    transform: (raw) => {
+      const paginated = raw as { items: AdminGeneration[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
+  })
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/admin/login")
     }
   }, [authLoading, user, router])
-
-  useEffect(() => {
-    if (!user) return
-    apiFetch<AdminGeneration[]>("/admin/generations")
-      .then(setGenerations)
-      .catch(() => setGenerations([]))
-      .finally(() => setLoading(false))
-  }, [user])
 
   if (authLoading || loading) {
     return (
@@ -102,7 +105,7 @@ export function AdminGenerations() {
                 >
                   View
                 </Button>
-                <Button size="sm" variant="outline" aria-label={`Play video for generation ${gen.id}`}>
+                <Button size="sm" variant="outline" aria-label={`Play video for generation ${gen.id}`} onClick={() => toast({ title: t("notification.info") || "Info", description: "Video playback not implemented", variant: "default" })}>
                   <Play className="h-4 w-4 mr-2" aria-hidden="true" />
                   Play Video
                 </Button>
@@ -110,7 +113,15 @@ export function AdminGenerations() {
             </CardContent>
           </Card>
         ))}
+        {generations.length === 0 && (
+          <Card>
+            <CardContent>
+              <p className="py-8 text-center text-muted-foreground">No generations found</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
     </div>
   )
 }
