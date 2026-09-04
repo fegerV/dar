@@ -3,21 +3,35 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useRouter, useParams } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
+import { useToast } from "@/components/ui/toast"
 import type { AdminWorkerDetailResponse } from "@/types/admin"
+
+interface WorkerLog {
+  id: string
+  level: string
+  message: string
+  created_at: string
+}
 
 export default function AdminWorkerDetailPage() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const { user, loading: authLoading } = useAdminAuth()
   const [worker, setWorker] = useState<AdminWorkerDetailResponse | null>(null)
+  const [logs, setLogs] = useState<WorkerLog[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [workerParams, setWorkerParams] = useState({ gpu_model: "", gpu_vram_total_gb: "", cpu_usage_percent: "" })
+  const [savingParams, setSavingParams] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/admin/login")
@@ -27,8 +41,17 @@ export default function AdminWorkerDetailPage() {
     if (!user || !params.id) return
     setLoading(true)
     try {
-      const data = await apiFetch<AdminWorkerDetailResponse>(`/admin/workers/${params.id}`)
-      setWorker(data)
+      const [w, l] = await Promise.all([
+        apiFetch<AdminWorkerDetailResponse>(`/admin/workers/${params.id}`),
+        apiFetch<WorkerLog[]>(`/admin/workers/${params.id}/logs`).catch(() => []),
+      ])
+      setWorker(w)
+      setLogs(l)
+      setWorkerParams({
+        gpu_model: w.gpu_model || "",
+        gpu_vram_total_gb: w.gpu_vram_total_gb?.toString() || "",
+        cpu_usage_percent: w.cpu_usage_percent?.toString() || "",
+      })
     } catch {
       setWorker(null)
     } finally {
@@ -49,11 +72,34 @@ export default function AdminWorkerDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       })
+      toast({ title: "Success", description: `Worker status: ${status}`, variant: "success" })
       await loadWorker()
     } catch (e: unknown) {
-      alert((e as Error)?.message || "Status update failed")
+      toast({ title: "Error", description: (e as Error)?.message || "Status update failed", variant: "error" })
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const saveParams = async () => {
+    if (!worker) return
+    setSavingParams(true)
+    try {
+      await apiFetch(`/admin/workers/${worker.id}/params`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gpu_model: workerParams.gpu_model || null,
+          gpu_vram_total_gb: workerParams.gpu_vram_total_gb ? parseInt(workerParams.gpu_vram_total_gb) : null,
+          cpu_usage_percent: workerParams.cpu_usage_percent ? parseFloat(workerParams.cpu_usage_percent) : null,
+        }),
+      })
+      toast({ title: "Success", description: "Parameters updated", variant: "success" })
+      await loadWorker()
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error)?.message || "Save failed", variant: "error" })
+    } finally {
+      setSavingParams(false)
     }
   }
 
@@ -92,12 +138,52 @@ export default function AdminWorkerDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Status</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button onClick={() => updateStatus("active")} disabled={updating || worker.status === "active"}>Set Active</Button>
           <Button onClick={() => updateStatus("idle")} disabled={updating || worker.status === "idle"}>Set Idle</Button>
           <Button onClick={() => updateStatus("maintenance")} disabled={updating || worker.status === "maintenance"}>Set Maintenance</Button>
           <Button onClick={() => updateStatus("offline")} disabled={updating || worker.status === "offline"}>Set Offline</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Parameters</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>GPU Model</Label>
+              <Input value={workerParams.gpu_model} onChange={(e) => setWorkerParams({ ...workerParams, gpu_model: e.target.value })} />
+            </div>
+            <div>
+              <Label>VRAM Total (GB)</Label>
+              <Input type="number" value={workerParams.gpu_vram_total_gb} onChange={(e) => setWorkerParams({ ...workerParams, gpu_vram_total_gb: e.target.value })} />
+            </div>
+            <div>
+              <Label>CPU Usage (%)</Label>
+              <Input type="number" step="0.1" value={workerParams.cpu_usage_percent} onChange={(e) => setWorkerParams({ ...workerParams, cpu_usage_percent: e.target.value })} />
+            </div>
+          </div>
+          <Button onClick={saveParams} disabled={savingParams}>{savingParams ? "Saving..." : "Save Parameters"}</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Logs ({logs.length})</CardTitle></CardHeader>
+        <CardContent>
+          {logs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No logs</p>
+          ) : (
+            <div className="space-y-1 max-h-96 overflow-y-auto rounded border bg-muted/30 p-2 font-mono text-xs">
+              {logs.map((log) => (
+                <div key={log.id} className="flex gap-2">
+                  <span className="text-muted-foreground">{new Date(log.created_at).toLocaleTimeString()}</span>
+                  <Badge variant={log.level === "error" ? "destructive" : log.level === "warning" ? "secondary" : "outline"} className="text-xs">{log.level}</Badge>
+                  <span>{log.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

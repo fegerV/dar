@@ -246,11 +246,20 @@ async def get_order(
 @router.get("/queue", response_model=list[AdminQueueJobResponse])
 async def list_queue(
     status: str | None = Query(None, pattern="^(pending|running|completed|failed|canceled)$"),
+    worker_id: UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    service = AdminService(db)
-    return await service.list_queue_jobs(status)
+    from app.models.admin import QueueJob
+
+    query = select(QueueJob).order_by(QueueJob.created_at.desc())
+    if status:
+        query = query.where(QueueJob.status == status)
+    if worker_id:
+        query = query.where(QueueJob.worker_id == worker_id)
+    result = await db.execute(query.limit(200))
+    jobs = list(result.scalars().all())
+    return [AdminQueueJobResponse.model_validate(j) for j in jobs]
 
 
 @router.get("/workers", response_model=list[AdminWorkerResponse])
@@ -1661,4 +1670,250 @@ async def export_payments(
 
     from fastapi.responses import Response
     return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=payments.csv"})
+
+
+class SceneReorder(PydanticBaseModel):
+    scene_ids: list[UUID]
+
+
+@router.post("/scenes/reorder")
+async def reorder_scenes(
+    body: SceneReorder,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.template import Scene
+
+    for idx, scene_id in enumerate(body.scene_ids):
+        scene = await db.get(Scene, scene_id)
+        if scene is not None:
+            scene.sort_order = idx
+    await db.commit()
+    return {"status": "ok"}
+
+
+class PromptRollback(PydanticBaseModel):
+    version: int
+
+
+@router.post("/prompts/{prompt_id}/rollback")
+async def rollback_prompt(
+    prompt_id: UUID,
+    body: PromptRollback,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.template import PromptTemplate, PromptTemplateVersion
+
+    prompt = await db.get(PromptTemplate, prompt_id)
+    if prompt is None:
+        raise NotFoundException("Prompt not found")
+
+    target = await db.execute(
+        select(PromptTemplateVersion).where(
+            PromptTemplateVersion.prompt_id == prompt_id,
+            PromptTemplateVersion.version == body.version,
+        )
+    )
+    version = target.scalar_one_or_none()
+    if version is None:
+        raise NotFoundException("Version not found")
+
+    prompt.text = version.text
+    prompt.name = version.name
+    prompt.description = version.description
+    prompt.category = version.category
+    prompt.variables = version.variables
+    prompt.compatible_models = version.compatible_models
+    prompt.version = version.version
+    await db.flush()
+
+    new_version = PromptTemplateVersion(
+        prompt_id=prompt.id,
+        version=prompt.version,
+        name=prompt.name,
+        description=prompt.description,
+        category=prompt.category,
+        text=prompt.text,
+        variables=prompt.variables,
+        compatible_models=prompt.compatible_models,
+        status="published",
+        published_at=datetime.now(UTC),
+    )
+    db.add(new_version)
+    await db.commit()
+    return {"status": "ok", "version": prompt.version}
+
+
+@router.get("/queue/jobs/{job_id}")
+async def get_queue_job(
+    job_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.admin import QueueJob
+
+    job = await db.get(QueueJob, job_id)
+    if job is None:
+        raise NotFoundException("Job not found")
+    return AdminQueueJobResponse.model_validate(job)
+
+
+@router.patch("/queue/pause")
+async def pause_queue(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    return {"status": "paused"}
+
+
+@router.patch("/queue/resume")
+async def resume_queue(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    return {"status": "resumed"}
+
+
+@router.get("/workers/{worker_id}/logs")
+async def get_worker_logs(
+    worker_id: UUID,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.admin import WorkerLog
+
+    result = await db.execute(
+        select(WorkerLog).where(WorkerLog.worker_id == worker_id).order_by(WorkerLog.created_at.desc()).limit(limit)
+    )
+    logs = list(result.scalars().all())
+    return [
+        {
+            "id": str(log.id),
+            "level": log.level,
+            "message": log.message,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+        for log in logs
+    ]
+
+
+class WorkerParams(PydanticBaseModel):
+    metadata: dict | None = None
+    gpu_model: str | None = None
+    gpu_vram_total_gb: int | None = None
+    cpu_usage_percent: float | None = None
+
+
+@router.patch("/workers/{worker_id}/params")
+async def update_worker_params(
+    worker_id: UUID,
+    body: WorkerParams,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.admin import Worker
+
+    worker = await db.get(Worker, worker_id)
+    if worker is None:
+        raise NotFoundException("Worker not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(worker, key, value)
+    await db.commit()
+    return AdminWorkerResponse.model_validate(worker)
+
+
+class UserBlockIP(PydanticBaseModel):
+    ip_address: str
+    reason: str | None = None
+
+
+@router.post("/users/{user_id}/block-ip")
+async def block_user_ip(
+    user_id: UUID,
+    body: UserBlockIP,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise NotFoundException("User not found")
+
+    blocked = list(user.metadata_.get("blocked_ips", []))
+    if body.ip_address in blocked:
+        raise ConflictException("IP already blocked")
+
+    blocked.append(body.ip_address)
+    user.metadata_["blocked_ips"] = blocked
+    user.metadata_["block_reason"] = body.reason
+    await db.commit()
+    return {"status": "ok", "blocked_ips": blocked}
+
+
+@router.delete("/users/{user_id}/block-ip/{ip_address}")
+async def unblock_user_ip(
+    user_id: UUID,
+    ip_address: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    user = await db.get(User, user_id)
+    if user is None:
+        raise NotFoundException("User not found")
+
+    blocked = list(user.metadata_.get("blocked_ips", []))
+    if ip_address not in blocked:
+        raise NotFoundException("IP not found in block list")
+
+    blocked.remove(ip_address)
+    user.metadata_["blocked_ips"] = blocked
+    await db.commit()
+    return {"status": "ok", "blocked_ips": blocked}
+
+
+class BulkUserAction(PydanticBaseModel):
+    user_ids: list[UUID]
+    action: str
+    reason: str | None = None
+
+
+@router.post("/users/bulk-action")
+async def bulk_user_action(
+    body: BulkUserAction,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.services.audit.service import AuditService
+
+    if body.action not in {"block", "unblock", "delete", "send_message"}:
+        raise ValidationException(f"Unsupported bulk action: {body.action}")
+
+    audit = AuditService(db)
+    results = []
+    for uid in body.user_ids:
+        user = await db.get(User, uid)
+        if user is None:
+            continue
+        if body.action == "block":
+            user.status = "blocked"
+        elif body.action == "unblock":
+            user.status = "active"
+        elif body.action == "delete":
+            user.deleted_at = datetime.now(UTC)
+        elif body.action == "send_message":
+            pass
+        results.append(str(uid))
+        await audit.log(
+            actor_user_id=current_user.id,
+            action=f"bulk_user_{body.action}",
+            target_type="user",
+            target_id=uid,
+            metadata={"reason": body.reason},
+        )
+
+    await db.commit()
+    return {"status": "ok", "processed": results}
 

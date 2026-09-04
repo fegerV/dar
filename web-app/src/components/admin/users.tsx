@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Search, Eye, Wallet, LogIn } from "lucide-react"
+import { Search, Eye, Wallet, LogIn, Ban, CheckCircle, Trash2 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import type { AdminUser, UserWallet, AdminPayment } from "@/types/admin"
 import { useRouter } from "next/navigation"
@@ -24,6 +25,12 @@ export function AdminUsers() {
   const [wallet, setWallet] = useState<UserWallet | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
   const [payments, setPayments] = useState<AdminPayment[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<"block" | "unblock" | "delete" | null>(null)
+  const [bulkReason, setBulkReason] = useState("")
+  const [ipBlockDialog, setIpBlockDialog] = useState<{ userId: string } | null>(null)
+  const [ipToBlock, setIpToBlock] = useState("")
+  const [ipBlockReason, setIpBlockReason] = useState("")
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -33,7 +40,7 @@ export function AdminUsers() {
     }
   }, [authLoading, user, router])
 
-  const { items: users, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters } = useAdminList<AdminUser>({
+  const { items: users, loading, page, pageSize, total, setPage, setPageSize, setFilters, refetch } = useAdminList<AdminUser>({
     endpoint: "/admin/users",
     pageSize: 20,
     filters: search ? { search } : {},
@@ -100,6 +107,60 @@ export function AdminUsers() {
     }
   }
 
+  const toggleSelectUser = (userId: string) => {
+    const newSet = new Set(selectedUsers)
+    if (newSet.has(userId)) newSet.delete(userId)
+    else newSet.add(userId)
+    setSelectedUsers(newSet)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set())
+    } else {
+      setSelectedUsers(new Set(users.map((u) => u.id)))
+    }
+  }
+
+  const executeBulkAction = async () => {
+    if (!bulkAction || selectedUsers.size === 0) return
+    try {
+      await apiFetch("/admin/users/bulk-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_ids: Array.from(selectedUsers),
+          action: bulkAction,
+          reason: bulkReason,
+        }),
+      })
+      toast({ title: "Success", description: `Bulk ${bulkAction} completed`, variant: "success" })
+      setSelectedUsers(new Set())
+      setBulkAction(null)
+      setBulkReason("")
+      refetch()
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error)?.message || "Bulk action failed", variant: "error" })
+    }
+  }
+
+  const blockUserIp = async () => {
+    if (!ipBlockDialog || !ipToBlock) return
+    try {
+      await apiFetch(`/admin/users/${ipBlockDialog.userId}/block-ip`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip_address: ipToBlock, reason: ipBlockReason }),
+      })
+      toast({ title: "Success", description: `IP ${ipToBlock} blocked`, variant: "success" })
+      setIpBlockDialog(null)
+      setIpToBlock("")
+      setIpBlockReason("")
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error)?.message || "IP block failed", variant: "error" })
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="space-y-6">
@@ -136,7 +197,20 @@ export function AdminUsers() {
                 aria-label="Search users"
               />
             </div>
-            <Button variant="outline">Segments</Button>
+            {selectedUsers.size > 0 && (
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" onClick={() => setBulkAction("block")}>
+                  <Ban className="h-3 w-3 mr-1" />Block ({selectedUsers.size})
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkAction("unblock")}>
+                  <CheckCircle className="h-3 w-3 mr-1" />Unblock
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkAction("delete")}>
+                  <Trash2 className="h-3 w-3 mr-1" />Delete
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedUsers(new Set())}>Clear</Button>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -144,6 +218,9 @@ export function AdminUsers() {
             <table className="w-full text-sm" aria-label="Users table">
               <thead>
                 <tr className="border-b">
+                  <th className="w-10">
+                    <Checkbox checked={users.length > 0 && selectedUsers.size === users.length} onCheckedChange={toggleSelectAll} aria-label="Select all" />
+                  </th>
                   <th className="text-left py-3 px-4 font-medium">ID</th>
                   <th className="text-left py-3 px-4 font-medium">Name</th>
                   <th className="text-left py-3 px-4 font-medium">Email</th>
@@ -155,6 +232,9 @@ export function AdminUsers() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-3 px-4">
+                      <Checkbox checked={selectedUsers.has(u.id)} onCheckedChange={() => toggleSelectUser(u.id)} aria-label={`Select user ${u.id}`} />
+                    </td>
                     <td className="py-3 px-4 font-mono">#{u.id}</td>
                     <td className="py-3 px-4">{u.display_name || "—"}</td>
                     <td className="py-3 px-4">{u.email || "—"}</td>
@@ -186,6 +266,14 @@ export function AdminUsers() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          aria-label={`Block IP for user ${u.id}`}
+                          onClick={() => setIpBlockDialog({ userId: u.id })}
+                        >
+                          <Ban className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           aria-label={`Impersonate user ${u.id}`}
                           onClick={() => handleImpersonate(u.id)}
                         >
@@ -197,7 +285,7 @@ export function AdminUsers() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-muted-foreground">No users found</td>
+                    <td colSpan={7} className="py-8 text-center text-muted-foreground">No users found</td>
                   </tr>
                 )}
               </tbody>
@@ -278,6 +366,48 @@ export function AdminUsers() {
           ) : (
             <p className="py-4 text-center text-muted-foreground">No wallet found for this user.</p>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!bulkAction} onOpenChange={(open) => !open && setBulkAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk {bulkAction} {selectedUsers.size} users?</DialogTitle>
+              <DialogDescription>This action will be applied to all selected users and recorded in the audit log.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Reason (optional)</label>
+              <Input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Brief description" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setBulkAction(null); setBulkReason("") }}>Cancel</Button>
+              <Button onClick={executeBulkAction} variant={bulkAction === "delete" ? "destructive" : "default"}>Confirm</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!ipBlockDialog} onOpenChange={(open) => !open && setIpBlockDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Block IP Address</DialogTitle>
+            <DialogDescription>Block an IP from accessing this user&apos;s account</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">IP Address</label>
+              <Input value={ipToBlock} onChange={(e) => setIpToBlock(e.target.value)} placeholder="192.168.1.1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Reason (optional)</label>
+              <Input value={ipBlockReason} onChange={(e) => setIpBlockReason(e.target.value)} placeholder="Suspicious activity" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIpBlockDialog(null)}>Cancel</Button>
+              <Button onClick={blockUserIp} variant="destructive">Block IP</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

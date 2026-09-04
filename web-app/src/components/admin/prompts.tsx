@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Save, X, History } from "lucide-react"
+import { Search, Plus, Save, X, History, RotateCcw } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
 import { useToast } from "@/components/ui/toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 interface PromptTemplate {
   id: string
@@ -34,6 +35,53 @@ interface PromptTemplate {
   updated_at: string | null
 }
 
+interface PromptVersion {
+  id: string
+  version: number
+  status: string
+  name: string
+  description: string | null
+  category: string | null
+  text: string
+  variables: string[]
+  compatible_models: string[]
+  created_at: string
+  published_at: string | null
+}
+
+interface DiffLine {
+  type: "added" | "removed" | "unchanged"
+  content: string
+}
+
+function computeDiff(oldText: string, newText: string): DiffLine[] {
+  const oldLines = oldText.split("\n")
+  const newLines = newText.split("\n")
+  const result: DiffLine[] = []
+  let i = 0
+  let j = 0
+  while (i < oldLines.length || j < newLines.length) {
+    if (i >= oldLines.length) {
+      result.push({ type: "added", content: newLines[j] })
+      j++
+    } else if (j >= newLines.length) {
+      result.push({ type: "removed", content: oldLines[i] })
+      i++
+    } else if (oldLines[i] === newLines[j]) {
+      result.push({ type: "unchanged", content: oldLines[i] })
+      i++
+      j++
+    } else if (newLines.includes(oldLines[i], j)) {
+      result.push({ type: "added", content: newLines[j] })
+      j++
+    } else {
+      result.push({ type: "removed", content: oldLines[i] })
+      i++
+    }
+  }
+  return result
+}
+
 export function AdminPrompts() {
   const { t } = useTranslation()
   const { toast } = useToast()
@@ -42,9 +90,13 @@ export function AdminPrompts() {
   const [isCreating, setIsCreating] = useState(false)
   const [draft, setDraft] = useState<Partial<PromptTemplate>>({})
   const [saving, setSaving] = useState(false)
-  const [versions, setVersions] = useState<any[]>([])
+  const [versions, setVersions] = useState<PromptVersion[]>([])
   const [loadingVersions, setLoadingVersions] = useState(false)
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
+  const [diffFrom, setDiffFrom] = useState<PromptVersion | null>(null)
+  const [diffTo, setDiffTo] = useState<PromptVersion | null>(null)
+  const [diffOpen, setDiffOpen] = useState(false)
+  const [rollbackVersion, setRollbackVersion] = useState<PromptVersion | null>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -52,7 +104,7 @@ export function AdminPrompts() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const { items: prompts, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters, refetch } = useAdminList<PromptTemplate>({
+  const { items: prompts, loading, page, pageSize, total, setPage, setPageSize, setFilters, refetch } = useAdminList<PromptTemplate>({
     endpoint: "/admin/prompts",
     pageSize: 20,
     filters: search ? { search } : {},
@@ -100,19 +152,11 @@ export function AdminPrompts() {
       setEditing(null)
       setIsCreating(false)
       setDraft({})
-      toast({
-        title: t("notification.success") || "Success",
-        description: editing ? "Prompt updated" : "Prompt created",
-        variant: "success",
-      })
+      toast({ title: t("notification.success") || "Success", description: editing ? "Prompt updated" : "Prompt created", variant: "success" })
       refetch()
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Save failed"
-      toast({
-        title: t("notification.error") || "Error",
-        description: message,
-        variant: "error",
-      })
+      toast({ title: t("notification.error") || "Error", description: message, variant: "error" })
     } finally {
       setSaving(false)
     }
@@ -121,7 +165,7 @@ export function AdminPrompts() {
   const loadVersions = async (promptId: string) => {
     setLoadingVersions(true)
     try {
-      const data = await apiFetch<any[]>(`/admin/prompts/${promptId}/versions`)
+      const data = await apiFetch<PromptVersion[]>(`/admin/prompts/${promptId}/versions`)
       setVersions(data)
       setSelectedPromptId(promptId)
     } catch {
@@ -130,6 +174,41 @@ export function AdminPrompts() {
       setLoadingVersions(false)
     }
   }
+
+  const openDiff = (v: PromptVersion) => {
+    if (versions.length === 0) return
+    const idx = versions.findIndex((vv) => vv.id === v.id)
+    if (idx === -1) return
+    if (idx === versions.length - 1) {
+      toast({ title: "Info", description: "This is the latest version, no previous version to compare", variant: "default" })
+      return
+    }
+    setDiffFrom(versions[idx + 1])
+    setDiffTo(v)
+    setDiffOpen(true)
+  }
+
+  const doRollback = async () => {
+    if (!rollbackVersion) return
+    try {
+      await apiFetch(`/admin/prompts/${rollbackVersion.prompt_id}/rollback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: rollbackVersion.version }),
+      })
+      toast({ title: "Success", description: `Rolled back to version ${rollbackVersion.version}`, variant: "success" })
+      setRollbackVersion(null)
+      refetch()
+      if (selectedPromptId) loadVersions(selectedPromptId)
+    } catch (e: unknown) {
+      toast({ title: "Error", description: (e as Error)?.message || "Rollback failed", variant: "error" })
+    }
+  }
+
+  const diffLines = useMemo(() => {
+    if (!diffFrom || !diffTo) return []
+    return computeDiff(diffFrom.text, diffTo.text)
+  }, [diffFrom, diffTo])
 
   if (authLoading || loading) {
     return <p className="text-center py-8">Loading prompts...</p>
@@ -258,7 +337,13 @@ export function AdminPrompts() {
                         {v.created_at ? new Date(v.created_at).toLocaleString() : "—"}
                       </div>
                     </div>
-                    <Badge variant={v.status === "published" ? "default" : "secondary"}>{v.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={v.status === "published" ? "default" : "secondary"}>{v.status}</Badge>
+                      <Button size="sm" variant="ghost" onClick={() => openDiff(v)} aria-label={`Diff version ${v.version}`}>Diff</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setRollbackVersion(v)} aria-label={`Rollback to version ${v.version}`}>
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -266,6 +351,46 @@ export function AdminPrompts() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={diffOpen} onOpenChange={setDiffOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Diff: v{diffFrom?.version} → v{diffTo?.version}</DialogTitle>
+            <DialogDescription>Compare text changes between versions</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh] rounded border bg-muted/30 p-2 font-mono text-xs">
+            {diffLines.map((line, idx) => (
+              <div
+                key={idx}
+                className={`px-2 py-0.5 ${
+                  line.type === "added" ? "bg-green-100 text-green-900" :
+                  line.type === "removed" ? "bg-red-100 text-red-900 line-through" :
+                  "text-muted-foreground"
+                }`}
+              >
+                {line.type === "added" ? "+ " : line.type === "removed" ? "- " : "  "}
+                {line.content || "\u00A0"}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rollbackVersion} onOpenChange={(open) => !open && setRollbackVersion(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rollback to version {rollbackVersion?.version}?</DialogTitle>
+            <DialogDescription>
+              This will create a new version with the content of version {rollbackVersion?.version}.
+              The current version will not be lost, but a new version will be added to the history.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRollbackVersion(null)}>Cancel</Button>
+            <Button onClick={doRollback}>Confirm Rollback</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
