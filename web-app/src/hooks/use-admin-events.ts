@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react"
-import { getClientAccessToken } from "@/lib/api"
 
 export interface AdminEvent {
   type: "stats" | "error" | string
@@ -16,8 +15,7 @@ export function useAdminEvents(enabled: boolean = true): AdminEvent | null {
     if (!enabled) return
 
     const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-    const token = getClientAccessToken()
-    const url = `${base}/admin/events/stream-token?token=${encodeURIComponent(token || "")}`
+    const url = `${base}/admin/events/stream-token`
 
     let es: EventSource
     try {

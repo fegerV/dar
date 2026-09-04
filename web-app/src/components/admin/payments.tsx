@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useState, useEffect, useMemo } from "react"
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -17,12 +19,29 @@ import { useToast } from "@/components/ui/toast"
 export function AdminPayments() {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
-  const { items: payments, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<AdminPayment>({
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/admin/login")
+  }, [authLoading, user, router])
+
+  const filters = useMemo(() => {
+    const f: Record<string, string | number | boolean | undefined> = {}
+    if (startDate) f.start_date = startDate
+    if (endDate) f.end_date = endDate
+    if (statusFilter !== "all") f.status = statusFilter
+    return f
+  }, [startDate, endDate, statusFilter])
+  const filtersKey = JSON.stringify(filters)
+
+  const { items: payments, loading, page, pageSize, total, setPage, setPageSize, setFilters, refetch } = useAdminList<AdminPayment>({
     endpoint: "/admin/payments",
     pageSize: 20,
+    filters,
     transform: (raw) => {
       const paginated = raw as { items: AdminPayment[]; total: number; page: number; page_size: number }
       return paginated.items
@@ -30,10 +49,8 @@ export function AdminPayments() {
   })
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/admin/login")
-    }
-  }, [authLoading, user, router])
+    setFilters(filters)
+  }, [filters, filtersKey, setFilters])
 
   const refund = async (id: string, amount?: number) => {
     const amt = amount ? `?amount_rub=${amount}` : ""
@@ -56,6 +73,29 @@ export function AdminPayments() {
     }
   }
 
+  const exportCSV = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (startDate) params.set("start_date", startDate)
+      if (endDate) params.set("end_date", endDate)
+      if (statusFilter !== "all") params.set("status", statusFilter)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/admin/payments/export?${params.toString()}`, {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error("Export failed")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "payments.csv"
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast({ title: t("notification.success") || "Success", description: "Payments exported", variant: "success" })
+    } catch {
+      toast({ title: t("notification.error") || "Error", description: "Export failed", variant: "error" })
+    }
+  }
+
   if (authLoading || loading) {
     return <p className="text-center py-8">Loading payments...</p>
   }
@@ -64,7 +104,20 @@ export function AdminPayments() {
     <div className="space-y-6">
       <div><h1 className="text-3xl font-bold">{t("admin.sidebar.payments")}</h1><p className="text-muted-foreground mt-1">{t("admin.pages.payments")}</p></div>
       <Card>
-        <CardHeader><CardTitle>Payments ({total})</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" aria-label="Start date" />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" aria-label="End date" />
+            <Select value={statusFilter} onValueChange={setStatusFilter} className="w-full sm:w-[180px]" aria-label="Filter by status">
+              <option value="all">All</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="refunded">Refunded</option>
+              <option value="failed">Failed</option>
+            </Select>
+            <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
+          </div>
+        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

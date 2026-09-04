@@ -1333,6 +1333,8 @@ async def admin_events_stream_token(request: Request):
 
     token = request.query_params.get("token")
     if not token:
+        token = request.cookies.get("daragent_admin_access")
+    if not token:
         raise ForbiddenException("Token required")
     payload = decode_token(token)
     if not payload:
@@ -1359,6 +1361,45 @@ async def admin_events_stream_token(request: Request):
             await asyncio.sleep(5)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
+
+class ModerationAction(PydanticBaseModel):
+    action: str
+    reason: str | None = None
+
+
+@router.post("/moderation/items/{item_id}/action")
+async def moderation_item_action(
+    item_id: UUID,
+    body: ModerationAction,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.gallery import GallerySubmission
+        result = await db.execute(select(GallerySubmission).where(GallerySubmission.id == item_id))
+        submission = result.scalar_one_or_none()
+        if submission is None:
+            raise NotFoundException("Moderation item not found")
+
+        if body.action == "approve":
+            submission.status = "approved"
+            submission.is_public = True
+        elif body.action == "reject":
+            submission.status = "rejected"
+            submission.is_public = False
+        elif body.action == "escalate":
+            submission.status = "escalated"
+        else:
+            raise ValidationException(f"Unknown action: {body.action}")
+
+        submission.moderator_id = current_user.id
+        await db.commit()
+        return {"status": "ok", "action": body.action}
+    except NotFoundException:
+        raise
+    except Exception as e:
+        raise ValidationException(f"Moderation action failed: {e}")
 
 
 @router.get("/support/tickets")
@@ -1388,7 +1429,86 @@ async def list_support_tickets(
         return []
 
 
-@router.get("/moderation/items")
+@router.get("/support/tickets/{ticket_id}")
+async def get_support_ticket(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.feedback import Feedback
+        feedback = await db.get(Feedback, ticket_id)
+        if feedback is None:
+            raise NotFoundException("Ticket not found")
+        return {
+            "id": str(feedback.id),
+            "user_id": str(feedback.user_id),
+            "generation_id": str(feedback.generation_id) if feedback.generation_id else None,
+            "subject": feedback.reaction,
+            "status": "open",
+            "priority": "medium",
+            "created_at": feedback.created_at.isoformat() if feedback.created_at else None,
+            "updated_at": feedback.created_at.isoformat() if feedback.created_at else None,
+            "messages_count": 1,
+            "details": feedback.details,
+        }
+    except NotFoundException:
+        raise
+    except Exception:
+        raise NotFoundException("Ticket not found")
+
+
+@router.post("/support/tickets/{ticket_id}/close")
+async def close_support_ticket(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.feedback import Feedback
+        feedback = await db.get(Feedback, ticket_id)
+        if feedback is None:
+            raise NotFoundException("Ticket not found")
+        await db.delete(feedback)
+        await db.commit()
+        return {"status": "closed"}
+    except NotFoundException:
+        raise
+    except Exception as e:
+        raise ValidationException(f"Failed to close ticket: {e}")
+
+
+@router.get("/moderation/items/{item_id}")
+async def get_moderation_item(
+    item_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    try:
+        from app.models.gallery import GallerySubmission
+        result = await db.execute(select(GallerySubmission).where(GallerySubmission.id == item_id))
+        submission = result.scalar_one_or_none()
+        if submission is None:
+            raise NotFoundException("Moderation item not found")
+        return {
+            "id": str(submission.id),
+            "type": "photo",
+            "status": submission.status,
+            "created_at": submission.created_at.isoformat() if submission.created_at else None,
+            "updated_at": submission.updated_at.isoformat() if hasattr(submission, "updated_at") and submission.updated_at else None,
+            "content_preview": f"Gallery submission {submission.id}",
+            "title": submission.title,
+            "description": submission.description,
+            "video_url": submission.video_url,
+            "thumbnail_url": submission.thumbnail_url,
+            "user_id": str(submission.user_id),
+            "project_id": str(submission.project_id),
+        }
+    except NotFoundException:
+        raise
+    except Exception:
+        raise NotFoundException("Moderation item not found")
+
 async def list_moderation_items(
     status: str = Query("pending", pattern="^(pending|approved|rejected|escalated)$"),
     db: AsyncSession = Depends(get_db),
@@ -1419,4 +1539,126 @@ async def list_moderation_items(
     except Exception:
         return []
 
+
+@router.get("/analytics/export")
+async def export_analytics(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    import csv
+    import io
+    from datetime import datetime
+
+    from app.models.analytics import AnalyticsEvent
+
+    query = select(AnalyticsEvent)
+    if start_date:
+        query = query.where(AnalyticsEvent.occurred_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.where(AnalyticsEvent.occurred_at <= datetime.fromisoformat(end_date))
+
+    result = await db.execute(query.order_by(AnalyticsEvent.occurred_at.desc()).limit(10000))
+    events = list(result.scalars().all())
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Event Name", "User ID", "Platform", "Occurred At"])
+    for event in events:
+        writer.writerow([
+            event.id,
+            event.event_name,
+            event.user_id,
+            event.platform,
+            event.occurred_at.isoformat() if event.occurred_at else "",
+        ])
+
+    from fastapi.responses import Response
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analytics.csv"})
+
+
+@router.get("/orders/export")
+async def export_orders(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    import csv
+    import io
+    from datetime import datetime
+
+    from app.models.generation import Generation as GenerationModel
+
+    query = select(GenerationModel)
+    if start_date:
+        query = query.where(GenerationModel.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.where(GenerationModel.created_at <= datetime.fromisoformat(end_date))
+    if status:
+        query = query.where(GenerationModel.status == status)
+
+    result = await db.execute(query.order_by(GenerationModel.created_at.desc()).limit(10000))
+    orders = list(result.scalars().all())
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Project ID", "Status", "Cost", "Model", "Created At", "Completed At"])
+    for order in orders:
+        writer.writerow([
+            str(order.id),
+            str(order.project_id),
+            order.status,
+            order.cost_rub,
+            order.model_name or "",
+            order.created_at.isoformat() if order.created_at else "",
+            order.completed_at.isoformat() if order.completed_at else "",
+        ])
+
+    from fastapi.responses import Response
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=orders.csv"})
+
+
+@router.get("/payments/export")
+async def export_payments(
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    import csv
+    import io
+    from datetime import datetime
+
+    query = select(Payment)
+    if start_date:
+        query = query.where(Payment.created_at >= datetime.fromisoformat(start_date))
+    if end_date:
+        query = query.where(Payment.created_at <= datetime.fromisoformat(end_date))
+    if status:
+        query = query.where(Payment.status == status)
+
+    result = await db.execute(query.order_by(Payment.created_at.desc()).limit(10000))
+    payments = list(result.scalars().all())
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "User ID", "Amount", "Method", "Status", "Provider ID", "Created At", "Paid At"])
+    for payment in payments:
+        writer.writerow([
+            str(payment.id),
+            str(payment.user_id) if payment.user_id else "",
+            payment.amount_rub,
+            payment.method,
+            payment.status,
+            str(payment.provider_id) if payment.provider_id else "",
+            payment.created_at.isoformat() if payment.created_at else "",
+            payment.paid_at.isoformat() if payment.paid_at else "",
+        ])
+
+    from fastapi.responses import Response
+    return Response(content=output.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=payments.csv"})
 

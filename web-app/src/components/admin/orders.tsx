@@ -1,17 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Play, Eye } from "lucide-react"
+import { Search, Eye } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { apiFetch } from "@/lib/api"
 import type { AdminOrder } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
+import { useAdminList } from "@/hooks/use-admin-list"
+import { Pagination } from "@/components/admin/pagination"
+import { useToast } from "@/components/ui/toast"
 
 const statusColors: Record<string, string> = {
   READY: "bg-green-100 text-green-800",
@@ -22,10 +24,11 @@ const statusColors: Record<string, string> = {
 
 export function AdminOrders() {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [orders, setOrders] = useState<AdminOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -35,19 +38,51 @@ export function AdminOrders() {
     }
   }, [authLoading, user, router])
 
-  useEffect(() => {
-    if (!user) return
-    apiFetch<AdminOrder[]>("/admin/orders")
-      .then(setOrders)
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false))
-  }, [user])
+  const filters = useMemo(() => {
+    const f: Record<string, string | number | boolean | undefined> = {}
+    if (statusFilter !== "all") f.status = statusFilter
+    if (startDate) f.start_date = startDate
+    if (endDate) f.end_date = endDate
+    return f
+  }, [statusFilter, startDate, endDate])
+  const filtersKey = JSON.stringify(filters)
 
-  const filtered = orders.filter((o) => {
-    if (statusFilter !== "all" && o.status !== statusFilter) return false
-    if (search && !o.id.includes(search) && !(o.requested_by_user_id || "").includes(search) && !(o.template_version_id || "").toString().toLowerCase().includes(search.toLowerCase())) return false
-    return true
+  const { items: orders, loading, page, pageSize, total, setPage, setPageSize, setFilters } = useAdminList<AdminOrder>({
+    endpoint: "/admin/orders",
+    pageSize: 20,
+    filters,
+    transform: (raw) => {
+      const paginated = raw as { items: AdminOrder[]; total: number; page: number; page_size: number }
+      return paginated.items
+    },
   })
+
+  useEffect(() => {
+    setFilters(filters)
+  }, [filters, filtersKey, setFilters])
+
+  const exportCSV = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (startDate) params.set("start_date", startDate)
+      if (endDate) params.set("end_date", endDate)
+      if (statusFilter !== "all") params.set("status", statusFilter)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/admin/orders/export?${params.toString()}`, {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error("Export failed")
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "orders.csv"
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast({ title: t("notification.success") || "Success", description: "Orders exported", variant: "success" })
+    } catch {
+      toast({ title: t("notification.error") || "Error", description: "Export failed", variant: "error" })
+    }
+  }
 
   if (authLoading || loading) {
     return (
@@ -92,6 +127,9 @@ export function AdminOrders() {
               <option value="FAILED">Failed</option>
               <option value="QUEUED">Queued</option>
             </Select>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" aria-label="Start date" />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" aria-label="End date" />
+            <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -108,7 +146,7 @@ export function AdminOrders() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((order) => (
+                {orders.map((order) => (
                   <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3 px-4 font-mono">#{order.id}</td>
                     <td className="py-3 px-4">{order.requested_by_user_id || "—"}</td>
@@ -121,16 +159,19 @@ export function AdminOrders() {
                         <Button size="sm" variant="ghost" aria-label={`View order ${order.id}`} onClick={() => router.push(`/admin/orders/${order.id}`)}>
                           <Eye className="h-4 w-4" aria-hidden="true" />
                         </Button>
-                        <Button size="sm" variant="ghost" aria-label={`Play video for order ${order.id}`}>
-                          <Play className="h-4 w-4" aria-hidden="true" />
-                        </Button>
                       </div>
                     </td>
                   </tr>
                 ))}
+                {orders.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">No orders found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+          <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </CardContent>
       </Card>
     </div>
