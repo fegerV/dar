@@ -1,1 +1,30 @@
-Nothing should be ignored based on the provided file changes, as they only include source code and configuration files (.py files and docker-compose.yml).
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dependencies
+.venv/
+venv/
+env/
+.env
+.env.local
+.env.*
+
+# Logs
+*.log
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+```
