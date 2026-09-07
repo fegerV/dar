@@ -17,6 +17,13 @@ from app.schemas.auth import (
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    TwoFactorDisableRequest,
+    TwoFactorEnableRequest,
+    TwoFactorEnableResponse,
+    TwoFactorInitiateResponse,
+    TwoFactorRegenerateCodesResponse,
+    TwoFactorStatusResponse,
+    TwoFactorVerifyRequest,
     UserResponse,
 )
 from app.services.auth.service import AuthService
@@ -139,3 +146,86 @@ async def logout_all(
 @router.get("/me", response_model=UserResponse)
 async def me(user=Depends(get_current_user)):
     return UserResponse.model_validate(user)
+
+
+# 2FA Endpoints
+@router.post("/2fa/initiate", response_model=TwoFactorInitiateResponse)
+async def initiate_2fa(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Инициировать настройку 2FA (получить секрет и QR URI)."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    return await service.initiate_2fa_setup(current_user.id)
+
+
+@router.post("/2fa/enable", response_model=TwoFactorEnableResponse)
+async def enable_2fa(
+    body: TwoFactorEnableRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Включить 2FA после верификации TOTP кода."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    return await service.enable_2fa(current_user.id, body.totp_code)
+
+
+@router.post("/2fa/disable", status_code=204)
+async def disable_2fa(
+    body: TwoFactorDisableRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отключить 2FA."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    await service.disable_2fa(
+        current_user.id, 
+        totp_code=body.totp_code, 
+        backup_code=body.backup_code
+    )
+    return None
+
+
+@router.get("/2fa/status", response_model=TwoFactorStatusResponse)
+async def get_2fa_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Получить статус 2FA для текущего пользователя."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    return await service.get_2fa_status(current_user.id)
+
+
+@router.post("/2fa/regenerate-codes", response_model=TwoFactorRegenerateCodesResponse)
+async def regenerate_backup_codes(
+    body: TwoFactorEnableRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Перегенерировать backup коды."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    return await service.regenerate_backup_codes(current_user.id, body.totp_code)
+
+
+@router.post("/2fa/verify", response_model={"verified": bool})
+async def verify_2fa_code(
+    body: TwoFactorVerifyRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Верифицировать 2FA код (для тестирования или повторного входа)."""
+    from app.services.auth.two_factor_service import TwoFactorAuthService
+    
+    service = TwoFactorAuthService(db)
+    verified = await service.verify_2fa(current_user.id, body.code)
+    return {"verified": verified}
