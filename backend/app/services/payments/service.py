@@ -1,22 +1,96 @@
-import asyncio
 import hashlib
 import hmac
 import logging
-from datetime import UTC, datetime
+import secrets
+import time
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import NotFoundException, ValidationException
-from app.models.payment import Payment, Wallet
+from app.core.exceptions import ConflictException, NotFoundException, ValidationException
+from app.models.payment import Payment, PaymentIdempotencyKey, Wallet
 from app.repositories.storage import PaymentRepository, WalletRepository
 from app.schemas.payment import PaymentResponse, WalletResponse
 
 logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 1.0
+
+
+class IdempotencyService:
+    """Service for handling idempotent payment operations."""
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def get_or_create_idempotency_key(
+        self, 
+        user_id: UUID, 
+        idempotency_key: str
+    ) -> PaymentIdempotencyKey | None:
+        """Get existing idempotency key or create new one."""
+        result = await self.db.execute(
+            select(PaymentIdempotencyKey).where(
+                PaymentIdempotencyKey.idempotency_key == idempotency_key,
+                PaymentIdempotencyKey.user_id == user_id
+            )
+        )
+        existing = result.scalar_one_or_none()
+        
+        if existing:
+            return existing
+        
+        new_key = PaymentIdempotencyKey(
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(hours=24)
+        )
+        self.db.add(new_key)
+        return new_key
+    
+    async def check_and_set_idempotency(
+        self,
+        user_id: UUID,
+        idempotency_key: str,
+        request_hash: str,
+        response_data: dict | None = None,
+        status_code: int | None = None
+    ) -> tuple[bool, dict | None]:
+        """
+        Check idempotency and store response if new.
+        
+        Returns:
+            tuple: (is_duplicate, cached_response)
+        """
+        key_record = await self.get_or_create_idempotency_key(user_id, idempotency_key)
+        if not key_record:
+            return False, None
+        
+        # If already processed, return cached response
+        if key_record.response_data:
+            return True, key_record.response_data
+        
+        # Store request hash and response for future idempotent requests
+        key_record.request_hash = request_hash
+        key_record.response_data = response_data
+        key_record.status_code = status_code
+        key_record.processed_at = datetime.now(UTC)
+        
+        return False, None
+
+
+def generate_request_hash(payload: dict) -> str:
+    """Generate SHA256 hash of request payload for idempotency validation."""
+    import json
+    canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
 class YooKassaClient:
@@ -168,11 +242,78 @@ class PaymentService:
         self.wallet_repo = WalletRepository(db)
         self.yookassa = YooKassaClient()
         self.wallet_service = WalletService(db)
+        self.idempotency_service = IdempotencyService(db)
 
     async def create_payment(
-        self, user_id: UUID, project_id: UUID, amount: float, method: str = "bank_card"
+        self, 
+        user_id: UUID, 
+        project_id: UUID, 
+        amount: float, 
+        method: str = "bank_card",
+        idempotency_key: str | None = None
     ) -> PaymentResponse:
-        payment = Payment(
+        """
+        Create payment with idempotency support.
+        
+        Args:
+            user_id: User ID
+            project_id: Project ID to pay for
+            amount: Payment amount in RUB
+            method: Payment method
+            idempotency_key: Optional key for idempotent requests
+        
+        Returns:
+            PaymentResponse with payment details and confirmation URL
+        """
+        # Generate idempotency key if not provided
+        if idempotency_key is None:
+            idempotency_key = f"{user_id}:{project_id}:{datetime.now(UTC).timestamp()}"
+        
+        # Prepare request payload for hashing
+        request_payload = {
+            "user_id": str(user_id),
+            "project_id": str(project_id),
+            "amount": amount,
+            "method": method
+        }
+        request_hash = generate_request_hash(request_payload)
+        
+        # Check for duplicate request
+        is_duplicate, cached_response = await self.idempotency_service.check_and_set_idempotency(
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash
+        )
+        
+        if is_duplicate and cached_response:
+            # Return cached response for duplicate request
+            return PaymentResponse(**cached_response)
+        
+        # Check for existing paid project
+        from app.repositories.projects import ProjectRepository
+        project_repo = ProjectRepository(self.db)
+        project = await project_repo.get_by_id(project_id, user_id)
+        if project is None:
+            raise NotFoundException("Проект не найден")
+        
+        if project.paid_rub and project.paid_rub > 0:
+            raise ConflictException("Оплата для этого проекта уже существует")
+        
+        # Check for existing successful payment
+        from sqlalchemy import select
+        from app.models.payment import Payment as PaymentModel
+        existing_paid = await self.db.execute(
+            select(PaymentModel).where(
+                PaymentModel.project_id == project_id,
+                PaymentModel.user_id == user_id,
+                PaymentModel.status == "paid",
+            )
+        )
+        if existing_paid.scalar_one_or_none() is not None:
+            raise ConflictException("Оплата для этого проекта уже существует")
+        
+        # Create new payment record
+        payment = PaymentModel(
             user_id=user_id,
             project_id=project_id,
             provider_id=UUID(int=0),
@@ -182,6 +323,7 @@ class PaymentService:
             bonus_amount_rub=0,
             discount_rub=0,
             provider_payload={},
+            idempotency_key=idempotency_key,
         )
         await self.payment_repo.create(payment)
         await self.db.commit()
@@ -194,9 +336,31 @@ class PaymentService:
         )
 
         payment.external_payment_id = yookassa_payment.get("id")
-        payment.idempotency_key = str(payment.id)
         payment.provider_payload = yookassa_payment
         confirmation_url = yookassa_payment.get("confirmation", {}).get("confirmation_url")
+        
+        # Build response
+        response_data = {
+            "id": str(payment.id),
+            "user_id": str(payment.user_id),
+            "project_id": str(payment.project_id),
+            "status": payment.status,
+            "amount_rub": payment.amount_rub,
+            "method": payment.method,
+            "created_at": payment.created_at,
+        }
+        if confirmation_url:
+            response_data["confirmation_url"] = confirmation_url
+        
+        # Store response for idempotency
+        await self.idempotency_service.check_and_set_idempotency(
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            response_data=response_data,
+            status_code=200
+        )
+        
         await self.db.commit()
 
         response = PaymentResponse.model_validate(payment)

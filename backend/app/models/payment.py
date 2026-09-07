@@ -23,6 +23,26 @@ class Wallet(Base, UUIDPrimaryKeyMixin):
     user = relationship("User", back_populates="wallet")
 
 
+class PaymentIdempotencyKey(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """Model for tracking idempotency keys to prevent duplicate payment processing."""
+    __tablename__ = "payment_idempotency_keys"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    request_hash: Mapped[str | None] = mapped_column(Text)
+    response_data: Mapped[dict | None] = mapped_column(JSONB)
+    status_code: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    
+    user = relationship("User")
+
+
 class Payment(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "payments"
 
