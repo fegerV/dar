@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Play } from "lucide-react"
-import { apiFetch } from "@/lib/api"
 import type { AdminGeneration } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -27,7 +26,7 @@ export function AdminGenerations() {
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
-  const { items: generations, loading, page, pageSize, total, totalPages, setPage, setPageSize } = useAdminList<AdminGeneration>({
+  const { items: generations, loading, page, pageSize, total, setPage, setPageSize } = useAdminList<AdminGeneration>({
     endpoint: "/admin/generations",
     pageSize: 20,
     transform: (raw) => {

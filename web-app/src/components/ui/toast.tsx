@@ -49,7 +49,6 @@ const Toast = React.forwardRef<
   React.ComponentRef<typeof ToastPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
-  const { t } = useTranslation()
   return (
     <ToastPrimitive.Root
       ref={ref}

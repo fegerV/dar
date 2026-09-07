@@ -40,7 +40,7 @@ export function AdminPromoCodes() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const { items: promos, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<PromoCode>({
+  const { items: promos, loading, page, pageSize, total, setPage, setPageSize, refetch } = useAdminList<PromoCode>({
     endpoint: "/admin/promo-codes",
     pageSize: 20,
     transform: (raw) => {

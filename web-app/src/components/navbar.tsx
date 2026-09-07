@@ -14,11 +14,11 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname()
+  const { t } = useTranslation()
 
   if (pathname?.startsWith("/admin")) {
     return null
   }
-  const { t } = useTranslation()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

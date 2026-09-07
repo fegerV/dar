@@ -34,7 +34,7 @@ export function AdminRBAC() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const { items: roles, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<AdminRole>({
+  const { items: roles, loading, page, pageSize, total, setPage, setPageSize, refetch } = useAdminList<AdminRole>({
     endpoint: "/admin/roles",
     pageSize: 20,
     transform: (raw) => {

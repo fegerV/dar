@@ -38,7 +38,7 @@ export function AdminWebhooks() {
     if (!authLoading && !user) router.push("/admin/login")
   }, [authLoading, user, router])
 
-  const { items: webhooks, loading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<WebhookEndpoint>({
+  const { items: webhooks, loading, page, pageSize, total, setPage, setPageSize, refetch } = useAdminList<WebhookEndpoint>({
     endpoint: "/admin/webhooks",
     pageSize: 20,
     transform: (raw) => {

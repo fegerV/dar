@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,12 +17,10 @@ import { useToast } from "@/components/ui/toast"
 export function AdminWorkers() {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const [workers, setWorkers] = useState<AdminWorker[]>([])
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
-  const { items, loading: listLoading, page, pageSize, total, totalPages, setPage, setPageSize, refetch } = useAdminList<AdminWorker>({
+  const { items, loading: listLoading, page, pageSize, total, setPage, setPageSize, refetch } = useAdminList<AdminWorker>({
     endpoint: "/admin/workers",
     pageSize: 20,
     transform: (raw) => {
