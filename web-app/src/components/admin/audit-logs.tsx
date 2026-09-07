@@ -23,7 +23,7 @@ export function AdminAuditLogs() {
     }
   }, [authLoading, user, router])
 
-  const { items: logs, loading, page, pageSize, total, totalPages, setPage, setPageSize, setFilters } = useAdminList<AuditLog>({
+  const { items: logs, loading, page, pageSize, total, setPage, setPageSize, setFilters } = useAdminList<AuditLog>({
     endpoint: "/admin/audit-logs",
     pageSize: 20,
     filters: search ? { search } : {},

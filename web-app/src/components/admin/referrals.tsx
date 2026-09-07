@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { apiFetch } from "@/lib/api"
 import type { Referral, ReferralCode } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
-import { useTranslation } from "react-i18next"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
 
@@ -18,7 +16,6 @@ const statusColors: Record<string, string> = {
 }
 
 export function AdminReferrals() {
-  const { t } = useTranslation()
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 

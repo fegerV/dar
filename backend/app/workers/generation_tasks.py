@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
 from uuid import UUID
 
 from celery import shared_task
@@ -8,8 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
-from app.models.generation import Generation, GenerationJob, GenerationStep
-from app.repositories.generations import GenerationRepository
+from app.models.generation import Generation, GenerationJob
 from app.workers.pipeline_tasks import execute_pipeline
 
 logger = logging.getLogger(__name__)
