@@ -97,6 +97,22 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.production
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
   backup:
     image: postgres:16-alpine
     environment:
