@@ -1,34 +1,22 @@
 ```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
 # Dependencies
-venv/
-.venv/
+.gradle/
+build/
+
+# Environment
 .env
 .env.local
 .env.*
 
-# Logs
+# Logs and temp files
 *.log
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
 *.tmp
 
-# Build
-build/
-dist/
-*.egg-info/
+# Editors
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
 ```
