@@ -1,25 +1,4 @@
 ```
-# Android build artifacts
-build/
-.gradle/
-*.apk
-*.aar
-*.so
-
-# Local configuration files
-local.properties
-google-services.json
-
-# IDE files
-.idea/
-*.iml
-*.iws
-.vscode/
-
-# Logs
-*.log
-
-# Temp files
-*.tmp
-*~
+# CI/CD
+.github/
 ```
