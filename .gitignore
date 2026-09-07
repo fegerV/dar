@@ -6,9 +6,8 @@ __pycache__/
 *.pyd
 
 # Dependencies
-.venv/
 venv/
-env/
+.venv/
 .env
 .env.local
 .env.*
@@ -16,15 +15,20 @@ env/
 # Logs
 *.log
 
-# Editor/IDE
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# Build artifacts
-dist/
+# Build
 build/
+dist/
 *.egg-info/
 ```
