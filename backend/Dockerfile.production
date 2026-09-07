@@ -19,7 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir --no-warn-script-location uvicorn[standard]
 
-COPY --chown=daragent:daragent --chmod=600 pyproject.toml ./
+COPY --chown=daragent:daragent pyproject.toml ./
+COPY --chown=daragent:daragent app ./app/
+COPY --chown=daragent:daragent migrations ./migrations/
+COPY --chown=daragent:daragent alembic.ini ./
 RUN pip install --no-cache-dir -e ".[prod]"
 
 USER daragent
