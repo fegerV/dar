@@ -38,7 +38,7 @@ class AuthService:
     async def register(
         self, email: str, password: str, display_name: str | None = None
     ) -> dict:
-        self._validate_password(password)
+        await self._validate_password(password)
 
         user = User(
             email=email,
@@ -319,7 +319,7 @@ class AuthService:
         await self.token_repo.revoke_all_for_user(user_id)
         await self.db.commit()
 
-    def _validate_password(self, password: str) -> None:
+    async def _validate_password(self, password: str) -> None:
         if len(password) < self.MIN_PASSWORD_LENGTH:
             raise ValidationException(
                 f"Password must be at least {self.MIN_PASSWORD_LENGTH} characters"
@@ -342,6 +342,22 @@ class AuthService:
             raise ValidationException(
                 "Password must contain at least one special character"
             )
+        
+        # Проверка через Have I Been Pwned API
+        from app.services.auth.pwned_service import HaveIBeenPwnedService
+        
+        pwned_service = HaveIBeenPwnedService()
+        try:
+            is_pwned = await pwned_service.is_pwned(password)
+            if is_pwned:
+                raise ValidationException(
+                    "This password has been found in a data breach. Please choose a different password."
+                )
+        except Exception:
+            # При ошибке API пропускаем проверку (fail-open)
+            pass
+        finally:
+            await pwned_service.close()
 
     def _generate_referral_code(self) -> str:
         return f"R{secrets.token_hex(4).upper()}"

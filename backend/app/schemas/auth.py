@@ -62,3 +62,40 @@ class LinkedProviderResponse(BaseModel):
     provider: str
     provider_user_id: str
     email: str | None = None
+
+
+# 2FA Schemas
+class TwoFactorInitiateResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+    manual_entry_key: str
+
+
+class TwoFactorEnableRequest(BaseModel):
+    totp_code: str = Field(..., min_length=6, max_length=6)
+
+
+class TwoFactorEnableResponse(BaseModel):
+    backup_codes: list[str]
+    message: str
+
+
+class TwoFactorDisableRequest(BaseModel):
+    totp_code: str | None = None
+    backup_code: str | None = None
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=10)
+
+
+class TwoFactorStatusResponse(BaseModel):
+    is_enabled: bool
+    setup_required: bool
+    has_backup_codes: bool = False
+    last_used_at: datetime | None = None
+
+
+class TwoFactorRegenerateCodesResponse(BaseModel):
+    backup_codes: list[str]
+    message: str

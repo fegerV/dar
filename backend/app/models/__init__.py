@@ -24,6 +24,7 @@ from app.models.payment import Entitlement, LedgerTransaction, Payment, PaymentI
 from app.models.quality import QualityCheck, VideoCriticResult
 from app.models.referral import Referral, ReferralCode
 from app.models.refreshtoken import RefreshToken
+from app.models.two_factor_auth import TwoFactorAuth
 from app.models.user import User, UserAuthIdentity, UserPreferences
 from app.models.webhook import WebhookEndpoint
 
@@ -56,6 +57,7 @@ __all__ = [
     "AIProvider",
     "AIModel",
     "RefreshToken",
+    "TwoFactorAuth",
     "EmailVerification",
     "WebhookEndpoint",
     "Wallet",
