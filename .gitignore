@@ -1,22 +1,25 @@
 ```
-# Dependencies
-.gradle/
+# Android build artifacts
 build/
+.gradle/
+*.apk
+*.aar
+*.so
 
-# Environment
-.env
-.env.local
-.env.*
+# Local configuration files
+local.properties
+google-services.json
 
-# Logs and temp files
-*.log
-*.tmp
-
-# Editors
-.vscode/
+# IDE files
 .idea/
+*.iml
+*.iws
+.vscode/
 
-# OS generated files
-.DS_Store
-Thumbs.db
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*~
 ```
