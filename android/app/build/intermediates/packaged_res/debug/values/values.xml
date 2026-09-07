@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_dark">#FF0F172A</color>
+    <color name="background_light">#FFF8FAFC</color>
+    <color name="black">#FF000000</color>
+    <color name="on_background_dark">#FFF1F5F9</color>
+    <color name="on_background_light">#FF1E293B</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="primary">#FF6366F1</color>
+    <color name="primary_variant">#FF4F46E5</color>
+    <color name="secondary">#FF10B981</color>
+    <color name="surface_dark">#FF1E293B</color>
+    <color name="surface_light">#FFFFFFFF</color>
+    <color name="white">#FFFFFFFF</color>
+    <string name="app_name">Дарагент</string>
+    <string name="button_continue">Продолжить</string>
+    <string name="button_create_greeting">Создать поздравление</string>
+    <string name="button_people">Мои люди</string>
+    <string name="button_profile">Профиль</string>
+    <string name="button_start">Начать</string>
+    <string name="gcm_defaultSenderId" translatable="false">123456789012</string>
+    <string name="google_api_key" translatable="false">AIzaSyDummyKeyForCIBuildsOnly</string>
+    <string name="google_app_id" translatable="false">1:123456789012:android:abcdef123457</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDummyKeyForCIBuildsOnly</string>
+    <string name="google_storage_bucket" translatable="false">daragent-dummy.appspot.com</string>
+    <string name="label_email">Email</string>
+    <string name="label_name">Имя</string>
+    <string name="label_password">Пароль</string>
+    <string name="project_id" translatable="false">daragent-dummy</string>
+    <string name="prompt_first_greeting">Давай сделаем первое поздравление</string>
+    <string name="prompt_name">Как тебя зовут?</string>
+    <string name="prompt_nice_to_meet">Очень приятно, %s!</string>
+    <string name="prompt_whom">Кого сегодня порадуем?</string>
+    <string name="welcome_subtitle">Твой личный агент по поздравлениям</string>
+    <string name="welcome_title">Привет! Я Дарагент</string>
+    <style name="Theme.DarAgent" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/primary</item>
+    </style>
+</resources>
