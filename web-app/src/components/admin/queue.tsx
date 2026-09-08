@@ -16,7 +16,6 @@ import { useTranslation } from "react-i18next"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
 import { useToast } from "@/components/ui/toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 export function AdminQueue() {
   const { t } = useTranslation()
@@ -26,7 +25,6 @@ export function AdminQueue() {
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
   const [workers, setWorkers] = useState<AdminWorker[]>([])
   const [queuePaused, setQueuePaused] = useState(false)
-  const [jobDetail, setJobDetail] = useState<AdminQueueJob | null>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -74,12 +72,7 @@ export function AdminQueue() {
   }
 
   const openJobDetail = async (job: AdminQueueJob) => {
-    try {
-      const data = await apiFetch<AdminQueueJob>(`/admin/queue/jobs/${job.id}`)
-      setJobDetail(data)
-    } catch {
-      setJobDetail(job)
-    }
+    router.push(`/admin/queue/${job.id}`)
   }
 
   const runningJobs = jobs.filter((j) => j.status === "running")
