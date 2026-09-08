@@ -192,6 +192,36 @@ class WalletService:
         wallet = await self.get_or_create_wallet(user_id)
         return WalletResponse.model_validate(wallet)
 
+    async def get_wallet_with_lock(self, user_id: UUID, nowait: bool = False) -> Wallet:
+        """
+        Получить кошелек с row-level блокировкой для предотвращения race conditions.
+        
+        Args:
+            user_id: ID пользователя
+            nowait: Если True, выбросить исключение при невозможности получить блокировку
+            
+        Returns:
+            Wallet объект с активной транзакционной блокировкой
+        """
+        from sqlalchemy import select
+        from app.models.payment import Wallet as WalletModel
+        
+        # Используем for_update с опцией nowait для немедленной ошибки при блокировке
+        stmt = select(WalletModel).where(
+            WalletModel.user_id == user_id
+        ).with_for_update(nowait=nowait, skip_locked=False)
+        
+        result = await self.db.execute(stmt)
+        wallet = result.scalar_one_or_none()
+        
+        if wallet is None:
+            # Создаем новый кошелек если не существует
+            wallet = Wallet(user_id=user_id, balance_rub=0, bonus_balance=0)
+            self.db.add(wallet)
+            await self.db.flush()
+            
+        return wallet
+
     async def credit(self, user_id: UUID, amount: float, bonus: bool = False) -> WalletResponse:
         wallet = await self.get_or_create_wallet(user_id)
         if bonus:
@@ -202,37 +232,162 @@ class WalletService:
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
 
-    async def debit(self, user_id: UUID, amount: float) -> WalletResponse:
-        from app.models.payment import Wallet
-
-        result = await self.db.execute(
-            Wallet.__table__.update()
-            .where(Wallet.user_id == user_id, Wallet.balance_rub >= amount)
-            .values(balance_rub=Wallet.balance_rub - amount)
-            .returning(Wallet)
-        )
-        updated = result.one_or_none()
-        if updated is None:
-            raise ValidationException("Недостаточно средств на кошельке")
-        return WalletResponse.model_validate(updated)
-
-    async def debit_bonus(self, user_id: UUID, amount: float) -> WalletResponse:
-        from app.models.payment import Wallet
-
-        result = await self.db.execute(
-            Wallet.__table__.update()
-            .where(
-                Wallet.user_id == user_id,
-                Wallet.bonus_balance >= amount,
+    async def debit(self, user_id: UUID, amount: float, use_row_lock: bool = True) -> WalletResponse:
+        """
+        Списать средства с кошелька с поддержкой row-level locking.
+        
+        Args:
+            user_id: ID пользователя
+            amount: Сумма для списания
+            use_row_lock: Использовать ли row-level блокировку (рекомендуется True)
+        """
+        from app.models.payment import Wallet as WalletModel
+        from sqlalchemy import select
+        
+        if use_row_lock:
+            # Атомарная операция с row-level блокировкой
+            stmt = select(WalletModel).where(
+                WalletModel.user_id == user_id,
+                WalletModel.balance_rub >= amount
+            ).with_for_update(nowait=False, skip_locked=False)
+            
+            result = await self.db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if wallet is None:
+                # Проверяем, существует ли вообще кошелек
+                check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
+                check_result = await self.db.execute(check_stmt)
+                if check_result.scalar_one_or_none() is None:
+                    raise ValidationException("Кошелек не найден")
+                raise ValidationException("Недостаточно средств на кошельке")
+            
+            wallet.balance_rub = wallet.balance_rub - amount
+            wallet.updated_at = datetime.now(UTC)
+        else:
+            # Старый вариант без явной блокировки (для обратной совместимости)
+            result = await self.db.execute(
+                WalletModel.__table__.update()
+                .where(WalletModel.user_id == user_id, WalletModel.balance_rub >= amount)
+                .values(balance_rub=WalletModel.balance_rub - amount)
+                .returning(WalletModel)
             )
-            .values(bonus_balance=Wallet.bonus_balance - amount)
-            .execution_options(synchronize_session="fetch")
-            .returning(Wallet)
-        )
-        updated = result.one_or_none()
-        if updated is None:
-            raise ValidationException("Недостаточно бонусных средств на кошельке")
-        return WalletResponse.model_validate(updated)
+            updated = result.one_or_none()
+            if updated is None:
+                raise ValidationException("Недостаточно средств на кошельке")
+            wallet = updated
+        
+        await self.db.commit()
+        return WalletResponse.model_validate(wallet)
+
+    async def debit_bonus(self, user_id: UUID, amount: float, use_row_lock: bool = True) -> WalletResponse:
+        """
+        Списать бонусные средства с кошелька с поддержкой row-level locking.
+        
+        Args:
+            user_id: ID пользователя
+            amount: Сумма для списания
+            use_row_lock: Использовать ли row-level блокировку
+        """
+        from app.models.payment import Wallet as WalletModel
+        from sqlalchemy import select
+        
+        if use_row_lock:
+            stmt = select(WalletModel).where(
+                WalletModel.user_id == user_id,
+                WalletModel.bonus_balance >= amount,
+            ).with_for_update(nowait=False, skip_locked=False)
+            
+            result = await self.db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if wallet is None:
+                check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
+                check_result = await self.db.execute(check_stmt)
+                if check_result.scalar_one_or_none() is None:
+                    raise ValidationException("Кошелек не найден")
+                raise ValidationException("Недостаточно бонусных средств на кошельке")
+            
+            wallet.bonus_balance = wallet.bonus_balance - amount
+            wallet.updated_at = datetime.now(UTC)
+        else:
+            result = await self.db.execute(
+                WalletModel.__table__.update()
+                .where(
+                    WalletModel.user_id == user_id,
+                    WalletModel.bonus_balance >= amount,
+                )
+                .values(bonus_balance=WalletModel.bonus_balance - amount)
+                .execution_options(synchronize_session="fetch")
+                .returning(WalletModel)
+            )
+            updated = result.one_or_none()
+            if updated is None:
+                raise ValidationException("Недостаточно бонусных средств на кошельке")
+            wallet = updated
+        
+        await self.db.commit()
+        return WalletResponse.model_validate(wallet)
+
+    async def transfer_to_bonus(
+        self, 
+        user_id: UUID, 
+        amount: float,
+        use_row_lock: bool = True
+    ) -> WalletResponse:
+        """
+        Перевести средства с основного баланса на бонусный.
+        
+        Args:
+            user_id: ID пользователя
+            amount: Сумма для перевода
+            use_row_lock: Использовать ли row-level блокировку
+        """
+        from app.models.payment import Wallet as WalletModel
+        from sqlalchemy import select
+        
+        if use_row_lock:
+            # Блокируем кошелек для атомарной операции
+            stmt = select(WalletModel).where(
+                WalletModel.user_id == user_id,
+                WalletModel.balance_rub >= amount
+            ).with_for_update(nowait=False, skip_locked=False)
+            
+            result = await self.db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if wallet is None:
+                check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
+                check_result = await self.db.execute(check_stmt)
+                if check_result.scalar_one_or_none() is None:
+                    raise ValidationException("Кошелек не найден")
+                raise ValidationException("Недостаточно средств на кошельке")
+            
+            # Выполняем перевод в рамках одной транзакции
+            wallet.balance_rub = wallet.balance_rub - amount
+            wallet.bonus_balance = (wallet.bonus_balance or 0) + amount
+            wallet.updated_at = datetime.now(UTC)
+        else:
+            # Без явной блокировки
+            result = await self.db.execute(
+                WalletModel.__table__.update()
+                .where(
+                    WalletModel.user_id == user_id,
+                    WalletModel.balance_rub >= amount
+                )
+                .values(
+                    balance_rub=WalletModel.balance_rub - amount,
+                    bonus_balance=WalletModel.bonus_balance + amount,
+                    updated_at=datetime.now(UTC)
+                )
+                .returning(WalletModel)
+            )
+            wallet = result.one_or_none()
+            if wallet is None:
+                raise ValidationException("Недостаточно средств на кошельке")
+        
+        await self.db.commit()
+        return WalletResponse.model_validate(wallet)
 
 
 class PaymentService:

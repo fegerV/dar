@@ -37,8 +37,9 @@ def _get_csrf_secret() -> bytes:
 
 
 def generate_csrf_token(session_id: str | None = None) -> str:
-    """Generate a cryptographically secure CSRF token."""
+    """Generate a cryptographically secure CSRF token using real random tokens."""
     timestamp = int(time.time())
+    # Используем secrets.token_hex для генерации настоящего случайного токена
     random_bytes = secrets.token_hex(32)
     
     if session_id:
