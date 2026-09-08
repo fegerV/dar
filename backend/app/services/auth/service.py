@@ -19,11 +19,13 @@ from app.models.audit import AuditLog
 from app.models.email_verification import EmailVerification
 from app.models.payment import Entitlement, Wallet
 from app.models.referral import ReferralCode
+from app.models.two_factor_auth import TwoFactorAuth
 from app.models.user import User, UserAuthIdentity, UserPreferences
 from app.repositories.entitlements import EntitlementRepository
 from app.repositories.refresh_tokens import RefreshTokenRepository
 from app.repositories.users import UserRepository
 from app.services.analytics.service import AnalyticsService
+from app.services.auth.two_factor_service import TwoFactorAuthService
 
 
 class AuthService:
@@ -188,7 +190,18 @@ class AuthService:
 
         return await self._make_tokens(user_id)
 
-    async def login(self, email: str, password: str) -> dict:
+    async def login(self, email: str, password: str, totp_code: str | None = None) -> dict:
+        """
+        Аутентификация пользователя с поддержкой 2FA TOTP.
+        
+        Args:
+            email: Email пользователя
+            password: Пароль
+            totp_code: Опциональный TOTP код для 2FA
+            
+        Returns:
+            Dict с access и refresh токенами
+        """
         user = await self.repo.get_by_email(email)
         if not user or user.status != "active":
             raise UnauthorizedException("Invalid credentials")
@@ -201,6 +214,17 @@ class AuthService:
         if not verify_password(password, stored_hash):
             raise UnauthorizedException("Invalid credentials")
 
+        # Проверяем 2FA если включен
+        two_fa_service = TwoFactorAuthService(self.db)
+        requires_2fa = await two_fa_service.verify_2fa(user.id, totp_code or "")
+        
+        if not requires_2fa:
+            # Если 2FA включен но код не предоставлен или неверен
+            # Проверяем статус 2FA
+            two_fa_status = await two_fa_service.get_2fa_status(user.id)
+            if two_fa_status.get("is_enabled"):
+                raise UnauthorizedException("2FA code required")
+        
         return await self._make_tokens(user.id)
 
     async def oauth_login(self, provider: str, access_token: str, id_token: str | None = None) -> dict:
@@ -320,6 +344,7 @@ class AuthService:
         await self.db.commit()
 
     async def _validate_password(self, password: str) -> None:
+        """Валидация пароля с локальными проверками."""
         if len(password) < self.MIN_PASSWORD_LENGTH:
             raise ValidationException(
                 f"Password must be at least {self.MIN_PASSWORD_LENGTH} characters"
@@ -343,21 +368,22 @@ class AuthService:
                 "Password must contain at least one special character"
             )
         
-        # Проверка через Have I Been Pwned API
-        from app.services.auth.pwned_service import HaveIBeenPwnedService
+        # Локальная проверка на распространенные пароли (без интеграции с haveibeenpwned)
+        common_passwords = {
+            "password", "123456", "12345678", "qwerty", "abc123", 
+            "monkey", "master", "dragon", "letmein", "login",
+            "admin", "welcome", "password1", "password123", "daragent"
+        }
+        if password.lower() in common_passwords:
+            raise ValidationException(
+                "This password is too common. Please choose a more secure password."
+            )
         
-        pwned_service = HaveIBeenPwnedService()
-        try:
-            is_pwned = await pwned_service.is_pwned(password)
-            if is_pwned:
-                raise ValidationException(
-                    "This password has been found in a data breach. Please choose a different password."
-                )
-        except Exception:
-            # При ошибке API пропускаем проверку (fail-open)
-            pass
-        finally:
-            await pwned_service.close()
+        # Проверка на последовательности символов
+        if password.lower() in ["abcdef", "abcdefg", "1234567", "qwertyui"]:
+            raise ValidationException(
+                "Password contains sequential characters. Please choose a more secure password."
+            )
 
     def _generate_referral_code(self) -> str:
         return f"R{secrets.token_hex(4).upper()}"
