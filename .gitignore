@@ -1,21 +1,2 @@
-```
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Dependencies
-.venv/
-venv/
-env/
-requirements.txt.bak
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-.env.*
-```
+# Documentation
+docs/ADMIN_KNOWLEDGE_BASE.md
