@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,10 +48,10 @@ class ABTestResult(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     variant_code: Mapped[str] = mapped_column(String(50), nullable=False)
     metric: Mapped[str] = mapped_column(String(100), nullable=False)
-    value: Mapped[float] = mapped_column(Integer, nullable=False)
+    value: Mapped[float] = mapped_column(Numeric, nullable=False)
     user_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    conversion_rate: Mapped[float | None] = mapped_column(Integer)
-    revenue_impact_rub: Mapped[float | None] = mapped_column(Integer)
+    conversion_rate: Mapped[float | None] = mapped_column(Numeric)
+    revenue_impact_rub: Mapped[float | None] = mapped_column(Numeric)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

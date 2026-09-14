@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob
+from app.services.queue_control import is_queue_paused
 from app.workers.pipeline_tasks import execute_pipeline
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,11 @@ async_session = async_sessionmaker(engine, expire_on_commit=False)
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_generation_job(self, job_id: str):
     """Process a generation job by delegating to the real pipeline executor."""
-    asyncio.run(_process_generation_job(job_id))
+    outcome = asyncio.run(_process_generation_job(job_id))
+    if outcome == "queue_paused":
+        # The operator paused the queue: keep the job pending without
+        # consuming retry attempts.
+        raise self.retry(countdown=60, max_retries=None)
 
 
 async def _process_generation_job(job_id: str):
@@ -40,6 +45,11 @@ async def _process_generation_job(job_id: str):
         if generation is None:
             logger.error("Generation not found for job: %s", job_id)
             return
+
+        # Honour the admin "pause queue" switch before handing work off.
+        if await is_queue_paused(db):
+            logger.info("Queue is paused; deferring generation %s", generation.id)
+            return "queue_paused"
 
         logger.info("Delegating generation %s to execute_pipeline", generation.id)
         execute_pipeline.delay(str(generation.id))

@@ -53,10 +53,13 @@ export function AdminPayments() {
   }, [filters, filtersKey, setFilters])
 
   const refund = async (id: string, amount?: number) => {
-    const amt = amount ? `?amount_rub=${amount}` : ""
     if (!confirm("Refund this payment?")) return
+    const params = new URLSearchParams({ reason: "admin_refund" })
+    if (amount !== undefined && amount !== null) {
+      params.set("amount_rub", String(amount))
+    }
     try {
-      await apiFetch(`/payments/${id}/refund${amt}&reason=admin_refund`, { method: "POST" })
+      await apiFetch(`/admin/payments/${id}/refund?${params.toString()}`, { method: "POST" })
       toast({
         title: t("notification.success") || "Success",
         description: "Payment refunded successfully",

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
+import { API_BASE_URL, getClientAccessToken } from "@/lib/api"
+
 export interface AdminEvent {
   type: "stats" | "error" | string
   data?: Record<string, unknown>
@@ -14,8 +16,12 @@ export function useAdminEvents(enabled: boolean = true): AdminEvent | null {
   useEffect(() => {
     if (!enabled) return
 
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-    const url = `${base}/admin/events/stream-token`
+    // EventSource cannot send custom headers, so the bearer token must travel
+    // in the query string. The backend accepts `?token=` for this endpoint.
+    const token = getClientAccessToken()
+    if (!token) return
+
+    const url = `${API_BASE_URL}/admin/events/stream-token?token=${encodeURIComponent(token)}`
 
     let es: EventSource
     try {
@@ -38,7 +44,9 @@ export function useAdminEvents(enabled: boolean = true): AdminEvent | null {
     }
 
     es.onerror = () => {
-      es.close()
+      // The server sends `retry: 5000`; let the browser reconnect instead of
+      // tearing the stream down on the first transient failure.
+      console.warn("SSE connection interrupted; retrying")
     }
 
     esRef.current = es

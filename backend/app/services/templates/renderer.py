@@ -117,7 +117,9 @@ class TemplateRenderer:
 
     async def _get_scenes(self, template_id: UUID) -> list[Scene]:
         result = await self.db.execute(
-            select(Scene).where(Scene.template_id == template_id).order_by(Scene.created_at.asc())
+            select(Scene)
+            .where(Scene.template_id == template_id)
+            .order_by(Scene.sort_order.asc(), Scene.created_at.asc())
         )
         return list(result.scalars().all())
 

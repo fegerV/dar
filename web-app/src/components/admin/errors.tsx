@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
-import { useAdminList } from "@/hooks/use-admin-list"
 import { useToast } from "@/components/ui/toast"
 
 interface ErrorEntry {

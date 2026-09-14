@@ -101,8 +101,16 @@ async def yookassa_webhook(request: Request, db: AsyncSession = Depends(get_db))
     raw_body = await request.body()
     body = await request.json()
     signature = request.headers.get("X-Yookassa-Signature")
+
+    # YooKassa sits behind proxies; prefer the left-most forwarded address.
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else None
+
     service = PaymentService(db)
-    result = await service.handle_webhook(raw_body, body, signature)
+    result = await service.handle_webhook(raw_body, body, signature, client_ip)
     return PaymentWebhookResponse(**result)
 
 

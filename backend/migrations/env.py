@@ -6,13 +6,17 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
+from app.models.ab_test import ABTest, ABTestResult, ABTestVariant  # noqa: F401
 from app.models.admin import (  # noqa: F401
     AdminUser,
+    AIModel,
+    AIProvider,
     QueueJob,
     Role,
     SystemSettings,
     UserRole,
     Worker,
+    WorkerLog,
 )
 from app.models.analytics import AnalyticsEvent  # noqa: F401
 from app.models.asset import Asset, StorageObject  # noqa: F401
@@ -41,6 +45,8 @@ from app.models.referral import Referral, ReferralCode  # noqa: F401
 from app.models.refreshtoken import RefreshToken  # noqa: F401
 from app.models.relationship import RelationshipType  # noqa: F401
 from app.models.template import (  # noqa: F401
+    PromptTemplate,
+    PromptTemplateVersion,
     Scene,
     SceneVariable,
     Template,
