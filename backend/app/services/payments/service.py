@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import ipaddress
 import logging
 import secrets
 import time
@@ -162,9 +163,41 @@ class YooKassaClient:
                 raise ValidationException(f"YooKassa error: {data}")
             return data
 
-    def verify_webhook_signature(self, body_bytes: bytes, signature: str | None) -> bool:
-        if not self.webhook_secret:
+    def allowed_ip_networks(self) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+        """Parse YOOKASSA_WEBHOOK_ALLOWED_IPS into network objects."""
+        networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+        for chunk in settings.YOOKASSA_WEBHOOK_ALLOWED_IPS.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                networks.append(ipaddress.ip_network(chunk, strict=False))
+            except ValueError:
+                logger.warning("Invalid CIDR in YOOKASSA_WEBHOOK_ALLOWED_IPS: %s", chunk)
+        return networks
+
+    def verify_webhook_source(self, client_ip: str | None) -> bool:
+        """Verify the notification originated from an official YooKassa IP range.
+
+        YooKassa authenticates notifications by source IP, not by signature.
+        Returns True when the allowlist is empty (check disabled).
+        """
+        networks = self.allowed_ip_networks()
+        if not networks:
+            return True
+        if not client_ip:
             return False
+        try:
+            addr = ipaddress.ip_address(client_ip)
+        except ValueError:
+            return False
+        return any(addr in net for net in networks)
+
+    def verify_webhook_signature(self, body_bytes: bytes, signature: str | None) -> bool:
+        # YooKassa does not sign notifications. HMAC is an optional extra layer
+        # that only applies when YOOKASSA_WEBHOOK_SECRET is explicitly configured.
+        if not self.webhook_secret:
+            return True
         if not signature:
             return False
         expected = hmac.new(
@@ -523,17 +556,34 @@ class PaymentService:
             response.confirmation_url = confirmation_url
         return response
 
-    async def handle_webhook(self, raw_body: bytes, body: dict, signature: str | None = None) -> dict:
-        if not signature or not self.yookassa.verify_webhook_signature(
-            raw_body, signature
-        ):
+    async def handle_webhook(
+        self,
+        raw_body: bytes,
+        body: dict,
+        signature: str | None = None,
+        client_ip: str | None = None,
+    ) -> dict:
+        # 1) Source IP allowlist (the authentication method YooKassa actually uses).
+        if settings.YOOKASSA_WEBHOOK_ENFORCE_IP and not self.yookassa.verify_webhook_source(client_ip):
+            logger.warning("Rejected YooKassa webhook from untrusted IP: %s", client_ip)
+            raise ValidationException("Webhook source IP is not allowed")
+
+        # 2) Optional HMAC layer — only enforced when a secret is configured.
+        if not self.yookassa.verify_webhook_signature(raw_body, signature):
+            logger.warning("Rejected YooKassa webhook: invalid signature")
             raise ValidationException("Invalid webhook signature")
 
         event = body.get("event")
         payment_id = body.get("object", {}).get("id")
         status = body.get("object", {}).get("status")
 
-        payment = await self.payment_repo.get_by_id(UUID(body.get("metadata", {}).get("payment_id")))
+        metadata_payment_id = body.get("metadata", {}).get("payment_id")
+        payment = None
+        if metadata_payment_id:
+            try:
+                payment = await self.payment_repo.get_by_id(UUID(metadata_payment_id))
+            except (ValueError, AttributeError):
+                payment = None
         if payment is None and payment_id:
             from sqlalchemy import select
             result = await self.db.execute(
@@ -542,27 +592,43 @@ class PaymentService:
             payment = result.scalar_one_or_none()
 
         if payment is None:
+            logger.warning("YooKassa webhook for unknown payment: %s", payment_id)
             return {"received": True, "status": "ignored"}
 
         payment.provider_payload = body
         paid_at = None
 
         if event == "payment.succeeded" or status == "succeeded":
-            if payment.status != "paid":
-                payment.status = "paid"
-                paid_at = datetime.now(UTC)
-                payment.paid_at = paid_at
-                await self.wallet_service.credit(payment.user_id, payment.amount_rub)
+            # Idempotency: never credit a wallet twice for the same payment.
+            if payment.status == "paid":
+                return {"received": True, "payment_id": str(payment.id), "status": "already_processed"}
+            payment.status = "paid"
+            paid_at = datetime.now(UTC)
+            payment.paid_at = paid_at
+            await self.wallet_service.credit(payment.user_id, payment.amount_rub)
 
-                from app.services.referrals.service import ReferralService
-                referral_service = ReferralService(self.db)
-                await referral_service.mark_referral_completed(payment.user_id)
+            from app.services.referrals.service import ReferralService
+            referral_service = ReferralService(self.db)
+            await referral_service.mark_referral_completed(payment.user_id)
         elif event == "payment.canceled" or status == "canceled":
             payment.status = "failed"
         elif event == "payment.waiting_for_capture" or status == "waiting_for_capture":
             payment.status = "authorized"
 
         await self.db.commit()
+
+        from app.services.webhooks import dispatch_webhook_event
+        await dispatch_webhook_event(
+            self.db,
+            event or "payment.updated",
+            {
+                "payment_id": str(payment.id),
+                "user_id": str(payment.user_id),
+                "status": payment.status,
+                "amount_rub": float(payment.amount_rub),
+            },
+        )
+
         return {"received": True, "payment_id": str(payment.id), "status": payment.status}
 
     async def get_payment(self, payment_id: UUID, user_id: UUID | None = None) -> PaymentResponse:

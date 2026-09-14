@@ -491,6 +491,7 @@ class AdminSceneResponse(BaseModel):
     preview_asset_id: UUID | None = None
     scene_config: dict
     condition: dict | None = None
+    sort_order: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -701,3 +702,28 @@ class AIProviderHealthResponse(BaseModel):
     message: str | None = None
     latency_ms: int | None = None
     tested_at: datetime
+
+
+class AdminWebhookCreate(BaseModel):
+    url: str
+    events: list[str] = []
+    is_active: bool = True
+    secret: str | None = None
+
+
+class AdminWebhookUpdate(BaseModel):
+    url: str | None = None
+    events: list[str] | None = None
+    is_active: bool | None = None
+    secret: str | None = None
+
+
+class AdminWebhookResponse(BaseModel):
+    id: UUID
+    url: str
+    events: list[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

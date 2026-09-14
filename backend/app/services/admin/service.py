@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -7,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
-from app.models.admin import AdminUser, AIModel, AIProvider, QueueJob, SystemSettings, Worker
-from app.models.generation import Generation
+from app.models.admin import AdminUser, AIModel, AIProvider, SystemSettings, Worker
+from app.models.generation import Generation, GenerationJob
 from app.models.payment import LedgerTransaction, Payment, Wallet
 from app.models.project import Project
 from app.models.referral import Referral, ReferralCode
@@ -52,6 +54,30 @@ from app.schemas.admin import (
 )
 
 SYSTEM_SETTING_SCHEMAS: dict[str, type[BaseModel]] = {}
+
+logger = logging.getLogger(__name__)
+
+
+def queue_job_response(job: GenerationJob) -> AdminQueueJobResponse:
+    """Project a real `GenerationJob` (the queue the Celery worker consumes)
+    into the admin queue DTO.
+
+    `QueueJob` is a legacy, never-populated table; the admin queue must read the
+    entity that the generation worker actually processes.
+    """
+    return AdminQueueJobResponse(
+        id=job.id,
+        generation_id=job.generation_id,
+        worker_id=None,
+        status=job.status,
+        priority=job.priority,
+        error_code=None,
+        error_message=job.last_error,
+        retry_count=job.attempts,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        created_at=job.created_at,
+    )
 
 
 def register_system_setting_schema(key: str, schema_cls: type[BaseModel]):
@@ -102,6 +128,12 @@ class AdminService:
         display_name: str | None = None,
     ) -> dict:
         from app.core.security import hash_password
+
+        # Serialise concurrent bootstrap attempts (PostgreSQL only). Without this
+        # two racing requests could both observe "no admins" and both succeed.
+        bind = self.db.get_bind()
+        if bind is not None and bind.dialect.name == "postgresql":
+            await self.db.execute(select(func.pg_advisory_xact_lock(0x64617261)))
 
         admin_exists = (await self.db.execute(select(func.count()).select_from(AdminUser))).scalar() or 0
         if admin_exists > 0:
@@ -164,13 +196,13 @@ class AdminService:
             select(func.count()).select_from(Generation).where(Generation.status == "processing")
         )
         running_jobs = await self.db.execute(
-            select(func.count()).select_from(QueueJob).where(QueueJob.status == "running")
+            select(func.count()).select_from(GenerationJob).where(GenerationJob.status == "running")
         )
         queued_jobs = await self.db.execute(
-            select(func.count()).select_from(QueueJob).where(QueueJob.status == "pending")
+            select(func.count()).select_from(GenerationJob).where(GenerationJob.status == "queued")
         )
         failed_jobs = await self.db.execute(
-            select(func.count()).select_from(QueueJob).where(QueueJob.status == "failed")
+            select(func.count()).select_from(GenerationJob).where(GenerationJob.status == "failed")
         )
 
         now = datetime.now(UTC)
@@ -219,6 +251,12 @@ class AdminService:
         )
         templates = list(result.scalars().all())
         return [AdminTemplateResponse.model_validate(t) for t in templates], total
+
+    async def get_template(self, template_id: UUID) -> AdminTemplateResponse:
+        template = await self.db.get(Template, template_id)
+        if template is None:
+            raise NotFoundException("Template not found")
+        return AdminTemplateResponse.model_validate(template)
 
     async def create_template(self, body: AdminTemplateCreate) -> AdminTemplateResponse:
         existing = await self.db.execute(
@@ -300,12 +338,12 @@ class AdminService:
         return [AdminOrderResponse.model_validate(g) for g in generations], total
 
     async def list_queue_jobs(self, status: str | None = None) -> list[AdminQueueJobResponse]:
-        query = select(QueueJob).order_by(QueueJob.created_at.desc())
+        query = select(GenerationJob).order_by(GenerationJob.created_at.desc())
         if status:
-            query = query.where(QueueJob.status == status)
+            query = query.where(GenerationJob.status == status)
         result = await self.db.execute(query)
         jobs = list(result.scalars().all())
-        return [AdminQueueJobResponse.model_validate(j) for j in jobs]
+        return [queue_job_response(j) for j in jobs]
 
     async def list_workers(self) -> list[AdminWorkerResponse]:
         result = await self.db.execute(select(Worker).order_by(Worker.name))
@@ -369,13 +407,24 @@ class AdminService:
             page_size=page_size,
         )
 
-    async def list_audit_logs(self, limit: int = 100) -> list[AdminAuditLogResponse]:
+    async def list_audit_logs(
+        self, page: int = 1, page_size: int = 20, actor_user_id: UUID | None = None
+    ) -> tuple[list[AdminAuditLogResponse], int]:
         from app.models.audit import AuditLog
+
+        query = select(AuditLog)
+        count_query = select(func.count()).select_from(AuditLog)
+        if actor_user_id is not None:
+            query = query.where(AuditLog.actor_user_id == actor_user_id)
+            count_query = count_query.where(AuditLog.actor_user_id == actor_user_id)
+
+        total = (await self.db.execute(count_query)).scalar() or 0
+        offset = max(page - 1, 0) * page_size
         result = await self.db.execute(
-            select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+            query.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
         )
         logs = list(result.scalars().all())
-        return [AdminAuditLogResponse.model_validate(log) for log in logs]
+        return [AdminAuditLogResponse.model_validate(log) for log in logs], total
 
     async def get_system_settings(self) -> list[AdminSystemSettingsResponse]:
         result = await self.db.execute(select(SystemSettings).order_by(SystemSettings.key))
@@ -492,20 +541,21 @@ class AdminService:
         return AdminWorkerResponse.model_validate(worker)
 
     async def queue_job_action(self, job_id: UUID, action: str) -> AdminQueueJobResponse:
-        job = await self.db.get(QueueJob, job_id)
+        job = await self.db.get(GenerationJob, job_id)
         if job is None:
             raise NotFoundException("Job not found")
         if action == "cancel":
             job.status = "canceled"
         elif action == "retry":
-            job.status = "pending"
-            job.retry_count = 0
+            job.status = "queued"
+            job.attempts = 0
+            job.last_error = None
         elif action == "prioritize":
-            job.priority = max((job.priority or 0) + 10, 0)
+            job.priority = (job.priority or 0) + 10
         elif action == "deprioritize":
-            job.priority = min((job.priority or 0) - 10, 0)
+            job.priority = max((job.priority or 0) - 10, 0)
         await self.db.flush()
-        return AdminQueueJobResponse.model_validate(job)
+        return queue_job_response(job)
 
     async def update_template(
         self, template_id: UUID, body: AdminTemplateUpdate
@@ -577,7 +627,7 @@ class AdminService:
             raise NotFoundException("Template not found")
         result = await self.db.execute(
             select(Scene).where(Scene.template_id == template_id)
-            .order_by(Scene.created_at.asc())
+            .order_by(Scene.sort_order.asc(), Scene.created_at.asc())
         )
         return [AdminSceneResponse.model_validate(s) for s in result.scalars().all()]
 
@@ -588,8 +638,15 @@ class AdminService:
         if template is None:
             raise NotFoundException("Template not found")
 
+        max_order = (
+            await self.db.execute(
+                select(func.max(Scene.sort_order)).where(Scene.template_id == template_id)
+            )
+        ).scalar()
+
         scene = Scene(
             template_id=template_id,
+            sort_order=(max_order + 1) if max_order is not None else 0,
             **body.model_dump(exclude_unset=True),
         )
         self.db.add(scene)
@@ -617,25 +674,110 @@ class AdminService:
         await self.db.delete(scene)
         await self.db.flush()
 
-    async def worker_restart(self, worker_id: UUID) -> WorkerRestartResponse:
+    async def _live_celery_nodes(self) -> set[str]:
+        """Return the hostnames of Celery workers currently responding to ping."""
+        from app.workers.celery_app import celery_app
+
+        def _ping() -> set[str]:
+            inspector = celery_app.control.inspect(timeout=2.0)
+            reply = inspector.ping() or {}
+            return set(reply.keys())
+
+        try:
+            return await asyncio.to_thread(_ping)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Celery inspect ping failed: %s", exc)
+            return set()
+
+    async def _broadcast_worker_command(
+        self, worker_id: UUID, command: str, arguments: dict | None = None
+    ) -> WorkerRestartResponse:
         worker = await self.db.get(Worker, worker_id)
         if worker is None:
             raise NotFoundException("Worker not found")
-        worker.status = "restarting"
-        await self.db.flush()
-        return WorkerRestartResponse(success=True, message=f"Restart signal sent to worker {worker.name}", worker_id=worker_id)
+
+        nodes = await self._live_celery_nodes()
+        if worker.name not in nodes:
+            # Never claim a signal was delivered when no worker acknowledged it.
+            return WorkerRestartResponse(
+                success=False,
+                message=(
+                    f"Worker '{worker.name}' is not reachable via Celery control "
+                    f"(live nodes: {sorted(nodes) if nodes else 'none'}). "
+                    "No signal was sent."
+                ),
+                worker_id=worker_id,
+            )
+
+        from app.workers.celery_app import celery_app
+
+        await asyncio.to_thread(
+            celery_app.control.broadcast,
+            command,
+            arguments=arguments or {},
+            destination=[worker.name],
+            reply=False,
+        )
+        return WorkerRestartResponse(
+            success=True,
+            message=f"Command '{command}' sent to worker {worker.name}",
+            worker_id=worker_id,
+        )
+
+    async def worker_restart(self, worker_id: UUID) -> WorkerRestartResponse:
+        response = await self._broadcast_worker_command(
+            worker_id, "pool_restart", {"reload": True}
+        )
+        if response.success:
+            worker = await self.db.get(Worker, worker_id)
+            if worker is not None:
+                worker.status = "restarting"
+                await self.db.flush()
+        return response
 
     async def worker_shutdown(self, worker_id: UUID) -> WorkerRestartResponse:
-        worker = await self.db.get(Worker, worker_id)
-        if worker is None:
-            raise NotFoundException("Worker not found")
-        worker.status = "offline"
-        await self.db.flush()
-        return WorkerRestartResponse(success=True, message=f"Shutdown signal sent to worker {worker.name}", worker_id=worker_id)
+        response = await self._broadcast_worker_command(worker_id, "shutdown")
+        if response.success:
+            worker = await self.db.get(Worker, worker_id)
+            if worker is not None:
+                worker.status = "offline"
+                await self.db.flush()
+        return response
+
+    async def send_user_message(self, user: User, subject: str, message: str) -> None:
+        """Email a user a message composed in the admin panel.
+
+        Raises ValidationException when SMTP is not configured so the caller
+        never reports success for a message that was not actually sent.
+        """
+        from email.mime.text import MIMEText
+
+        import aiosmtplib
+
+        from app.core.config import settings
+
+        if not settings.SMTP_HOST or not settings.SMTP_USER:
+            raise ValidationException("SMTP is not configured; cannot send user messages")
+        if not user.email:
+            raise ValidationException(f"User {user.id} has no email address")
+
+        mail = MIMEText(message, "plain", "utf-8")
+        mail["Subject"] = subject
+        mail["From"] = settings.SMTP_FROM
+        mail["To"] = user.email
+
+        await aiosmtplib.send(
+            mail,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            use_tls=settings.SMTP_USE_TLS,
+        )
 
     async def bulk_queue_action(self, action: str, job_ids: list[UUID]) -> list[AdminQueueJobResponse]:
         result = await self.db.execute(
-            select(QueueJob).where(QueueJob.id.in_(job_ids))
+            select(GenerationJob).where(GenerationJob.id.in_(job_ids))
         )
         jobs = list(result.scalars().all())
         results = []
@@ -643,23 +785,24 @@ class AdminService:
             if action == "cancel":
                 job.status = "canceled"
             elif action == "retry":
-                job.status = "pending"
-                job.retry_count = 0
+                job.status = "queued"
+                job.attempts = 0
+                job.last_error = None
             elif action == "prioritize":
-                job.priority = max((job.priority or 0) + 10, 0)
+                job.priority = (job.priority or 0) + 10
             elif action == "deprioritize":
-                job.priority = min((job.priority or 0) - 10, 0)
-            results.append(AdminQueueJobResponse.model_validate(job))
+                job.priority = max((job.priority or 0) - 10, 0)
+            results.append(queue_job_response(job))
         await self.db.flush()
         return results
 
     async def update_queue_job_priority(self, job_id: UUID, priority: int) -> AdminQueueJobResponse:
-        job = await self.db.get(QueueJob, job_id)
+        job = await self.db.get(GenerationJob, job_id)
         if job is None:
             raise NotFoundException("Job not found")
         job.priority = priority
         await self.db.flush()
-        return AdminQueueJobResponse.model_validate(job)
+        return queue_job_response(job)
 
     async def get_analytics(self, days: int = 7) -> dict:
         since = datetime.now(UTC) - timedelta(days=days)
@@ -832,15 +975,25 @@ class AdminService:
             }
 
     async def list_ai_models(
-        self, provider_id: UUID | None = None, model_type: str | None = None
-    ) -> list[AIModelResponse]:
+        self,
+        provider_id: UUID | None = None,
+        model_type: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[AIModelResponse], int]:
         query = select(AIModel).order_by(AIModel.name)
+        count_query = select(func.count()).select_from(AIModel)
         if provider_id:
             query = query.where(AIModel.provider_id == provider_id)
+            count_query = count_query.where(AIModel.provider_id == provider_id)
         if model_type:
             query = query.where(AIModel.model_type == model_type)
-        result = await self.db.execute(query)
-        return [AIModelResponse.model_validate(m) for m in result.scalars().all()]
+            count_query = count_query.where(AIModel.model_type == model_type)
+
+        total = (await self.db.execute(count_query)).scalar() or 0
+        offset = max(page - 1, 0) * page_size
+        result = await self.db.execute(query.offset(offset).limit(page_size))
+        return [AIModelResponse.model_validate(m) for m in result.scalars().all()], total
 
     async def create_ai_model(self, body: AIModelCreate) -> AIModelResponse:
         model = AIModel(**body.model_dump())

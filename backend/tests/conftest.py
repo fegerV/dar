@@ -8,7 +8,7 @@ os.environ.setdefault("APP_ENV", "testing")
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.core.security import create_access_token
@@ -17,11 +17,24 @@ from app.models.base import Base
 from app.models.user import User
 
 _test_db = settings.DATABASE_URL
-# Use shared in-memory SQLite so tables persist across connections
+
+# Celery: tests never run a worker, so point the app at kombu's in-memory
+# transport. `apply_async` then enqueues in-process instead of dialling a real
+# Redis/AMQP broker (which is absent in CI), and tasks are not executed inline
+# because these tests assert the persisted records, not task side effects.
+from app.workers.celery_app import celery_app as _celery_app
+
+_celery_app.conf.broker_url = "memory://"
+_celery_app.conf.result_backend = "cache+memory://"
+_celery_app.conf.task_always_eager = False
+_celery_app.conf.task_eager_propagates = False
+
+# In-memory SQLite shared through a single pooled connection, so the schema
+# created by the session-scoped fixture stays visible to every test session.
 engine = create_async_engine(
-    "sqlite+aiosqlite:///file:test?mode=memory&cache=shared",
-    poolclass=NullPool,
-    connect_args={"uri": True},
+    "sqlite+aiosqlite:///:memory:",
+    poolclass=StaticPool,
+    connect_args={"check_same_thread": False},
 )
 TestSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -91,6 +104,12 @@ async def client(db_session):
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def async_client(client):
+    """Alias of `client` for suites that use the `async_client` name."""
+    return client
 
 
 @pytest.fixture

@@ -22,7 +22,7 @@ from app.schemas.lab import (
 from app.services.lab.runner import BenchmarkRunner
 from app.services.lab.service import LabService
 
-router = APIRouter()
+router = APIRouter(prefix="/admin/lab", tags=["Video Generation Lab"])
 
 
 @router.get("/scenarios", response_model=list[LabScenarioRead])

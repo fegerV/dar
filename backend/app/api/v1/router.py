@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from app.api.v1.ab_test import router as ab_test_router
-from app.api.v1.ab_tests import router as ab_tests_router
 from app.api.v1.account import router as account_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.analytics import router as analytics_router
@@ -42,7 +41,6 @@ v1_router.include_router(projects_router)
 v1_router.include_router(recommendations_router)
 v1_router.include_router(templates_router)
 v1_router.include_router(template_versions_router)
-v1_router.include_router(ab_tests_router)
 v1_router.include_router(telegram_router)
 v1_router.include_router(viewing_router)
 v1_router.include_router(assets_router)

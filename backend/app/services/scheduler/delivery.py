@@ -29,6 +29,7 @@ class DeliveryScheduler:
                 Delivery.scheduled_at <= now,
                 Delivery.scheduled_at.is_not(None),
             )
+            .order_by(Delivery.scheduled_at.asc())
             .limit(batch_size)
         )
         deliveries = list(due_deliveries.scalars().all())
@@ -48,11 +49,12 @@ class DeliveryScheduler:
         return processed
 
     async def _execute_delivery(self, delivery: Delivery) -> None:
+        generation_result = await self._get_generation_output(delivery)
+
         if delivery.channel == "email":
             from app.services.delivery.email import EmailDeliveryService
 
             service = EmailDeliveryService(self.db)
-            generation_result = await self._get_generation_output(delivery)
             await service.send(
                 delivery=delivery,
                 video_url=generation_result.get("video_url"),
@@ -62,19 +64,57 @@ class DeliveryScheduler:
             from app.services.delivery.telegram import TelegramDeliveryService
 
             service = TelegramDeliveryService(self.db)
-            generation_result = await self._get_generation_output(delivery)
             await service.send(
                 delivery=delivery,
                 video_url=generation_result.get("video_url"),
             )
+        else:
+            logger.warning(
+                "Unsupported delivery channel %r for delivery %s", delivery.channel, delivery.id
+            )
+            delivery.status = "failed"
+            delivery.error_message = f"Unsupported delivery channel: {delivery.channel}"
+            delivery.failed_at = datetime.now(UTC)
+
+        # A delivery service that returns without touching the status means the
+        # channel was not configured. Mark it failed instead of re-processing
+        # the same row on every scheduler tick.
+        if delivery.status == "scheduled":
+            delivery.status = "failed"
+            delivery.error_message = delivery.error_message or (
+                f"Delivery channel {delivery.channel!r} is not configured"
+            )
+            delivery.failed_at = datetime.now(UTC)
+
+        await self._dispatch_event(delivery)
+
+    async def _dispatch_event(self, delivery: Delivery) -> None:
+        from app.services.webhooks import dispatch_webhook_event
+
+        event = "delivery.sent" if delivery.status == "sent" else "delivery.failed"
+        await dispatch_webhook_event(
+            self.db,
+            event,
+            {
+                "delivery_id": str(delivery.id),
+                "project_id": str(delivery.project_id),
+                "channel": delivery.channel,
+                "status": delivery.status,
+                "error": delivery.error_message,
+            },
+        )
 
     async def _get_generation_output(self, delivery: Delivery) -> dict:
-        if delivery.generation_id is None:
-            return {}
         from app.repositories.generations import GenerationRepository
 
         gen_repo = GenerationRepository(self.db)
-        generation = await gen_repo.get_by_id(delivery.generation_id)
+        generation = None
+        if delivery.generation_id is not None:
+            generation = await gen_repo.get_by_id(delivery.generation_id)
+        if generation is None:
+            from app.repositories.delivery import DeliveryRepository
+
+            generation = await DeliveryRepository(self.db).get_latest_generation(delivery.project_id)
         if generation and generation.output_json:
             return generation.output_json
         return {}
