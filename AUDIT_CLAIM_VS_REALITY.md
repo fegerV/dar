@@ -533,7 +533,7 @@
 | 4.3 | Подпись YooKassa | allowlist IP (официальные диапазоны) + идемпотентность; HMAC стал опциональным |
 | 5.1 | Два роутера `/ab-tests` | слито в `ab_test.py`, `ab_tests.py` удалён |
 | 5.2 | Два планировщика доставки | `delivery_tasks.py` делегирует в `DeliveryScheduler` |
-| 5.3 | Две системы метрик | `app/core/metrics.py` удалён (мёртвый), остался `MonitoringService` |
+| 5.3 | Две системы метрик | `app/core/metrics.py` удалён (в этой ветке мёртв), остался `MonitoringService` — **но при слиянии с `main` файл восстановлен, см. ниже** |
 | 5.4 | `polza_service.py` мёртв | удалён (см. «Отложено» — архитектурный конфликт) |
 | 5.5 | `order-detail.tsx` / `user-detail.tsx` | `order-detail.tsx` удалён; `user-detail.tsx` **исправлен** (вопреки отчёту, у него есть реальный импортёр `app/admin/users/[id]/page.tsx`) |
 | 5.7 | `VersionUpdateRequest` | удалён |
@@ -552,3 +552,37 @@
 1. **Android: два сетевых стека (п.5.6).** Это не механическая правка: нужно перевести 7 ViewModel/Screen с `ServiceLocator` на Hilt и одновременно исправить ~8 путей к API, затем собрать проект Gradle. Требует Android SDK и проверяемой сборки, которых в этой среде нет. Переписывание «вслепую» нарушило бы AGENTS.md п.16 и п.18. Оставлено с планом: удалить `data/network/*` + `di/ServiceLocator.kt`, перевести потребителей на `core/network` (Hilt), вынести base URL в `BuildConfig`.
 2. **4 неиспользуемые модели (п.3.4): `ModelProfile`, `RecipeFailure`, `RelationshipType`, `TemplateVariable`.** Их таблицы реально существуют (миграции 001/006/016), запись в них не ведётся ни одним flow. Удаление моделей требует DROP TABLE — необратимая операция над схемой, поэтому в рамках этого прохода не выполнялось. Зафиксировано как известный долг.
 3. **`QueueJob`.** После перевода админки на `GenerationJob` таблица `queue_jobs` (миграция 017) больше не используется, но не удаляется по той же причине — помечена как legacy в docstring модели.
+
+---
+
+## Слияние с `origin/main` (коммит `9539c2d`, ветка `merge/audit-fixes-into-main`)
+
+Ветка с правками разошлась с `origin/main` на 548 файлов. Конфликты определены через
+`git merge-tree --write-tree` (read-only, без чекаута): **всего 3 конфликтующих файла**,
+остальные 4 (`admin.py`, `payments/service.py`, `models/__init__.py`, `rbac.tsx`) слились автоматически.
+
+| Файл | Решение |
+|---|---|
+| `app/middleware/rate_limit.py` | Взят вариант `main`: он богаче (лимиты по endpoint, sliding window на Redis sorted set, счётчики Prometheus) и **уже содержит** in-memory fallback при падении Redis — то есть нужный фикс там реализован независимо |
+| `app/workers/generation_tasks.py` | Оставлено делегирование `main` в `execute_pipeline`, поверх него возвращена проверка паузы очереди (`is_queue_paused`) перед передачей задачи |
+| `pyproject.toml` | Объединение: возвращён `structlog` (нужен `core/logging_config.py` на `main`); `passlib`, `yookassa` и `pillow` удалены — подтверждено, что они не импортируются (`bcrypt` импортируется напрямую) |
+
+### Ошибка исходного отчёта №2: `core/metrics.py` удалять нельзя
+
+Находка 5.3 рекомендовала удалить `app/core/metrics.py` как мёртвый код — и на **этой** ветке он действительно
+мёртв (0 импортов). Но в `main` его уже используют `core/exception_handlers.py` и
+`middleware/rate_limit.py` (импортируют `http_requests_total`). Удаление в процессе слияния привело бы к
+`ImportError` при старте приложения. Файл **восстановлен** в мерж-коммите.
+
+Практический вывод: «мёртвый код» нужно проверять не только по своей ветке, но и по целевой ветке слияния.
+
+### Проверка миграции 034 выполнением
+
+Ранее миграция была проверена только сверкой колонок. Теперь проверена рендерингом без подключения к БД:
+
+```
+alembic upgrade 033_ai_providers_models:034_admin_template_fixes --sql
+```
+
+→ 13 корректных DDL-операторов PostgreSQL: `ALTER TABLE scenes/holidays/ab_tests`,
+`CREATE TABLE prompt_templates`, `prompt_template_versions`, `worker_logs` и индексы к ним.
