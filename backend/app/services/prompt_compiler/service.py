@@ -174,18 +174,21 @@ class PromptCompilerService:
                 )
 
             scene_rows = await self.db.execute(
-                select(Scene).where(Scene.template_id == template_version.template_id)
+                select(Scene)
+                .where(Scene.template_id == template_version.template_id)
+                .order_by(Scene.sort_order.asc(), Scene.created_at.asc())
             )
             for scene in scene_rows.scalars().all():
                 if self._evaluate_scene_conditions(scene, project, brief):
+                    scene_config = scene.scene_config if isinstance(scene.scene_config, dict) else {}
                     scenes.append(
                         PromptPlanScene(
                             scene_id=scene.id,
                             code=scene.code,
                             title=scene.title,
-                            type=scene.type,
-                            prompt=scene.scene_config.get("prompt", "") if isinstance(scene.scene_config, dict) else "",
-                            negative_prompt=scene.scene_config.get("negative_prompt") if isinstance(scene.scene_config, dict) else None,
+                            type=scene_config.get("type") or scene.source_type or "unknown",
+                            prompt=scene_config.get("prompt", ""),
+                            negative_prompt=scene_config.get("negative_prompt"),
                             parameters=body.variables or {},
                         )
                     )

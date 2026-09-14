@@ -1,3 +1,4 @@
+from app.models.ab_test import ABTest, ABTestResult, ABTestVariant
 from app.models.admin import (
     AdminUser,
     AIModel,
@@ -7,6 +8,7 @@ from app.models.admin import (
     SystemSettings,
     UserRole,
     Worker,
+    WorkerLog,
 )
 from app.models.base import Base
 from app.models.email_verification import EmailVerification
@@ -51,10 +53,14 @@ __all__ = [
     "Role",
     "UserRole",
     "Worker",
+    "WorkerLog",
     "QueueJob",
     "SystemSettings",
     "AIProvider",
     "AIModel",
+    "ABTest",
+    "ABTestVariant",
+    "ABTestResult",
     "RefreshToken",
     "EmailVerification",
     "WebhookEndpoint",

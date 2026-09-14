@@ -40,66 +40,74 @@ async def test_admin_get_stats(client, db_session, admin_headers):
 
 @pytest.mark.asyncio
 async def test_admin_get_users(client, db_session, admin_headers, test_user):
-    """GET /admin/users returns user list."""
+    """GET /admin/users returns a paginated envelope."""
     response = await client.get("/api/v1/admin/users", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) >= 1
+    assert isinstance(data["items"], list)
+    assert data["total"] >= 1
+    assert data["page"] == 1
+    assert data["page_size"] == 20
 
 
 @pytest.mark.asyncio
 async def test_admin_get_templates(client, db_session, admin_headers):
-    """GET /admin/templates returns template list."""
+    """GET /admin/templates returns a paginated envelope."""
     response = await client.get("/api/v1/admin/templates", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio
 async def test_admin_get_queue(client, db_session, admin_headers):
-    """GET /admin/queue returns queue jobs."""
+    """GET /admin/queue returns a paginated envelope of generation jobs."""
     response = await client.get("/api/v1/admin/queue", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio
 async def test_admin_get_workers(client, db_session, admin_headers):
-    """GET /admin/workers returns workers."""
+    """GET /admin/workers returns a paginated envelope."""
     response = await client.get("/api/v1/admin/workers", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio
 async def test_admin_get_audit_logs(client, db_session, admin_headers):
-    """GET /admin/audit-logs returns audit logs."""
+    """GET /admin/audit-logs returns a paginated envelope."""
     response = await client.get("/api/v1/admin/audit-logs", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio
 async def test_admin_get_orders(client, db_session, admin_headers):
-    """GET /admin/orders returns orders."""
+    """GET /admin/orders returns a paginated envelope."""
     response = await client.get("/api/v1/admin/orders", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio
 async def test_admin_get_payments(client, db_session, admin_headers):
-    """GET /admin/payments returns payments."""
+    """GET /admin/payments returns a paginated envelope."""
     response = await client.get("/api/v1/admin/payments", headers=admin_headers)
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(data["items"], list)
+    assert "total" in data
 
 
 @pytest.mark.asyncio

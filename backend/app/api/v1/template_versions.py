@@ -11,10 +11,6 @@ from app.services.templates.versioning import TemplateVersionService
 router = APIRouter(prefix="/template-versions", tags=["Template Versioning & QA"])
 
 
-class VersionUpdateRequest:
-    pass
-
-
 @router.post("/templates/{template_id}/versions", response_model=dict)
 async def create_version(
     template_id: UUID,

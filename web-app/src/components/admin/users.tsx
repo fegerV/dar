@@ -83,7 +83,8 @@ export function AdminUsers() {
     if (!mfaToken) return
     try {
       const data = await apiFetch<{ access_token: string; refresh_token: string; impersonation: boolean }>(
-        `/admin/users/${userId}/impersonate?${new URLSearchParams({ mfa_token: mfaToken })}`
+        `/admin/users/${userId}/impersonate?${new URLSearchParams({ mfa_token: mfaToken })}`,
+        { method: "POST" }
       )
       if (data.impersonation) {
         localStorage.setItem("impersonate_token", data.access_token)

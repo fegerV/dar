@@ -45,10 +45,13 @@ async def test_webhook_idempotency(db_session, test_user):
     }
 
     # First webhook call — should credit wallet
+    # `client_ip` must be inside the YooKassa allowlist, otherwise the
+    # (correct) source-IP guard rejects the notification before it is handled.
     await service.handle_webhook(
         raw_body=b"{}",
         body=webhook_body,
         signature="mock_signature",
+        client_ip="185.71.76.10",
     )
     wallet_after_first = await service.wallet_service.get_wallet(test_user.id)
     assert wallet_after_first.balance_rub == 590.0
@@ -58,6 +61,7 @@ async def test_webhook_idempotency(db_session, test_user):
         raw_body=b"{}",
         body=webhook_body,
         signature="mock_signature",
+        client_ip="185.71.76.10",
     )
     wallet_after_second = await service.wallet_service.get_wallet(test_user.id)
     assert wallet_after_second.balance_rub == 590.0  # No double credit

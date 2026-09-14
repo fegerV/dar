@@ -22,10 +22,14 @@ async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def process_generation_job(self, job_id: str):
-    asyncio.run(_process_generation_job(job_id))
+    outcome = asyncio.run(_process_generation_job(job_id))
+    if outcome == "queue_paused":
+        # The operator paused the queue: keep the job pending without
+        # consuming retry attempts.
+        raise self.retry(countdown=60, max_retries=None)
 
 
-async def _process_generation_job(job_id: str):
+async def _process_generation_job(job_id: str) -> str:
     job_uuid = UUID(job_id)
     async with async_session() as db:
         result = await db.execute(
@@ -34,7 +38,15 @@ async def _process_generation_job(job_id: str):
         job = result.scalar_one_or_none()
         if job is None:
             logger.error("Job not found: %s", job_id)
-            return
+            return "not_found"
+
+        from app.services.queue_control import is_queue_paused
+
+        if await is_queue_paused(db):
+            job.status = "queued"
+            await db.commit()
+            logger.info("Queue is paused — deferring job %s", job_id)
+            return "queue_paused"
 
         result = await db.execute(
             select(Generation).where(Generation.id == job.generation_id)
@@ -42,7 +54,7 @@ async def _process_generation_job(job_id: str):
         generation = result.scalar_one_or_none()
         if generation is None:
             logger.error("Generation not found for job: %s", job_id)
-            return
+            return "not_found"
 
         generation.status = "processing"
         generation.started_at = datetime.now(UTC)
@@ -93,6 +105,19 @@ async def _process_generation_job(job_id: str):
         await db.commit()
         logger.info("Generation %s completed", generation.id)
 
+        from app.services.webhooks import dispatch_webhook_event
+
+        await dispatch_webhook_event(
+            db,
+            "generation.completed",
+            {
+                "generation_id": str(generation.id),
+                "project_id": str(generation.project_id),
+                "status": generation.status,
+                "output": generation.output_json,
+            },
+        )
+
         try:
             quality = QualityGateService(db)
             quality_request = QualityCheckRequest(
@@ -106,6 +131,8 @@ async def _process_generation_job(job_id: str):
             generation.status = "completed"
             await GenerationRepository(db).update(generation)
             await db.commit()
+
+        return "completed"
 
 
 async def _get_steps(db, generation_id: UUID) -> list[GenerationStep]:

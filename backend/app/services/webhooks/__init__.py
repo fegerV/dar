@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -8,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.webhook import WebhookEndpoint
+
+logger = logging.getLogger(__name__)
 
 
 async def dispatch_webhook_event(
@@ -50,6 +53,14 @@ async def dispatch_webhook_event(
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                await client.post(endpoint.url, headers=headers, content=body)
-        except Exception:
-            pass
+                response = await client.post(endpoint.url, headers=headers, content=body)
+            if response.status_code >= 400:
+                logger.warning(
+                    "Webhook %s delivered to %s with status %s: %s",
+                    event,
+                    endpoint.url,
+                    response.status_code,
+                    response.text[:500],
+                )
+        except Exception as exc:
+            logger.error("Webhook %s delivery to %s failed: %s", event, endpoint.url, exc)

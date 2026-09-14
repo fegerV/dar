@@ -1,4 +1,9 @@
-"""Testcontainers integration tests for backend."""
+"""Testcontainers integration tests for backend.
+
+These tests require Docker plus the optional `testcontainers` dependency. When
+either is unavailable the whole module is skipped instead of erroring, so the
+default `pytest` run stays green on machines without Docker.
+"""
 
 import asyncio
 from uuid import uuid4
@@ -11,6 +16,27 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.models import Base
 from app.models.user import User
+
+testcontainers = pytest.importorskip(
+    "testcontainers", reason="testcontainers is not installed (optional dev extra)"
+)
+
+
+def _docker_available() -> bool:
+    try:
+        import docker
+
+        client = docker.from_env()
+        client.ping()
+        return True
+    except Exception:
+        return False
+
+
+if not _docker_available():
+    pytest.skip("Docker daemon is not available", allow_module_level=True)
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="session")

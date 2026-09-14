@@ -30,8 +30,27 @@ class Settings(BaseSettings):
 
     YOOKASSA_SHOP_ID: str = ""
     YOOKASSA_SECRET_KEY: str = ""
+    # YooKassa does NOT sign notifications with HMAC. Authenticity is verified by
+    # checking the source IP against the official allowlist (see
+    # https://yookassa.ru/developers/using-api/webhooks#notification-authentication).
+    # YOOKASSA_WEBHOOK_SECRET is kept for backwards compatibility only: when set,
+    # an additional HMAC check on the body is performed.
     YOOKASSA_WEBHOOK_SECRET: str = ""
+    YOOKASSA_WEBHOOK_ENFORCE_IP: bool = True
+    YOOKASSA_WEBHOOK_ALLOWED_IPS: str = (
+        "185.71.76.0/27,"
+        "185.71.77.0/27,"
+        "77.75.153.0/25,"
+        "77.75.156.11,"
+        "77.75.156.35,"
+        "77.75.154.128/25,"
+        "2a02:5180::/32"
+    )
     YOOKASSA_RETURN_URL: str = "http://localhost:8000/api/v1/payments/callback"
+
+    # One-time token guarding POST /admin/setup (first-admin bootstrap).
+    # When empty, the endpoint is allowed only outside production.
+    ADMIN_BOOTSTRAP_TOKEN: str = ""
 
     GROK_API_KEY: str = ""
     GROK_MODEL: str = "grok-2-latest"
@@ -68,7 +87,6 @@ class Settings(BaseSettings):
                 ("JWT_SECRET_KEY", self.JWT_SECRET_KEY),
                 ("MINIO_ACCESS_KEY", self.MINIO_ACCESS_KEY),
                 ("MINIO_SECRET_KEY", self.MINIO_SECRET_KEY),
-                ("YOOKASSA_WEBHOOK_SECRET", self.YOOKASSA_WEBHOOK_SECRET),
                 ("YOOKASSA_SHOP_ID", self.YOOKASSA_SHOP_ID),
                 ("YOOKASSA_SECRET_KEY", self.YOOKASSA_SECRET_KEY),
                 ("DATABASE_URL", self.DATABASE_URL),
