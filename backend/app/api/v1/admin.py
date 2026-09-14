@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 import logging
 from uuid import UUID
@@ -5,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel as PydanticBaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_factory, get_db
@@ -17,14 +18,13 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.rbac import SYSTEM_ROLES, require_permission
-from app.models.admin import Role, UserRole
+from app.models.admin import Role, UserRole, Worker
 from app.models.payment import LedgerTransaction, Payment, PromoCode, Wallet
 from app.models.template import PromptTemplate, PromptTemplateVersion
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 from app.schemas.admin import (
-    AdminAuditLogResponse,
     AdminDashboardStats,
     AdminGenerationDetailResponse,
     AdminLedgerResponse,
@@ -38,8 +38,6 @@ from app.schemas.admin import (
     AdminPromptTemplateResponse,
     AdminPromptTemplateUpdate,
     AdminQueueJobResponse,
-    AdminReferralCodeResponse,
-    AdminReferralResponse,
     AdminSceneCreate,
     AdminSceneResponse,
     AdminSceneUpdate,
@@ -54,6 +52,9 @@ from app.schemas.admin import (
     AdminTemplateVersionUpdate,
     AdminUserResponse,
     AdminUserWalletResponse,
+    AdminWebhookCreate,
+    AdminWebhookResponse,
+    AdminWebhookUpdate,
     AdminWorkerResponse,
     AIModelCreate,
     AIModelUpdate,
@@ -94,8 +95,20 @@ async def init_admin(
 @router.post("/setup", status_code=201)
 async def setup_first_admin(
     body: AdminSetupRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    from app.core.config import settings as app_settings
+
+    bootstrap_token = app_settings.ADMIN_BOOTSTRAP_TOKEN
+    if bootstrap_token:
+        provided = request.headers.get("X-Bootstrap-Token")
+        if not provided or not secrets.compare_digest(provided, bootstrap_token):
+            raise ForbiddenException("Invalid or missing bootstrap token")
+    elif app_settings.APP_ENV == "production":
+        # No token configured and we are in production — keep the endpoint closed.
+        raise NotFoundException("Not found")
+
     service = AdminService(db)
     result = await service.setup_first_admin(
         email=body.email, password=body.password,
@@ -300,32 +313,52 @@ async def get_order(
     return await service.get_order(order_id)
 
 
-@router.get("/queue", response_model=list[AdminQueueJobResponse])
+@router.get("/queue", response_model=AdminPaginatedResponse)
 async def list_queue(
-    status: str | None = Query(None, pattern="^(pending|running|completed|failed|canceled)$"),
+    page: int = 1,
+    page_size: int = 20,
+    status: str | None = Query(None, pattern="^(queued|running|finished|failed|canceled)$"),
     worker_id: UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    from app.models.admin import QueueJob
+    from app.models.generation import GenerationJob
+    from app.services.admin.service import queue_job_response
 
-    query = select(QueueJob).order_by(QueueJob.created_at.desc())
+    query = select(GenerationJob).order_by(GenerationJob.created_at.desc())
+    count_query = select(func.count()).select_from(GenerationJob)
     if status:
-        query = query.where(QueueJob.status == status)
+        query = query.where(GenerationJob.status == status)
+        count_query = count_query.where(GenerationJob.status == status)
     if worker_id:
-        query = query.where(QueueJob.worker_id == worker_id)
-    result = await db.execute(query.limit(200))
-    jobs = list(result.scalars().all())
-    return [AdminQueueJobResponse.model_validate(j) for j in jobs]
+        # GenerationJob tracks the worker by hostname in `locked_by`.
+        worker = await db.get(Worker, worker_id)
+        if worker is None:
+            return {"items": [], "total": 0, "page": page, "page_size": page_size}
+        query = query.where(GenerationJob.locked_by == worker.name)
+        count_query = count_query.where(GenerationJob.locked_by == worker.name)
+
+    total = (await db.execute(count_query)).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(query.offset(offset).limit(page_size))
+    jobs = [queue_job_response(j) for j in result.scalars().all()]
+    return {"items": jobs, "total": total, "page": page, "page_size": page_size}
 
 
-@router.get("/workers", response_model=list[AdminWorkerResponse])
+@router.get("/workers", response_model=AdminPaginatedResponse)
 async def list_workers(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    service = AdminService(db)
-    return await service.list_workers()
+    total = (await db.execute(select(func.count()).select_from(Worker))).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        select(Worker).order_by(Worker.name).offset(offset).limit(page_size)
+    )
+    workers = [AdminWorkerResponse.model_validate(w) for w in result.scalars().all()]
+    return {"items": workers, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/workers/{worker_id}", response_model=AdminWorkerResponse)
@@ -442,14 +475,17 @@ async def refund_payment(
     return {"status": "refunded", "payment_id": str(payment_id), "amount": refund_amount}
 
 
-@router.get("/audit-logs", response_model=list[AdminAuditLogResponse])
+@router.get("/audit-logs", response_model=AdminPaginatedResponse)
 async def list_audit_logs(
-    limit: int = 100,
+    page: int = 1,
+    page_size: int = 20,
+    actor_user_id: UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    return await service.list_audit_logs(limit)
+    logs, total = await service.list_audit_logs(page, page_size, actor_user_id)
+    return {"items": logs, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/system/settings", response_model=list[AdminSystemSettingsResponse])
@@ -571,35 +607,68 @@ async def impersonate_user(
     return {"access_token": access_token, "refresh_token": refresh_token, "impersonation": True, "expires_in": 300}
 
 
-@router.get("/referrals", response_model=list[AdminReferralResponse])
+@router.get("/referrals", response_model=AdminPaginatedResponse)
 async def list_referrals(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    return await service.list_referrals()
+    referrals = await service.list_referrals()
+    total = len(referrals)
+    start = max(page - 1, 0) * page_size
+    return {
+        "items": referrals[start:start + page_size],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
-@router.get("/referral-codes", response_model=list[AdminReferralCodeResponse])
+@router.get("/referral-codes", response_model=AdminPaginatedResponse)
 async def list_referral_codes(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    return await service.list_referral_codes()
+    codes = await service.list_referral_codes()
+    total = len(codes)
+    start = max(page - 1, 0) * page_size
+    return {
+        "items": codes[start:start + page_size],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
-@router.get("/promo-codes", response_model=list[AdminPromoCodeResponse])
+@router.get("/promo-codes", response_model=AdminPaginatedResponse)
 async def list_promo_codes(
+    page: int = 1,
+    page_size: int = 20,
     is_active: bool | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("promo.read")),
 ):
     query = select(PromoCode)
+    count_query = select(func.count()).select_from(PromoCode)
     if is_active is not None:
         query = query.where(PromoCode.is_active == is_active)
-    result = await db.execute(query.order_by(PromoCode.created_at.desc()))
-    return list(result.scalars().all())
+        count_query = count_query.where(PromoCode.is_active == is_active)
+    total = (await db.execute(count_query)).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        query.order_by(PromoCode.created_at.desc()).offset(offset).limit(page_size)
+    )
+    return {
+        "items": [AdminPromoCodeResponse.model_validate(c) for c in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post("/promo-codes", response_model=AdminPromoCodeResponse, status_code=201)
@@ -771,6 +840,16 @@ async def review_gallery_submission(
     }
 
 
+@router.get("/templates/{template_id}", response_model=AdminTemplateResponse)
+async def get_template(
+    template_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    service = AdminService(db)
+    return await service.get_template(template_id)
+
+
 @router.patch("/templates/{template_id}", response_model=AdminTemplateResponse)
 async def update_template(
     template_id: UUID,
@@ -907,14 +986,20 @@ async def update_queue_job_priority(
     return await service.update_queue_job_priority(job_id, body.priority)
 
 
-@router.get("/roles", response_model=list[RoleResponse])
+@router.get("/roles", response_model=AdminPaginatedResponse)
 async def list_roles(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("settings.manage")),
 ):
-    result = await db.execute(select(Role).order_by(Role.code))
-    roles = list(result.scalars().all())
-    return [RoleResponse.model_validate(r) for r in roles]
+    total = (await db.execute(select(func.count()).select_from(Role))).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        select(Role).order_by(Role.code).offset(offset).limit(page_size)
+    )
+    roles = [RoleResponse.model_validate(r) for r in result.scalars().all()]
+    return {"items": roles, "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/roles", response_model=RoleResponse, status_code=201)
@@ -1025,7 +1110,7 @@ async def get_permissions(
     return {"roles": SYSTEM_ROLES, "permissions": sorted(all_perms)}
 
 
-@router.get("/prompts", response_model=list[AdminPromptTemplateResponse])
+@router.get("/prompts", response_model=AdminPaginatedResponse)
 async def list_prompt_templates(
     page: int = 1,
     page_size: int = 50,
@@ -1036,19 +1121,30 @@ async def list_prompt_templates(
     current_user=Depends(require_admin),
 ):
     query = select(PromptTemplate).order_by(PromptTemplate.created_at.desc())
+    count_query = select(func.count()).select_from(PromptTemplate)
     if category:
         query = query.where(PromptTemplate.category == category)
+        count_query = count_query.where(PromptTemplate.category == category)
     if is_active is not None:
         query = query.where(PromptTemplate.is_active == is_active)
+        count_query = count_query.where(PromptTemplate.is_active == is_active)
     if search:
         pattern = f"%{search}%"
-        query = query.where(
-            or_(PromptTemplate.name.ilike(pattern), PromptTemplate.code.ilike(pattern), PromptTemplate.text.ilike(pattern))
+        search_filter = or_(
+            PromptTemplate.name.ilike(pattern),
+            PromptTemplate.code.ilike(pattern),
+            PromptTemplate.text.ilike(pattern),
         )
-    offset = (page - 1) * page_size
-    query = query.offset(offset).limit(page_size)
-    result = await db.execute(query)
-    return list(result.scalars().all())
+        query = query.where(search_filter)
+        count_query = count_query.where(search_filter)
+
+    total = (await db.execute(count_query)).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(query.offset(offset).limit(page_size))
+    items = [
+        AdminPromptTemplateResponse.model_validate(p) for p in result.scalars().all()
+    ]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/prompts", response_model=AdminPromptTemplateResponse, status_code=201)
@@ -1222,39 +1318,74 @@ async def test_yandex_connection(
     return {"success": healthy, "message": "Connection successful" if healthy else "Connection failed"}
 
 
-class WebhookCreate(PydanticBaseModel):
-    url: str
-    events: list[str] = []
-    is_active: bool = True
-
-
-@router.get("/webhooks")
+@router.get("/webhooks", response_model=AdminPaginatedResponse)
 async def list_webhooks(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    try:
-        from app.models.webhook import WebhookEndpoint
-        result = await db.execute(select(WebhookEndpoint))
-        return list(result.scalars().all())
-    except Exception:
-        return []
+    from app.models.webhook import WebhookEndpoint
+
+    total = (await db.execute(select(func.count()).select_from(WebhookEndpoint))).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        select(WebhookEndpoint)
+        .order_by(WebhookEndpoint.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    items = [AdminWebhookResponse.model_validate(w) for w in result.scalars().all()]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
-@router.post("/webhooks")
+@router.post("/webhooks", response_model=AdminWebhookResponse, status_code=201)
 async def create_webhook(
-    body: WebhookCreate,
+    body: AdminWebhookCreate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    try:
-        from app.models.webhook import WebhookEndpoint
-        wh = WebhookEndpoint(**body.model_dump())
-        db.add(wh)
-        await db.flush()
-        return {"id": str(wh.id), "url": wh.url, "events": wh.events, "is_active": wh.is_active, "created_at": wh.created_at.isoformat()}
-    except ImportError:
-        return {"status": "ok", "message": "Webhook model not available"}
+    from app.models.webhook import WebhookEndpoint
+
+    wh = WebhookEndpoint(**body.model_dump())
+    db.add(wh)
+    await db.flush()
+    await db.commit()
+    return AdminWebhookResponse.model_validate(wh)
+
+
+@router.patch("/webhooks/{webhook_id}", response_model=AdminWebhookResponse)
+async def update_webhook(
+    webhook_id: UUID,
+    body: AdminWebhookUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.webhook import WebhookEndpoint
+
+    wh = await db.get(WebhookEndpoint, webhook_id)
+    if wh is None:
+        raise NotFoundException("Webhook not found")
+    for key, value in body.model_dump(exclude_unset=True).items():
+        setattr(wh, key, value)
+    await db.flush()
+    await db.commit()
+    return AdminWebhookResponse.model_validate(wh)
+
+
+@router.delete("/webhooks/{webhook_id}", status_code=204)
+async def delete_webhook(
+    webhook_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.models.webhook import WebhookEndpoint
+
+    wh = await db.get(WebhookEndpoint, webhook_id)
+    if wh is None:
+        raise NotFoundException("Webhook not found")
+    await db.delete(wh)
+    await db.commit()
 
 
 @router.get("/ai/providers")
@@ -1321,15 +1452,20 @@ async def test_ai_provider(
     return await service.test_ai_provider(provider_id)
 
 
-@router.get("/ai/models")
+@router.get("/ai/models", response_model=AdminPaginatedResponse)
 async def list_ai_models(
+    page: int = 1,
+    page_size: int = 20,
     provider_id: UUID | None = None,
     model_type: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
     service = AdminService(db)
-    return await service.list_ai_models(provider_id=provider_id, model_type=model_type)
+    models, total = await service.list_ai_models(
+        provider_id=provider_id, model_type=model_type, page=page, page_size=page_size
+    )
+    return {"items": models, "total": total, "page": page, "page_size": page_size}
 
 
 @router.post("/ai/models")
@@ -1468,31 +1604,35 @@ async def moderation_item_action(
         raise ValidationException(f"Moderation action failed: {e}")
 
 
-@router.get("/support/tickets")
+@router.get("/support/tickets", response_model=AdminPaginatedResponse)
 async def list_support_tickets(
+    page: int = 1,
+    page_size: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    try:
-        from app.models.feedback import Feedback
-        result = await db.execute(select(Feedback).order_by(Feedback.created_at.desc()).limit(100))
-        feedbacks = list(result.scalars().all())
-        return [
-            {
-                "id": str(f.id),
-                "user_id": str(f.user_id),
-                "generation_id": str(f.generation_id) if f.generation_id else None,
-                "subject": f.reaction,
-                "status": "open",
-                "priority": "medium",
-                "created_at": f.created_at.isoformat() if f.created_at else None,
-                "updated_at": f.created_at.isoformat() if f.created_at else None,
-                "messages_count": 1,
-            }
-            for f in feedbacks
-        ]
-    except Exception:
-        return []
+    from app.models.feedback import Feedback
+
+    total = (await db.execute(select(func.count()).select_from(Feedback))).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        select(Feedback).order_by(Feedback.created_at.desc()).offset(offset).limit(page_size)
+    )
+    items = [
+        {
+            "id": str(f.id),
+            "user_id": str(f.user_id),
+            "generation_id": str(f.generation_id) if f.generation_id else None,
+            "subject": f.reaction,
+            "status": "open",
+            "priority": "medium",
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+            "updated_at": f.created_at.isoformat() if f.created_at else None,
+            "messages_count": 1,
+        }
+        for f in result.scalars().all()
+    ]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/support/tickets/{ticket_id}")
@@ -1572,38 +1712,42 @@ async def get_moderation_item(
         }
     except NotFoundException:
         raise
-    except Exception:
-        raise NotFoundException("Moderation item not found")
+    except Exception as e:
+        raise ValidationException(f"Failed to load moderation item: {e}")
 
+@router.get("/moderation/items", response_model=AdminPaginatedResponse)
 async def list_moderation_items(
+    page: int = 1,
+    page_size: int = 20,
     status: str = Query("pending", pattern="^(pending|approved|rejected|escalated)$"),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    try:
-        from app.models.gallery import GallerySubmission
-        query = select(GallerySubmission)
-        if status == "pending":
-            query = query.where(GallerySubmission.status == "pending")
-        elif status == "approved":
-            query = query.where(GallerySubmission.status == "approved")
-        elif status == "rejected":
-            query = query.where(GallerySubmission.status == "rejected")
-        result = await db.execute(query.order_by(GallerySubmission.created_at.desc()).limit(100))
-        submissions = list(result.scalars().all())
-        return [
-            {
-                "id": str(s.id),
-                "type": "photo",
-                "status": s.status,
-                "created_at": s.created_at.isoformat() if s.created_at else None,
-                "updated_at": s.updated_at.isoformat() if hasattr(s, "updated_at") and s.updated_at else None,
-                "content_preview": f"Gallery submission {s.id}",
-            }
-            for s in submissions
-        ]
-    except Exception:
-        return []
+    from app.models.gallery import GallerySubmission
+
+    query = select(GallerySubmission)
+    count_query = select(func.count()).select_from(GallerySubmission)
+    if status:
+        query = query.where(GallerySubmission.status == status)
+        count_query = count_query.where(GallerySubmission.status == status)
+
+    total = (await db.execute(count_query)).scalar() or 0
+    offset = max(page - 1, 0) * page_size
+    result = await db.execute(
+        query.order_by(GallerySubmission.created_at.desc()).offset(offset).limit(page_size)
+    )
+    items = [
+        {
+            "id": str(s.id),
+            "type": "photo",
+            "status": s.status,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "updated_at": s.updated_at.isoformat() if hasattr(s, "updated_at") and s.updated_at else None,
+            "content_preview": f"Gallery submission {s.id}",
+        }
+        for s in result.scalars().all()
+    ]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/analytics/export")
@@ -1808,12 +1952,23 @@ async def get_queue_job(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    from app.models.admin import QueueJob
+    from app.models.generation import GenerationJob
+    from app.services.admin.service import queue_job_response
 
-    job = await db.get(QueueJob, job_id)
+    job = await db.get(GenerationJob, job_id)
     if job is None:
         raise NotFoundException("Job not found")
-    return AdminQueueJobResponse.model_validate(job)
+    return queue_job_response(job)
+
+
+@router.get("/queue/status")
+async def get_queue_status(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    from app.services.queue_control import get_queue_state
+
+    return await get_queue_state(db)
 
 
 @router.patch("/queue/pause")
@@ -1821,7 +1976,10 @@ async def pause_queue(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    return {"status": "paused"}
+    from app.services.queue_control import set_queue_paused
+
+    state = await set_queue_paused(db, True, current_user.id)
+    return {"status": "paused", **state}
 
 
 @router.patch("/queue/resume")
@@ -1829,7 +1987,10 @@ async def resume_queue(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
 ):
-    return {"status": "resumed"}
+    from app.services.queue_control import set_queue_paused
+
+    state = await set_queue_paused(db, False, current_user.id)
+    return {"status": "resumed", **state}
 
 
 @router.get("/workers/{worker_id}/logs")
@@ -1935,6 +2096,7 @@ class BulkUserAction(PydanticBaseModel):
     user_ids: list[UUID]
     action: str
     reason: str | None = None
+    message: str | None = None
 
 
 @router.post("/users/bulk-action")
@@ -1948,6 +2110,10 @@ async def bulk_user_action(
     if body.action not in {"block", "unblock", "delete", "send_message"}:
         raise ValidationException(f"Unsupported bulk action: {body.action}")
 
+    if body.action == "send_message" and not (body.message or body.reason):
+        raise ValidationException("message is required for the send_message action")
+
+    service = AdminService(db)
     audit = AuditService(db)
     results = []
     for uid in body.user_ids:
@@ -1961,7 +2127,11 @@ async def bulk_user_action(
         elif body.action == "delete":
             user.deleted_at = datetime.now(UTC)
         elif body.action == "send_message":
-            pass
+            await service.send_user_message(
+                user,
+                subject="Сообщение от администрации DarAgent",
+                message=body.message or body.reason or "",
+            )
         results.append(str(uid))
         await audit.log(
             actor_user_id=current_user.id,

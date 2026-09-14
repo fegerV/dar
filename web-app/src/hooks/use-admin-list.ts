@@ -71,22 +71,24 @@ export function useAdminList<T>({
           ...currentFilters,
         })
         const raw = await apiFetch<unknown>(`${endpoint}${qs}`)
-        let data: T[]
-        let total = 0
 
-        if (
+        // The admin list contract is `AdminPaginatedResponse`:
+        //   { items, total, page, page_size }
+        // Every consumer's `transform` receives this envelope (not the bare
+        // array), so an endpoint that still answers with a plain array is
+        // normalised into the same shape instead of being handled separately.
+        const isEnvelope =
           typeof raw === "object" &&
           raw !== null &&
-          "items" in raw &&
-          "total" in raw &&
           Array.isArray((raw as Record<string, unknown>).items)
-        ) {
-          data = transform((raw as Record<string, unknown>).items)
-          total = (raw as Record<string, unknown>).total as number
-        } else {
-          data = transform(raw)
-          total = data.length
-        }
+
+        const envelope: { items: unknown[]; total?: number } = isEnvelope
+          ? (raw as { items: unknown[]; total?: number })
+          : { items: Array.isArray(raw) ? raw : [], total: Array.isArray(raw) ? raw.length : 0 }
+
+        const data = transform(envelope)
+        const total =
+          typeof envelope.total === "number" ? envelope.total : data.length
 
         setItems(data)
         setTotal(total)

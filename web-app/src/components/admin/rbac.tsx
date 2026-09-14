@@ -46,7 +46,7 @@ export function AdminRBAC() {
   useEffect(() => {
     if (!user) return
     apiFetch<PermissionsResponse>("/admin/rbac/permissions")
-      .then(setSystemRoles)
+      .then((res) => setSystemRoles(res.roles))
       .catch(() => setSystemRoles({}))
   }, [user])
 

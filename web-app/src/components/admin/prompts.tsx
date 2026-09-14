@@ -37,6 +37,7 @@ interface PromptTemplate {
 
 interface PromptVersion {
   id: string
+  prompt_id: string
   version: number
   status: string
   name: string
@@ -47,6 +48,7 @@ interface PromptVersion {
   compatible_models: string[]
   created_at: string
   published_at: string | null
+  retired_at?: string | null
 }
 
 interface DiffLine {

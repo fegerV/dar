@@ -39,7 +39,11 @@ export function AdminUserDetail() {
       const [u, w, a] = await Promise.all([
         apiFetch<AdminUser>(`/admin/users/${params.id}`),
         apiFetch<UserWallet>(`/admin/users/${params.id}/wallet`),
-        apiFetch<UserActivity[]>(`/admin/audit-logs?actor_user_id=${params.id}&limit=50`).catch(() => []),
+        apiFetch<{ items: UserActivity[] } | UserActivity[]>(
+          `/admin/audit-logs?actor_user_id=${params.id}&page_size=50`
+        )
+          .then((res) => (Array.isArray(res) ? res : res.items))
+          .catch(() => [] as UserActivity[]),
       ])
       setUser(u)
       setWallet(w)
@@ -79,7 +83,8 @@ export function AdminUserDetail() {
     if (!mfaToken) return
     try {
       const res = await apiFetch<{ access_token: string; refresh_token: string; impersonation: boolean }>(
-        `/users/${params.id}/impersonate?${new URLSearchParams({ mfa_token: mfaToken })}`
+        `/admin/users/${params.id}/impersonate?${new URLSearchParams({ mfa_token: mfaToken })}`,
+        { method: "POST" }
       )
       alert("Impersonation started (5-min limit). Close session to end.")
       localStorage.setItem("impersonate_token", res.access_token)

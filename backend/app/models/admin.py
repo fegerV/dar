@@ -62,6 +62,14 @@ class Worker(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 
 class QueueJob(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    """LEGACY. Never written to by any code path.
+
+    The real generation queue is ``generations`` (``GenerationJob``), which the
+    Celery worker consumes and which the admin queue endpoints now read. This
+    table was created by migration 017 and is intentionally left in place (no
+    destructive schema change); do NOT wire new code to it.
+    """
+
     __tablename__ = "queue_jobs"
 
     generation_id: Mapped[uuid.UUID] = mapped_column(
@@ -126,3 +134,16 @@ class AIModel(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     provider = relationship("AIProvider", backref="models")
+
+
+class WorkerLog(Base, UUIDPrimaryKeyMixin):
+    __tablename__ = "worker_logs"
+
+    worker_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workers.id", ondelete="CASCADE"), nullable=False
+    )
+    level: Mapped[str] = mapped_column(String(20), nullable=False, default="info")
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

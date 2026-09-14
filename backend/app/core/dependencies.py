@@ -5,11 +5,21 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.exceptions import UnauthorizedException
+from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import decode_token
 from app.repositories.users import UserRepository
 
 bearer_scheme = HTTPBearer()
+
+
+def get_client_ip(request: Request) -> str | None:
+    """Resolve the caller IP, honouring the left-most X-Forwarded-For entry."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        first = forwarded_for.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else None
 
 
 async def get_current_user_id(
@@ -25,6 +35,7 @@ async def get_current_user_id(
 
 
 async def get_current_user(
+    request: Request,
     user_id: UUID = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -32,6 +43,13 @@ async def get_current_user(
     user = await repo.get_by_id(user_id)
     if user is None or user.status != "active":
         raise UnauthorizedException("User not found or inactive")
+
+    blocked_ips = (user.metadata_ or {}).get("blocked_ips") or []
+    if blocked_ips:
+        client_ip = get_client_ip(request)
+        if client_ip and client_ip in blocked_ips:
+            raise ForbiddenException("Access from this IP address is blocked")
+
     return user
 
 
