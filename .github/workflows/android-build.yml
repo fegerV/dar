@@ -14,6 +14,7 @@ jobs:
       DARAGENT_SIGNING_STORE_PASSWORD: ${{ secrets.DARAGENT_SIGNING_STORE_PASSWORD }}
       DARAGENT_SIGNING_KEY_ALIAS: ${{ secrets.DARAGENT_SIGNING_KEY_ALIAS }}
       DARAGENT_SIGNING_KEY_PASSWORD: ${{ secrets.DARAGENT_SIGNING_KEY_PASSWORD }}
+      HAS_GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,11 +25,30 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # The ubuntu-latest image already ships the Android SDK and exports
+      # ANDROID_HOME / ANDROID_SDK_ROOT. android-actions/setup-android@v3 now fails
+      # there (it still targets Node 20, which the runner forces onto Node 24), which
+      # aborted the job before Gradle ever ran. Locate the pre-installed SDK instead.
+      - name: Locate Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::Android SDK not found (looked in $SDK)"
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "Using Android SDK at $SDK"
+          ls "$SDK"
 
-      - name: Set ANDROID_HOME
-        run: echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+      # Optional: app/google-services.json is not committed, so restore it from the
+      # GOOGLE_SERVICES_JSON secret when that secret exists. app/build.gradle applies the
+      # google-services plugin only if the file is present.
+      - name: Provide google-services.json
+        if: env.HAS_GOOGLE_SERVICES == 'true'
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
 
       - name: Import signing keystore
         if: env.DARAGENT_SIGNING_KEY == 'true'
