@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.kapt'
+    id 'com.google.dagger.hilt.android'
     id 'com.google.gms.google-services'
 }
 
@@ -63,6 +64,15 @@ android {
 }
 
 dependencies {
+    // --- CI fix: deps required by the sources but missing from this build file ---
+    implementation 'com.google.dagger:hilt-android:2.48'
+    kapt 'com.google.dagger:hilt-android-compiler:2.48'
+    implementation 'androidx.hilt:hilt-navigation-compose:1.1.0'
+    implementation 'io.coil-kt:coil-compose:2.5.0'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'com.squareup.moshi:moshi-kotlin:1.15.0'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
     implementation 'androidx.activity:activity-compose:1.8.1'
@@ -93,4 +103,8 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+}
+
+kapt {
+    correctErrorTypes = true
 }
