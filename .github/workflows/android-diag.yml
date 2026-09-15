@@ -1,10 +1,5 @@
 name: Android Diag
 
-# TEMPORARY diagnostic workflow on a throwaway branch (ci-diag).
-# Purpose: surface the real Gradle failure as check-run annotations,
-# which are readable through the public REST API (job logs are not).
-# Remove the branch after diagnosis.
-
 on:
   push:
   workflow_dispatch:
@@ -24,30 +19,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Environment probe
-        run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-<unset>}"
-          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-<unset>}"
-          ls -d /usr/local/lib/android/sdk 2>/dev/null || echo "no /usr/local/lib/android/sdk"
-          ls -l android/gradlew
-          ls android/app | head -20
-
       - name: Gradle diagnose
         working-directory: android
         run: |
           chmod +x gradlew
           set +e
-
-          bash ./gradlew help --no-daemon --stacktrace > /tmp/help.log 2>&1
-          echo "=== help exit=$? ==="
-          tail -n 40 /tmp/help.log
-
           bash ./gradlew lintDebug --no-daemon --stacktrace > /tmp/lint.log 2>&1
-          rc=$?
-          echo "=== lint exit=$rc ==="
-          tail -n 150 /tmp/lint.log
+          echo "lint exit=$?"
+          exit 0
 
-          if [ $rc -ne 0 ]; then
-            grep -aE "FAILURE:|What went wrong|> Task .*FAILED|^e: |Unresolved reference|Could not resolve|Could not find|Caused by:|A problem occurred|SDK location|Execution failed|No matching client|Could not determine|requires|is missing|google-services" /tmp/lint.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
-          fi
+      - name: Emit AAPT resource errors as annotations
+        if: always()
+        run: |
+          echo "--- AAPT error lines ---"
+          grep -aE "AAPT: error" /tmp/lint.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          echo "--- other resource/style errors ---"
+          grep -aE "error: resource|not found\.|resource .* not found" /tmp/lint.log | grep -av "AAPT: error" | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          echo "--- task failures ---"
+          grep -aE "> Task .* FAILED|Execution failed for task|What went wrong" /tmp/lint.log | head -10 | while IFS= read -r line; do echo "::error::$line"; done
           exit 0
