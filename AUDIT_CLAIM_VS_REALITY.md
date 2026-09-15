@@ -549,9 +549,75 @@
 
 ### Отложено (осознанно, с обоснованием)
 
-1. **Android: два сетевых стека (п.5.6).** Это не механическая правка: нужно перевести 7 ViewModel/Screen с `ServiceLocator` на Hilt и одновременно исправить ~8 путей к API, затем собрать проект Gradle. Требует Android SDK и проверяемой сборки, которых в этой среде нет. Переписывание «вслепую» нарушило бы AGENTS.md п.16 и п.18. Оставлено с планом: удалить `data/network/*` + `di/ServiceLocator.kt`, перевести потребителей на `core/network` (Hilt), вынести base URL в `BuildConfig`.
+1. **Android: два сетевых стека (п.5.6).** Это не механическая правка: нужно перевести 7 ViewModel/Screen с `ServiceLocator` на Hilt и одновременно исправить пути к API, затем собрать проект Gradle. Требует Android SDK и проверяемой сборки, которых в этой среде нет (нет ни `java`, ни `ANDROID_HOME`). Переписывание «вслепую» нарушило бы AGENTS.md п.16 и п.18.
+
+   **Частично уже сделано в `main`:** базовый URL вынесен в `BuildConfig` (`build.gradle.kts`: `buildConfigField("String", "API_BASE_URL", ...)` для dev/stage/prod; `RetrofitClient` использует `com.daragent.BuildConfig.API_BASE_URL`). Третий пункт FIX из п.5.6 закрыт.
+
+   **Проверено по факту (сверка 24 endpoint'ов `core/network/ApiInterfaces.kt` с 204 маршрутами backend'а):** не совпадают **18 из 24**. Точная таблица для правки:
+
+   | Android (`core/network/ApiInterfaces.kt`) | Реальный маршрут backend'а | Примечание |
+   |---|---|---|
+   | `GET /api/v1/users/me` | `GET /api/v1/auth/me` | |
+   | `PATCH /api/v1/users/me` | — | endpoint'а обновления профиля нет вообще |
+   | `GET /api/v1/people` | `GET /api/v1/recipients` | |
+   | `POST /api/v1/people` | `POST /api/v1/recipients` | |
+   | `GET /api/v1/people/{id}` | `GET /api/v1/recipients/{recipient_id}` | переименовать path-параметр |
+   | `PATCH /api/v1/people/{id}` | `PATCH /api/v1/recipients/{recipient_id}` | переименовать path-параметр |
+   | `POST /api/v1/conversations/message` | `POST /api/v1/chat/message` | |
+   | `POST /api/v1/briefs` | `PUT /api/v1/projects/{project_id}/brief` | метод и путь |
+   | `GET /api/v1/briefs/{id}` | `GET /api/v1/projects/{project_id}/brief` | |
+   | `PATCH /api/v1/briefs/{id}` | `PUT /api/v1/projects/{project_id}/brief` | метод и путь |
+   | `POST /api/v1/media/upload` | `POST /api/v1/assets/upload-url` | далее `POST /assets/confirm-upload` |
+   | `POST /api/v1/generations` | `POST /api/v1/generations/projects/{project_id}` | |
+   | `GET /api/v1/generations` | `GET /api/v1/generations/projects/{project_id}` | |
+   | `POST /api/v1/payments/create` | `POST /api/v1/payments/projects/{project_id}` | |
+   | `GET /api/v1/payments` | — | списка платежей нет (только `/{payment_id}`, `/entitlements`) |
+   | `GET /api/v1/wallet` | `GET /api/v1/payments/wallet` | |
+   | `GET /api/v1/referrals` | `GET /api/v1/referrals/me/stats` | ближайший существующий |
+   | `GET /api/v1/referrals/code` | `GET /api/v1/referrals/me/code` | |
+
+   Совпадают (не требуют правки): `POST /auth/login`, `POST /auth/register`, `POST /auth/refresh`, `GET /generations/{id}`, `GET /payments/{id}`.
+
+   Оставшийся план: исправить пути выше → удалить `data/network/*` + `di/ServiceLocator.kt` → перевести 7 потребителей на `core/network` (Hilt) → собрать Gradle.
+
+   **CI-статус (проверено по GitHub Actions API, 15.09.2026): сборка НЕ проходит.** Оба Android-workflow
+   красные на `main` (`832aa53`) и падают на **первом же вызове Gradle** — то есть на конфигурации, до компиляции:
+
+   | Workflow | Последний run | Падает на шаге |
+   |---|---|---|
+   | `android-build.yml` | #143 | `Run tests` → `./gradlew test` |
+   | `android-ci.yml` | #60 | `Lint` → `./gradlew lintDebug` |
+
+   Причины, подтверждаемые содержимым репозитория:
+
+   - **Собирается Groovy `build.gradle`, а не `build.gradle.kts`.** В модуле `app` лежат оба файла; закоммиченный
+     `BuildConfig.java` (от 2026-09-07, когда оба файла уже существовали) содержит только поля Groovy-варианта
+     (`BUILD_TYPE_CI`, суффиксы `.debug`) и **не** содержит `API_BASE_URL` из `.kts` → Gradle берёт `build.gradle`.
+     Значит, современный стек (Hilt/KSP) в сборке не участвует, а version catalog `libs`, на который ссылается
+     `.kts`, в репозитории отсутствует и никогда не коммитился ни в одной ветке.
+   - **Закоммичен `android/local.properties`** с `sdk.dir=/opt/android-sdk`; на GitHub-раннере SDK находится в
+     `/usr/local/lib/android/sdk`, поэтому зафиксированный путь, вероятнее всего, даёт «SDK location not found».
+   - **В индексе лежат артефакты сборки** (`android/.gradle/`, `android/app/build/`), хотя `.gitignore` их
+     исключает — они добавлены раньше правила и остаются отслеживаемыми.
+
+   Точный текст ошибки Gradle получить не удалось: лог run'а отдаётся только с авторизацией (HTTP 403),
+   а аннотации содержат лишь «Process completed with exit code 1».
 2. **4 неиспользуемые модели (п.3.4): `ModelProfile`, `RecipeFailure`, `RelationshipType`, `TemplateVariable`.** Их таблицы реально существуют (миграции 001/006/016), запись в них не ведётся ни одним flow. Удаление моделей требует DROP TABLE — необратимая операция над схемой, поэтому в рамках этого прохода не выполнялось. Зафиксировано как известный долг.
 3. **`QueueJob`.** После перевода админки на `GenerationJob` таблица `queue_jobs` (миграция 017) больше не используется, но не удаляется по той же причине — помечена как legacy в docstring модели.
+
+### Уточнение: расхождение версий Python в CI не является дефектом
+
+Пункт 0.1 рекомендовал «привести `requires-python`, Dockerfile и CI к одной версии». Проверка показала,
+что приводить нечего:
+
+- `requires-python = ">=3.11"`, оба `Dockerfile` — `python:3.11-slim`, `ci-cd.yml` — `PYTHON_VERSION: "3.11"`
+  → **заявленный минимум 3.11 реально тестируется**;
+- `ci.yml` использует 3.12 — это не рассинхрон, а **дополнительное покрытие** второй версии;
+- `ci.yml` не является дублем `ci-cd.yml`: его `build` собирает Docker-образ **на pull request'ах**, а в
+  `ci-cd.yml` build и deploy ограничены `if: github.ref == 'refs/heads/main'`, то есть на PR образ не
+  проверяется. Поэтому удалять `ci.yml` не следует — он даёт единственную проверку сборки образа до мержа.
+
+Оставляю как есть: объединение pipeline'ов — решение владельца репозитория, а не исправление ошибки.
 
 ---
 
