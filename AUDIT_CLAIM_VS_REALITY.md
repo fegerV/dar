@@ -579,6 +579,29 @@
    Совпадают (не требуют правки): `POST /auth/login`, `POST /auth/register`, `POST /auth/refresh`, `GET /generations/{id}`, `GET /payments/{id}`.
 
    Оставшийся план: исправить пути выше → удалить `data/network/*` + `di/ServiceLocator.kt` → перевести 7 потребителей на `core/network` (Hilt) → собрать Gradle.
+
+   **CI-статус (проверено по GitHub Actions API, 15.09.2026): сборка НЕ проходит.** Оба Android-workflow
+   красные на `main` (`832aa53`) и падают на **первом же вызове Gradle** — то есть на конфигурации, до компиляции:
+
+   | Workflow | Последний run | Падает на шаге |
+   |---|---|---|
+   | `android-build.yml` | #143 | `Run tests` → `./gradlew test` |
+   | `android-ci.yml` | #60 | `Lint` → `./gradlew lintDebug` |
+
+   Причины, подтверждаемые содержимым репозитория:
+
+   - **Собирается Groovy `build.gradle`, а не `build.gradle.kts`.** В модуле `app` лежат оба файла; закоммиченный
+     `BuildConfig.java` (от 2026-09-07, когда оба файла уже существовали) содержит только поля Groovy-варианта
+     (`BUILD_TYPE_CI`, суффиксы `.debug`) и **не** содержит `API_BASE_URL` из `.kts` → Gradle берёт `build.gradle`.
+     Значит, современный стек (Hilt/KSP) в сборке не участвует, а version catalog `libs`, на который ссылается
+     `.kts`, в репозитории отсутствует и никогда не коммитился ни в одной ветке.
+   - **Закоммичен `android/local.properties`** с `sdk.dir=/opt/android-sdk`; на GitHub-раннере SDK находится в
+     `/usr/local/lib/android/sdk`, поэтому зафиксированный путь, вероятнее всего, даёт «SDK location not found».
+   - **В индексе лежат артефакты сборки** (`android/.gradle/`, `android/app/build/`), хотя `.gitignore` их
+     исключает — они добавлены раньше правила и остаются отслеживаемыми.
+
+   Точный текст ошибки Gradle получить не удалось: лог run'а отдаётся только с авторизацией (HTTP 403),
+   а аннотации содержат лишь «Process completed with exit code 1».
 2. **4 неиспользуемые модели (п.3.4): `ModelProfile`, `RecipeFailure`, `RelationshipType`, `TemplateVariable`.** Их таблицы реально существуют (миграции 001/006/016), запись в них не ведётся ни одним flow. Удаление моделей требует DROP TABLE — необратимая операция над схемой, поэтому в рамках этого прохода не выполнялось. Зафиксировано как известный долг.
 3. **`QueueJob`.** После перевода админки на `GenerationJob` таблица `queue_jobs` (миграция 017) больше не используется, но не удаляется по той же причине — помечена как legacy в docstring модели.
 
