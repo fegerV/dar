@@ -3,8 +3,8 @@ package com.daragent.data.di
 import com.daragent.core.network.AuthApi
 import com.daragent.core.network.PeopleApi
 import com.daragent.core.network.api.ChatApi
-import com.daragent.core.network.api.GenerationApi
-import com.daragent.core.network.api.PaymentApi
+import com.daragent.core.network.GenerationApi
+import com.daragent.core.network.PaymentApi
 import com.daragent.data.auth.AuthRepository
 import com.daragent.data.generation.GenerationRepository
 import com.daragent.data.payment.PaymentRepository

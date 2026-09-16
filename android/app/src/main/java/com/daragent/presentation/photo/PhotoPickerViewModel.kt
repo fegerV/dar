@@ -3,7 +3,7 @@ package com.daragent.presentation.photo
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daragent.core.network.api.MediaApi
+import com.daragent.core.network.MediaApi
 import com.daragent.core.network.model.UploadResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

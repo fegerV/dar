@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daragent.presentation.mascot.MascotEvent
 import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
+import com.daragent.presentation.mascot.MascotController
 
 @Composable
 fun GenerationScreen(
@@ -45,7 +45,8 @@ fun GenerationScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp),

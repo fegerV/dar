@@ -1,6 +1,6 @@
 package com.daragent.payment
 
-import com.daragent.core.network.api.PaymentApi
+import com.daragent.core.network.PaymentApi
 import com.daragent.core.network.model.CreatePaymentRequest
 import com.daragent.core.network.model.PaymentResponse
 import com.daragent.data.payment.PaymentRepository

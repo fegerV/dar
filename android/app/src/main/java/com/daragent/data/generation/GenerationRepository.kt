@@ -1,6 +1,6 @@
 package com.daragent.data.generation
 
-import com.daragent.core.network.api.GenerationApi
+import com.daragent.core.network.GenerationApi
 import com.daragent.core.network.model.CreateGenerationRequest
 import com.daragent.core.network.model.GenerationDto
 import javax.inject.Inject

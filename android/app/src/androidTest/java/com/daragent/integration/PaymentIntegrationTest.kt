@@ -1,6 +1,6 @@
 package com.daragent.integration
 
-import com.daragent.core.network.api.PaymentApi
+import com.daragent.core.network.PaymentApi
 import com.daragent.core.network.model.CreatePaymentRequest
 import com.daragent.core.network.model.PaymentResponse
 import kotlinx.coroutines.test.runTest

@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,12 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.daragent.presentation.mascot.MascotController
 import com.daragent.presentation.mascot.MascotEvent
 import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
-import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
-import com.daragent.presentation.mascot.MascotEvent
 
 @Composable
 fun BriefScreen(
@@ -49,7 +47,8 @@ fun BriefScreen(
     }
 
     Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier.weight(1f),
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -97,4 +96,5 @@ fun BriefScreen(
             Text("Назад")
         }
     }
+}
 }

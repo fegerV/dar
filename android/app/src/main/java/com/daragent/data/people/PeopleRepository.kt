@@ -1,6 +1,6 @@
 package com.daragent.data.people
 
-import com.daragent.core.network.api.PeopleApi
+import com.daragent.core.network.PeopleApi
 import com.daragent.core.network.model.CreatePersonRequest
 import com.daragent.core.network.model.PersonDto
 import com.daragent.core.network.model.UpdatePersonRequest

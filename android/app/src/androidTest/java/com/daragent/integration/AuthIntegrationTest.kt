@@ -1,6 +1,6 @@
 package com.daragent.integration
 
-import com.daragent.core.network.api.AuthApi
+import com.daragent.core.network.AuthApi
 import com.daragent.core.network.model.*
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse

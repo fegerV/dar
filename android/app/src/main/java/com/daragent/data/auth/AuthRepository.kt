@@ -1,7 +1,7 @@
 package com.daragent.data.auth
 
 import com.daragent.core.network.AuthApi
-import com.daragent.core.network.TokenManager
+import com.daragent.core.security.TokenManager
 import com.daragent.core.network.model.*
 import javax.inject.Inject
 import javax.inject.Singleton

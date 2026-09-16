@@ -24,7 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.daragent.di.ServiceLocator
 import com.daragent.presentation.mascot.MascotEvent
 import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
+import com.daragent.presentation.mascot.MascotController
 
 @Composable
 fun ReferralScreen(
@@ -52,7 +52,8 @@ fun ReferralScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier
                 .size(160.dp)
                 .padding(bottom = 16.dp),

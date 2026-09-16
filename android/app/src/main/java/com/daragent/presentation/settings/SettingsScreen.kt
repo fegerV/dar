@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.daragent.presentation.mascot.MascotEvent
 import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
+import com.daragent.presentation.mascot.MascotController
 
 @Composable
 fun SettingsScreen(
@@ -39,7 +39,8 @@ fun SettingsScreen(
             .background(Color(0xFFF8FAFC))
             .padding(16.dp),
     ) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp),

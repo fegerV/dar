@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.daragent.presentation.mascot.MascotEvent
 import com.daragent.presentation.mascot.MascotRepository
-import com.daragent.presentation.mascot.MascotView
+import com.daragent.presentation.mascot.MascotController
 
 data class ContactData(
     val name: String,
@@ -57,7 +57,8 @@ fun ContactImportScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        MascotView(
+        MascotController(
+            repository = mascotRepository,
             modifier = Modifier
                 .size(160.dp)
                 .padding(bottom = 16.dp),

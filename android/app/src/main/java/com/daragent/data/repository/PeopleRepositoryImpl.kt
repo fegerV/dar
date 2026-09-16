@@ -1,6 +1,6 @@
 package com.daragent.data.repository
 
-import com.daragent.core.network.api.PeopleApi
+import com.daragent.core.network.PeopleApi
 import com.daragent.core.network.model.CreatePersonRequest
 import com.daragent.domain.model.Person
 import com.daragent.domain.repository.PeopleRepository
