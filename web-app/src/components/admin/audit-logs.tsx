@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { apiFetch } from "@/lib/api"
 import type { AuditLog } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
@@ -12,7 +11,6 @@ import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
 
 export function AdminAuditLogs() {
-  const { t } = useTranslation()
   const [search, setSearch] = useState("")
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()

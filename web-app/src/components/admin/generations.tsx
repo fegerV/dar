@@ -22,7 +22,6 @@ const statusColors: Record<string, string> = {
 
 export function AdminGenerations() {
   const { t } = useTranslation()
-  const { toast } = useToast()
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 

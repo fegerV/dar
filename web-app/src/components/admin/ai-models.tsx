@@ -118,7 +118,7 @@ export function AdminAIModels() {
     }
   }, [])
 
-  const { items: models, loading: modelsLoading, page, pageSize, total, setPage, setPageSize, setFilters, refetch: refetchModels } = useAdminList<AIModel>({
+  const { items: models, page, pageSize, total, setPage, setPageSize, setFilters, refetch: refetchModels } = useAdminList<AIModel>({
     endpoint: "/admin/ai/models",
     pageSize: 20,
     filters: selectedProvider ? { provider_id: selectedProvider } : {},

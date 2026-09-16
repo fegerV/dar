@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { Database, Cpu, Bot, HardDrive, Info, GitBranch, Book, CheckSquare, Activity, FileText, Search, AlertTriangle, Shield, Users, ShoppingCart, Cog, BarChart3, Wrench } from "lucide-react"
+import { Database, Cpu, Bot, HardDrive, Info, GitBranch, Book, CheckSquare, Activity, FileText, Search, AlertTriangle, Shield, BarChart3, Wrench } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { apiFetch } from "@/lib/api"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
