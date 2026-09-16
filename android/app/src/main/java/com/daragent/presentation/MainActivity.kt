@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
 import com.daragent.navigation.DarAgentNavHost
 import com.daragent.presentation.theme.DarAgentTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,7 +21,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             DarAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val navController = rememberNavController()
                     DarAgentNavHost(
+                        navController = navController,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material3.*
@@ -122,7 +122,6 @@ fun ConversationScreen(
                         TypingIndicator()
                     }
                 }
-                }
 
                 if (uiState.error != null && !uiState.isLoading) {
                     Snackbar(
@@ -210,7 +209,7 @@ private fun ChatInputBar(
                     enabled = !isLoading,
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        imageVector = Icons.Filled.Send,
                         contentDescription = "Отправить",
                     )
                 }

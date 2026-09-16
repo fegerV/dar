@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -324,7 +326,7 @@ private fun VideoCard(
                 contentScale = ContentScale.Crop,
             )
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.PlayArrow,
+                imageVector = Icons.Filled.PlayArrow,
                 contentDescription = "Play",
                 tint = Color.White,
                 modifier = Modifier.size(64.dp),
@@ -356,7 +358,7 @@ private fun GenerationProgressBubble(
             )
             Spacer(modifier = Modifier.height(4.dp))
             LinearProgressIndicator(
-                progress = { message.progress / 100f },
+                progress = message.progress / 100f,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

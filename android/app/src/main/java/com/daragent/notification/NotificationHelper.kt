@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.daragent.R
-import com.daragent.MainActivity
+import com.daragent.presentation.MainActivity
 
 object NotificationHelper {
     private const val CHANNEL_ID = "daragent_channel"
@@ -23,7 +23,7 @@ object NotificationHelper {
     }
 
     fun showVideoReadyNotification(context: Context, title: String, body: String, generationId: String) {
-        val intent = Intent(context, HomeActivity::class.java).apply {
+        val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("generation_id", generationId)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -35,7 +35,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

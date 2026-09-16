@@ -10,7 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
@@ -62,7 +62,7 @@ fun PhotoPickerScreen(
                 title = { Text("Загрузить фото") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
             )
@@ -303,7 +303,7 @@ private fun SelectedPhotoCard(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(
-                            progress = { uploadProgress / 100f },
+                            progress = uploadProgress / 100f,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Загрузка... $uploadProgress%")

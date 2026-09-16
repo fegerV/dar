@@ -1,5 +1,6 @@
 package com.daragent.di
 
+import android.content.Context
 import com.daragent.data.local.AuthTokenManager
 import com.daragent.data.local.DarAgentDatabase
 import com.daragent.data.repository.AuthRepositoryImpl
@@ -30,7 +31,24 @@ import com.daragent.presentation.payment.PaymentViewModel
 import com.daragent.presentation.profile.ProfileViewModel
 
 object ServiceLocator {
-    val database: DarAgentDatabase by lazy { com.daragent.DarAgentApp.database }
+
+    /**
+     * Application context, installed from DarAgentApp.onCreate. The legacy service locator
+     * keeps its own handle on the context rather than reaching into the Application subclass,
+     * so the pre-Hilt wiring stays decoupled from the Hilt entry point.
+     */
+    @Volatile
+    private var appContext: Context? = null
+
+    fun init(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    val database: DarAgentDatabase by lazy {
+        DarAgentDatabase.getDatabase(
+            checkNotNull(appContext) { "ServiceLocator.init() must be called from DarAgentApp.onCreate()" }
+        )
+    }
     val peopleRepository: PeopleRepository by lazy { LegacyPeopleRepositoryImpl(ApiModule.peopleApi) }
     val templateRepository: TemplateRepository by lazy { TemplateRepositoryImpl(ApiModule.templatesApi) }
     val projectRepository: ProjectRepository by lazy { ProjectRepositoryImpl(ApiModule.projectsApi, ApiModule.briefsApi, ApiModule.recommendationsApi, ApiModule.holidaysApi, ApiModule.generationsApi) }

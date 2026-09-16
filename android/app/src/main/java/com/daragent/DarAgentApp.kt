@@ -1,12 +1,17 @@
 package com.daragent
 
 import android.app.Application
-import com.daragent.data.local.DarAgentDatabase
+import com.daragent.di.ServiceLocator
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class DarAgentApp : Application() {
 
-    /** Room database, exposed for the legacy ServiceLocator wiring. */
-    val database: DarAgentDatabase by lazy { DarAgentDatabase.getDatabase(this) }
+    override fun onCreate() {
+        super.onCreate()
+        // The legacy ServiceLocator (pre-Hilt wiring) needs a context to build its Room
+        // database. Handing it the context here keeps ServiceLocator from holding a static
+        // reference to this Application subclass.
+        ServiceLocator.init(this)
+    }
 }

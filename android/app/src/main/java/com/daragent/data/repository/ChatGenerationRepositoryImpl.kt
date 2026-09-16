@@ -92,7 +92,14 @@ class GenerationRepositoryImpl(
                     // Aligning this is part of the pending network-stack consolidation; it does
                     // not affect compilation. See data/network/api/ApiModule.kt::GenerationsApi
                     // for the legacy, server-correct variant.
-                    com.daragent.core.network.model.CreateGenerationRequest(projectId, templateVersionId)
+                    com.daragent.core.network.model.CreateGenerationRequest(
+                        // Placeholder mapping: this DTO (type, brief_id, photo_url) does not model
+                        // the backend's GenerationStartRequest(force_regenerate, variables). "video_lite"
+                        // matches the default type GenerationViewModel starts with.
+                        type = "video_lite",
+                        briefId = templateVersionId,
+                        photoUrl = null,
+                    )
                 )
                 if (response.isSuccessful) {
                     response.body()!!.toDomain()

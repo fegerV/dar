@@ -309,8 +309,9 @@ fun DarAgentNavHost(
         composable(Routes.HISTORY) {
             HistoryScreen(
                 onProjectClick = { projectId, generationId ->
-                    val genId = generationId ?: return@HistoryScreen.onProjectClick
-                    navController.navigate("${Routes.GENERATION_PROGRESS}/$genId?projectId=$projectId")
+                    if (generationId != null) {
+                        navController.navigate("${Routes.GENERATION_PROGRESS}/$generationId?projectId=$projectId")
+                    }
                 },
                 onBack = { navController.popBackStack() }
             )
