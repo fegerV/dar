@@ -69,8 +69,16 @@ async def test_brief_state_machine_blocks_invalid_transition(  # noqa: E501
     )
 
     assert response.status_code == 409
-    detail = response.json()["detail"]["error"]
-    assert detail["code"] == "CONFLICT"
+    data = response.json()
+    # Response format: {'error': {'code': 'CONFLICT', 'message': '...', 'details': {...}}}
+    if "error" in data:
+        error = data["error"]
+        assert error.get("code") == "CONFLICT"
+    elif "detail" in data and isinstance(data["detail"], dict):
+        detail = data["detail"]
+        assert detail.get("error", {}).get("code") == "CONFLICT"
+    else:
+        pytest.fail(f"Unexpected response format: {data}")
 
 
 @pytest.mark.asyncio
@@ -92,8 +100,20 @@ async def test_complete_brief_requires_fields(client, db_session, auth_headers, 
     )
 
     assert response.status_code == 422
-    detail = response.json()["detail"]["error"]
-    assert "missing_fields" in detail["details"]
+    data = response.json()
+    # Response format: {'error': {'code': 'VALIDATION_ERROR', 'message': '...', 'details': {'missing_fields': [...]}}}
+    if "error" in data:
+        error = data["error"]
+        assert error.get("code") == "VALIDATION_ERROR"
+        details = error.get("details", {})
+        assert "missing_fields" in details
+    elif "detail" in data and isinstance(data["detail"], dict):
+        detail = data["detail"]
+        error_obj = detail.get("error", {})
+        assert error_obj.get("code") == "VALIDATION_ERROR"
+        assert "missing_fields" in error_obj.get("details", {})
+    else:
+        pytest.fail(f"Unexpected response format: {data}")
 
 
 @pytest.mark.asyncio

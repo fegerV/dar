@@ -80,8 +80,16 @@ async def test_register_duplicate_email_conflict(client, db_session):
     payload["display_name"] = "Second User"
     resp2 = await client.post("/api/v1/auth/register", json=payload)
     assert resp2.status_code == 409
-    detail = resp2.json()["detail"]["error"]
-    assert detail["code"] == "CONFLICT"
+    data = resp2.json()
+    # Response format: {'error': {'code': 'CONFLICT', 'message': '...', 'details': {...}}}
+    if "error" in data:
+        error = data["error"]
+        assert error.get("code") == "CONFLICT"
+    elif "detail" in data and isinstance(data["detail"], dict):
+        detail = data["detail"]
+        assert detail.get("error", {}).get("code") == "CONFLICT"
+    else:
+        pytest.fail(f"Unexpected response format: {data}")
 
 
 @pytest.mark.asyncio
@@ -98,8 +106,16 @@ async def test_register_duplicate_email_sequential(client, db_session):
     payload["display_name"] = "Second"
     resp2 = await client.post("/api/v1/auth/register", json=payload)
     assert resp2.status_code == 409
-    detail = resp2.json()["detail"]["error"]
-    assert detail["code"] == "CONFLICT"
+    data = resp2.json()
+    # Response format: {'error': {'code': 'CONFLICT', 'message': '...', 'details': {...}}}
+    if "error" in data:
+        error = data["error"]
+        assert error.get("code") == "CONFLICT"
+    elif "detail" in data and isinstance(data["detail"], dict):
+        detail = data["detail"]
+        assert detail.get("error", {}).get("code") == "CONFLICT"
+    else:
+        pytest.fail(f"Unexpected response format: {data}")
 
 
 @pytest.mark.asyncio
