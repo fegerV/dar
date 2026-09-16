@@ -122,20 +122,21 @@ fun ConversationScreen(
                         TypingIndicator()
                     }
                 }
+                }
+            }
 
-                if (uiState.error != null && !uiState.isLoading) {
-                    Snackbar(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(16.dp),
-                        action = {
-                            TextButton(onClick = viewModel::clearError) {
-                                Text("OK")
-                            }
-                        },
-                    ) {
-                        Text(uiState.error!!)
-                    }
+            if (uiState.error != null && !uiState.isLoading) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
+                    action = {
+                        TextButton(onClick = viewModel::clearError) {
+                            Text("OK")
+                        }
+                    },
+                ) {
+                    Text(uiState.error!!)
                 }
             }
         }
