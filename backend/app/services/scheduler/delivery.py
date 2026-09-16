@@ -54,8 +54,8 @@ class DeliveryScheduler:
         if delivery.channel == "email":
             from app.services.delivery.email import EmailDeliveryService
 
-            service = EmailDeliveryService(self.db)
-            await service.send(
+            email_service = EmailDeliveryService(self.db)
+            await email_service.send(
                 delivery=delivery,
                 video_url=generation_result.get("video_url"),
                 thumbnail_url=generation_result.get("thumbnail_url"),
@@ -63,8 +63,8 @@ class DeliveryScheduler:
         elif delivery.channel == "telegram":
             from app.services.delivery.telegram import TelegramDeliveryService
 
-            service = TelegramDeliveryService(self.db)
-            await service.send(
+            telegram_service = TelegramDeliveryService(self.db)
+            await telegram_service.send(
                 delivery=delivery,
                 video_url=generation_result.get("video_url"),
             )

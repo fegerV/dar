@@ -71,3 +71,4 @@ async def get_current_user_optional(request: Request) -> object | None:
             return user
     except Exception:
         return None
+    return None

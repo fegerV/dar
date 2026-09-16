@@ -39,7 +39,9 @@ class BaseProvider(ABC):
 
 class BaseTextProvider(BaseProvider):
     @abstractmethod
-    async def generate_text(self, prompt: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    async def generate_text(
+        self, prompt: str, parameters: dict[str, Any]
+    ) -> dict[str, Any] | None:
         ...
 
 

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import NotFoundException
 from app.models.delivery import Delivery
 from app.schemas.delivery import (
     DeliveryCreate,
@@ -114,6 +115,8 @@ async def reschedule_delivery(
                 utc_scheduled = scheduled_at.replace(tzinfo=UTC)
 
         existing = await db.get(Delivery, delivery_id)
+        if existing is None:
+            raise NotFoundException("Delivery not found")
         existing.scheduled_at = utc_scheduled
         existing.status = "scheduled"
         await db.flush()

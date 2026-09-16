@@ -52,7 +52,9 @@ class PricingService:
 
         duration_multiplier = self._get_duration_multiplier(body.duration_sec or 30)
         resolution_multiplier = self.RESOLUTION_MULTIPLIERS.get(body.resolution or "1080p", Decimal("1.0"))
-        personalization_level = project.metadata.get("personalization_level", 50) if project.metadata else 50
+        personalization_level = (
+            project.metadata_.get("personalization_level", 50) if project.metadata_ else 50
+        )
         personalization_multiplier = self._get_personalization_multiplier(personalization_level)
 
         price = base_price * duration_multiplier * resolution_multiplier * personalization_multiplier
@@ -101,7 +103,7 @@ class PricingService:
         return PromoCodeValidateResponse(
             valid=True,
             discount_type=promo.discount_type,
-            discount_value=promo.discount_value,
+            discount_value=Decimal(str(promo.discount_value)),
             discount_rub=Decimal(str(promo.discount_value)),
             expires_at=promo.expires_at,
         )

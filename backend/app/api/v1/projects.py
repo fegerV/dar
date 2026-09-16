@@ -41,7 +41,7 @@ async def list_projects(
     current_user=Depends(get_current_user),
 ):
     service = ProjectService(db)
-    items, total = await service.list(current_user.id, page, page_size, status)
+    items, total = await service.list_projects(current_user.id, page, page_size, status)
     return ProjectListResponse(items=items, total=total, page=page, page_size=page_size)
 
 

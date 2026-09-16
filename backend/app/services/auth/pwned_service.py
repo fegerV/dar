@@ -1,4 +1,5 @@
 import hashlib
+from typing import Any
 
 import httpx
 
@@ -128,7 +129,7 @@ class HaveIBeenPwnedService:
         Returns:
             Dict с результатами проверки
         """
-        result = {
+        result: dict[str, Any] = {
             "is_valid": True,
             "is_pwned": False,
             "breach_count": 0,

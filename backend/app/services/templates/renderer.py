@@ -62,11 +62,12 @@ class TemplateRenderer:
         total_duration = 0
 
         for scene in scenes:
-            scene_vars = {
-                var.code: body.variables.get(var.code, var.default_value)
-                for var in variables
-                if var.scene_id == scene.id
-            }
+            scene_vars: dict[str, str | None] = {}
+            for var in variables:
+                if var.scene_id != scene.id:
+                    continue
+                value = body.variables.get(var.code, var.default_value)
+                scene_vars[var.code] = None if value is None else str(value)
             scene_vars.update(body.variables)
 
             rendered_prompt = self._substitute_variables(

@@ -1,12 +1,8 @@
 from io import BytesIO
 from typing import BinaryIO
 
-try:
-    from minio import Minio
-    from minio.error import S3Error
-except ImportError:
-    Minio = None
-    S3Error = Exception
+from minio import Minio
+from minio.error import S3Error
 
 from app.core.config import settings
 from app.integrations.storage.base import StorageProvider
@@ -38,12 +34,12 @@ class MinIOProvider(StorageProvider):
         self,
         bucket: str,
         object_key: str,
-        data: BinaryIO,
+        data: BinaryIO | bytes,
         content_type: str | None = None,
         metadata: dict | None = None,
     ) -> str:
         bucket = bucket or self.bucket
-        data_bytes = data.read() if hasattr(data, "read") else data
+        data_bytes: bytes = data if isinstance(data, bytes) else data.read()
         self.client.put_object(
             bucket,
             object_key,

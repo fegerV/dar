@@ -32,6 +32,8 @@ class ABTestService:
             target=body.target,
             status="draft",
             traffic_allocation=body.traffic_allocation,
+            start_date=body.start_date,
+            end_date=body.end_date,
         )
         self.db.add(test)
         await self.db.flush()
@@ -103,9 +105,21 @@ class ABTestService:
                     code=variant.code,
                     title=variant.title,
                     config=variant.config,
+                    traffic_weight=variant.traffic_weight,
                     is_control=variant.is_control,
                 )
-        return variants[-1] if variants else None
+
+        if not variants:
+            return None
+
+        fallback = variants[-1]
+        return ABTestVariantCreate(
+            code=fallback.code,
+            title=fallback.title,
+            config=fallback.config,
+            traffic_weight=fallback.traffic_weight,
+            is_control=fallback.is_control,
+        )
 
     async def record_result(
         self,

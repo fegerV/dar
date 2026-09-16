@@ -27,7 +27,7 @@ class YandexDiskProvider(StorageProvider):
         data: BinaryIO,
         content_type: str | None = None,
         metadata: dict | None = None,
-    ) -> str:
+    ) -> str | None:
         path = f"{self.base_path}/{bucket}/{object_key}"
         upload_url = None
         async with httpx.AsyncClient() as client:

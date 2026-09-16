@@ -1,10 +1,12 @@
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException, NotFoundException, ValidationException
 from app.models.gallery import GalleryStatus, GallerySubmission
 from app.models.generation import Generation
+from app.models.project import Project
 from app.repositories.gallery import GalleryRepository
 from app.schemas.gallery import (
     GallerySubmissionCreate,
@@ -27,7 +29,15 @@ class GalleryService:
         if generation is None:
             raise NotFoundException("Видео не найдено")
 
-        if generation.user_id != user_id:
+        # `Generation` has no owner column of its own: fall back to the project
+        # owner when the generation does not record who requested it.
+        owner_user_id = generation.requested_by_user_id
+        if owner_user_id is None:
+            owner_user_id = await self.db.scalar(
+                select(Project.owner_user_id).where(Project.id == generation.project_id)
+            )
+
+        if owner_user_id != user_id:
             raise ForbiddenException("Нет доступа к этому видео")
 
         if generation.status != "completed":

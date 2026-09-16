@@ -53,10 +53,10 @@ class ReactionService:
         result = await self.db.execute(
             select(
                 ViewingReaction.emoji,
-                func.count().label("count"),
+                func.count().label("reaction_count"),
             ).where(ViewingReaction.project_id == project_id).group_by(ViewingReaction.emoji)
         )
-        by_emoji = {row.emoji: row.count for row in result.all()}
+        by_emoji = {row.emoji: row.reaction_count for row in result.all()}
 
         total_result = await self.db.execute(
             select(func.count()).select_from(ViewingReaction).where(

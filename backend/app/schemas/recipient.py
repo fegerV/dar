@@ -8,7 +8,7 @@ class RecipientCreate(BaseModel):
     first_name: str = Field(min_length=1, max_length=200)
     last_name: str | None = None
     nickname: str | None = None
-    gender: str | None = Field(None, pattern="^(male|female|other)$")
+    gender: str | None = Field(default=None, pattern="^(male|female|other)$")
     birth_date: date | None = None
     city: str | None = None
     occupation: str | None = None
@@ -24,10 +24,10 @@ class RecipientCreate(BaseModel):
 
 
 class RecipientUpdate(BaseModel):
-    first_name: str | None = Field(None, min_length=1, max_length=200)
+    first_name: str | None = Field(default=None, min_length=1, max_length=200)
     last_name: str | None = None
     nickname: str | None = None
-    gender: str | None = Field(None, pattern="^(male|female|other)$")
+    gender: str | None = Field(default=None, pattern="^(male|female|other)$")
     birth_date: date | None = None
     city: str | None = None
     occupation: str | None = None
@@ -93,7 +93,7 @@ class RecipientListResponse(BaseModel):
 class RecipientPhotoUploadRequest(BaseModel):
     filename: str = Field(..., min_length=1, max_length=255)
     mime_type: str | None = None
-    size_bytes: int | None = Field(None, ge=0)
+    size_bytes: int | None = Field(default=None, ge=0)
 
 
 class RecipientPhotoUploadResponse(BaseModel):

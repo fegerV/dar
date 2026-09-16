@@ -42,7 +42,7 @@ class SharedMemoryBase(BaseModel):
 
 
 class SharedMemoryCreate(SharedMemoryBase):
-    pass
+    group_id: UUID | None = None
 
 
 class SharedMemoryResponse(SharedMemoryBase):

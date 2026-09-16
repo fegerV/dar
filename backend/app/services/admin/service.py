@@ -848,7 +848,7 @@ class AdminService:
         for date, total in daily_result.all():
             daily_revenue[str(date)] = float(total or 0)
 
-        daily_generations = {}
+        daily_generations: dict[str, dict[str, int]] = {}
         daily_gen_result = await self.db.execute(
             select(
                 func.date(Generation.created_at).label("date"),

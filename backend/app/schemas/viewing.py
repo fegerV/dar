@@ -17,8 +17,8 @@ class ReactionEnum(StrEnum):
 
 class ReactionRequest(BaseModel):
     emoji: ReactionEnum
-    rating: int | None = Field(None, ge=1, le=5)
-    comment: str | None = Field(None, max_length=2000)
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
     negative_details: dict | None = None
 
 

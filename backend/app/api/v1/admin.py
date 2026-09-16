@@ -238,7 +238,7 @@ async def retry_generation(
         job = job_result.scalar_one_or_none()
         if job:
             job.status = "pending"
-            job.retry_count = (job.retry_count or 0) + 1
+            job.attempts = (job.attempts or 0) + 1
             job.started_at = None
             job.finished_at = None
 
@@ -1107,7 +1107,7 @@ async def get_permissions(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("settings.manage")),
 ):
-    all_perms = set()
+    all_perms: set[str] = set()
     for role in SYSTEM_ROLES.values():
         all_perms.update(role["permissions"])
     return {"roles": SYSTEM_ROLES, "permissions": sorted(all_perms)}

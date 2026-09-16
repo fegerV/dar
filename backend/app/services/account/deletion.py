@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, select
@@ -28,7 +29,10 @@ class AccountDeletionService:
         if user is None:
             return {}
 
-        export_data = {
+        # Explicit annotation: this payload mixes nested objects, lists and scalars,
+        # so letting mypy infer the value type from the first assignment would pin it
+        # to dict[str, str | None] and reject every later list/scalar value.
+        export_data: dict[str, Any] = {
             "user": {
                 "id": str(user.id),
                 "display_name": user.display_name,

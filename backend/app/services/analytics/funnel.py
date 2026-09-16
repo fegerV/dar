@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -28,14 +29,15 @@ class FunnelService:
         await self.analytics.track_funnel_event(funnel_name, step, user_id, project_id)
 
     async def get_funnel_stats(self, funnel_name: str, days: int = 7) -> dict:
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(
                 AnalyticsEvent.properties["step"].astext.label("step"),
-                func.count().label("count"),
+                func.count().label("event_count"),
             )
             .where(
                 AnalyticsEvent.event_name == f"funnel_{funnel_name}",
-                AnalyticsEvent.occurred_at >= func.now() - func.cast(f"{days} days", func.interval()),
+                AnalyticsEvent.occurred_at >= cutoff,
             )
             .group_by(AnalyticsEvent.properties["step"].astext)
             .order_by(AnalyticsEvent.properties["step"].astext)
@@ -43,7 +45,7 @@ class FunnelService:
         rows = result.all()
         stats = {step: 0 for step in self.FUNNEL_STEPS}
         for row in rows:
-            stats[row.step] = row.count
+            stats[row.step] = row.event_count
         return stats
 
     async def get_conversion_rates(self, funnel_name: str, days: int = 7) -> dict:

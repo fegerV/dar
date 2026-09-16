@@ -38,6 +38,8 @@ class ABTestCreate(BaseModel):
     description: str | None = None
     target: str
     traffic_allocation: int = 100
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     variants: list[ABTestVariantCreate]
 
 

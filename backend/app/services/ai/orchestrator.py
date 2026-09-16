@@ -10,7 +10,9 @@ class AIOrchestrator:
         self.db = db
         self.registry = create_provider_registry()
 
-    async def generate_script(self, prompt: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    async def generate_script(
+        self, prompt: str, parameters: dict[str, Any]
+    ) -> dict[str, Any] | None:
         provider = self.registry.get_text()
         if provider is None:
             return {"text": None, "error": "No text provider available"}

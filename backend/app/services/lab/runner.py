@@ -139,7 +139,7 @@ class BenchmarkRunner:
         prompt = self._compile_prompt(scenario)
         duration = scenario.target_duration_sec or 5
 
-        parameters = {
+        parameters: dict[str, Any] = {
             "prompt": prompt,
             "duration_sec": min(duration, model_config.max_duration_sec),
             "resolution": model_config.supported_resolutions[0],
@@ -204,7 +204,7 @@ class BenchmarkRunner:
 
     def _compile_prompt(self, scenario: LabScenario) -> str:
         """Compile prompt from scenario template."""
-        prompt = scenario.prompt_template
+        prompt = scenario.prompt_template or ""
 
         replacements = {
             "{category}": scenario.category or "general",

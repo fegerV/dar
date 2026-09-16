@@ -8,6 +8,7 @@ from app.api.deps import get_current_admin
 from app.core.database import get_db
 from app.models.admin import AdminUser
 from app.models.lab import LabBenchmark, LabRecipeProposal
+from app.models.user import User
 from app.schemas.lab import (
     LabBenchmarkCreate,
     LabBenchmarkRead,
@@ -179,8 +180,11 @@ async def approve_proposal(
     current_admin: AdminUser = Depends(get_current_admin),
 ):
     service = LabService(db)
+    # `AdminUser` only links to the user record; the email lives on that user.
+    admin_user = await db.get(User, current_admin.user_id)
+    approved_by = admin_user.email if admin_user is not None else str(current_admin.user_id)
     proposal = await service.approve_recipe_proposal(
-        proposal_id, data, approved_by=current_admin.email
+        proposal_id, data, approved_by=approved_by
     )
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")

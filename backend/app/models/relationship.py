@@ -4,7 +4,7 @@ from sqlalchemy import Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, UUIDPrimaryKeyMixin
+from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class RelationshipType(Base, UUIDPrimaryKeyMixin):
@@ -40,7 +40,7 @@ class RecipientGroup(Base, UUIDPrimaryKeyMixin):
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
 
 
-class RecipientSharedMemory(Base, UUIDPrimaryKeyMixin):
+class RecipientSharedMemory(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "recipient_shared_memories"
 
     recipient_id: Mapped[uuid.UUID] = mapped_column(

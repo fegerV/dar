@@ -17,7 +17,7 @@ class ABTest(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    traffic_allocation: Mapped[float] = mapped_column(Integer, nullable=False, default=100)
+    traffic_allocation: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     variant_a_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     variant_b_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     results_lock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

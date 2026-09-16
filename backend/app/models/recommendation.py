@@ -18,7 +18,7 @@ class Recommendation(Base, UUIDPrimaryKeyMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="generated")
     rank: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     score: Mapped[float | None] = mapped_column(Numeric(8, 4))
-    match_reasons: Mapped[dict] = mapped_column(JSONB, nullable=False, default=list)
+    match_reasons: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     explanation: Mapped[str | None] = mapped_column(Text)
     generated_by_model: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(

@@ -25,7 +25,9 @@ class GrokTextProvider(BaseTextProvider):
         return 0.0
 
     @circuit_breaker("grok_text", failure_threshold=3, recovery_timeout=60)
-    async def generate_text(self, prompt: str, parameters: dict[str, Any]) -> dict[str, Any]:
+    async def generate_text(
+        self, prompt: str, parameters: dict[str, Any]
+    ) -> dict[str, Any] | None:
         if not self.enabled:
             return {"text": None, "error": "Grok provider disabled"}
 

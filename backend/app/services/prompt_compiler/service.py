@@ -135,16 +135,14 @@ class PromptCompilerService:
         return context
 
     async def compile_prompt(
-        self, body: CompilePromptRequest, user_id: UUID | None = None
+        self, body: CompilePromptRequest, user_id: UUID
     ) -> PromptPlanResponse:
-        if user_id is not None:
-            project = await self.project_repo.get_by_id(body.project_id, user_id)
-        else:
-            project = await self.project_repo.get_by_id(body.project_id)
+        project = await self.project_repo.get_by_id(body.project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
 
         brief = await self.project_repo.get_brief(body.project_id)
+        brief_read = CreativeBriefRead.model_validate(brief) if brief is not None else None
 
         template_version: TemplateVersion | None = None
         if body.template_version_id:
@@ -158,10 +156,13 @@ class PromptCompilerService:
         scenes = []
 
         if template_version:
+            if brief_read is None:
+                raise NotFoundException("Бриф не найден")
+
             system_prompt = template_version.prompt_config.get("system_prompt", "") or None
             user_prompt = template_version.prompt_config.get("style", "") or None
 
-            should_skip = self._evaluate_conditions(template_version, project, brief)
+            should_skip = self._evaluate_conditions(template_version, project, brief_read)
             if should_skip:
                 return PromptPlanResponse(
                     project_id=body.project_id,
@@ -179,7 +180,7 @@ class PromptCompilerService:
                 .order_by(Scene.sort_order.asc(), Scene.created_at.asc())
             )
             for scene in scene_rows.scalars().all():
-                if self._evaluate_scene_conditions(scene, project, brief):
+                if self._evaluate_scene_conditions(scene, project, brief_read):
                     scene_config = scene.scene_config if isinstance(scene.scene_config, dict) else {}
                     scenes.append(
                         PromptPlanScene(
@@ -262,7 +263,7 @@ class PromptCompilerService:
         if template_version is None:
             raise NotFoundException("Template version not found")
 
-        required = template_version.metadata_.get("required_variables", []) if template_version.metadata_ else []
+        required = template_version.prompt_config.get("required_variables", [])
         resolved = dict(body.variables)
         missing = [v for v in required if v not in body.variables or not body.variables[v]]
         warnings = [f"Variable '{v}' is required but missing" for v in missing]

@@ -1,10 +1,11 @@
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 
-engine_kwargs = {
+engine_kwargs: dict[str, Any] = {
     "echo": settings.APP_DEBUG,
     "pool_pre_ping": True,
 }

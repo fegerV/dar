@@ -11,7 +11,7 @@ class StorageProvider(ABC):
         data: BinaryIO,
         content_type: str | None = None,
         metadata: dict | None = None,
-    ) -> str:
+    ) -> str | None:
         ...
 
     @abstractmethod

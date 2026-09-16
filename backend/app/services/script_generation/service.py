@@ -11,7 +11,7 @@ from app.integrations.ai.base import ProviderRegistry
 from app.integrations.ai.registry import create_provider_registry
 from app.models.brief import CreativeBrief
 from app.models.generation import GenerationStep
-from app.models.template import PromptTemplate
+from app.models.template import PromptTemplate, TemplateVersion
 from app.repositories.projects import ProjectRepository
 from app.repositories.recipients import RecipientRepository
 from app.schemas.brief import CreativeBriefRead
@@ -61,13 +61,10 @@ class ScriptGenerationService:
                 project.recipient_id, owner_user_id
             )
 
-        from dataclasses import dataclass
-
-        @dataclass
-        class _TemplateVersion:
-            prompt_config: dict[str, Any]
-
-        tv = _TemplateVersion(prompt_config={})
+        # No template version is attached to this step yet: compile against an
+        # empty prompt config so the deterministic compiler still resolves the
+        # brief variables.
+        tv = TemplateVersion(prompt_config={})
 
         prompt = self.prompt_compiler.compile_deterministic(
             tv,

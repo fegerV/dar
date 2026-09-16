@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import text
+from sqlalchemy import CursorResult, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
@@ -85,7 +85,9 @@ class TemplateCacheManager:
             f"DELETE FROM {CACHE_TABLE} WHERE expires_at <= NOW()"
         ))
         await self.db.commit()
-        return result.rowcount if result.rowcount is not None else 0
+        if isinstance(result, CursorResult):
+            return result.rowcount or 0
+        return 0
 
     async def get_cache_status(self) -> dict:
         try:

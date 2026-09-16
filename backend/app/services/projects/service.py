@@ -57,7 +57,7 @@ class ProjectService:
             raise NotFoundException("Проект не найден")
         return ProjectResponse.model_validate(project)
 
-    async def list(
+    async def list_projects(
         self,
         owner_user_id: UUID,
         page: int = 1,
@@ -322,11 +322,11 @@ class ProjectService:
         questions: list[BriefQuestion] = []
 
         rel_type = relationship or (brief.relationship_ if brief else None)
-        rel_questions = self._RELATIONSHIP_QUESTIONS.get(rel_type, [])
+        rel_questions = self._RELATIONSHIP_QUESTIONS.get(rel_type or "", [])
         questions.extend(rel_questions)
 
         occ_code = occasion_code or project.occasion_code
-        occ_questions = self._OCCASION_QUESTIONS.get(occ_code, [])
+        occ_questions = self._OCCASION_QUESTIONS.get(occ_code or "", [])
         questions.extend(occ_questions)
 
         base_questions = [

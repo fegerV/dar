@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.core.config import settings
 from app.models.generation import Generation, GenerationJob, GenerationStep
 from app.models.intelligence import GenerationFailure
+from app.models.project import Project
 from app.repositories.generations import GenerationRepository
 from app.schemas.quality import QualityCheckRequest
 from app.services.intelligence.failure_analyzer import FailureAnalyzer, RecipeService
@@ -59,13 +60,20 @@ async def _execute_pipeline(generation_id: str):
         except Exception as e:  # noqa: BLE001
             logger.warning("Image preflight failed for %s: %s", generation_id, e)
 
-        result = await db.execute(
+        steps_result = await db.execute(
             select(GenerationStep)
             .where(GenerationStep.generation_id == gen_uuid)
             .order_by(GenerationStep.step_no.asc())
         )
-        steps = list(result.scalars().all())
+        steps = list(steps_result.scalars().all())
         total = len(steps)
+
+        # `Generation` has no `project` relationship - only `project_id` - and a
+        # lazy load would raise MissingGreenlet inside this async worker, so
+        # resolve the owning user with an explicit query instead.
+        project_owner_id = await db.scalar(
+            select(Project.owner_user_id).where(Project.id == generation.project_id)
+        )
 
         for idx, step in enumerate(steps):
             step.status = "processing"
@@ -74,13 +82,25 @@ async def _execute_pipeline(generation_id: str):
 
             if step.step_code == "script":
                 script_service = ScriptGenerationService(db)
+                owner_user_id = generation.requested_by_user_id or project_owner_id
+                if owner_user_id is None:
+                    # Neither the generation nor its project identifies an owner,
+                    # so the script cannot be attributed. Fail the step explicitly
+                    # instead of passing None into a non-optional parameter.
+                    logger.warning(
+                        "Cannot resolve script owner for step %s (project %s)",
+                        step.id,
+                        generation.project_id,
+                    )
+                    step.status = "failed"
+                    step.error_code = "owner_unresolved"
+                    step.error_message = "Could not resolve project owner"
+                    await db.commit()
+                    continue
                 try:
                     await script_service.generate_script(
                         project_id=generation.project_id,
-                        owner_user_id=(
-                            generation.requested_by_user_id
-                            or generation.project.owner_user_id
-                        ),
+                        owner_user_id=owner_user_id,
                         generation_step_id=step.id,
                     )
                 except Exception as e:
@@ -165,13 +185,13 @@ async def _execute_pipeline(generation_id: str):
             "prompt": (generation.input_json or {}).get("prompt", ""),
         }
 
-        result = await db.execute(
+        job_result = await db.execute(
             select(GenerationJob)
             .where(GenerationJob.generation_id == gen_uuid)
             .order_by(GenerationJob.created_at.asc())
             .limit(1)
         )
-        job = result.scalar_one_or_none()
+        job = job_result.scalar_one_or_none()
         if job:
             job.status = "finished"
             job.finished_at = datetime.now(UTC)
@@ -205,7 +225,7 @@ async def _targeted_regeneration(db, generation: Generation, quality_response) -
     recipe_service = RecipeService(db)
 
     failure_codes = analyzer.analyze(
-        critic.raw_response if isinstance(critic, dict) else {},
+        critic.raw_response if hasattr(critic, "raw_response") else {},
         quality_checks,
     )
     recipe = await recipe_service.get_best_recipe(getattr(generation, "template_code", None) or "")

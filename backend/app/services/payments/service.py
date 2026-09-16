@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -299,7 +299,7 @@ class WalletService:
         else:
             # Старый вариант без явной блокировки (для обратной совместимости)
             result = await self.db.execute(
-                WalletModel.__table__.update()
+                update(WalletModel)
                 .where(WalletModel.user_id == user_id, WalletModel.balance_rub >= amount)
                 .values(balance_rub=WalletModel.balance_rub - amount)
                 .returning(WalletModel)
@@ -307,7 +307,7 @@ class WalletService:
             updated = result.one_or_none()
             if updated is None:
                 raise ValidationException("Недостаточно средств на кошельке")
-            wallet = updated
+            wallet = updated[0]
 
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
@@ -345,7 +345,7 @@ class WalletService:
             wallet.updated_at = datetime.now(UTC)
         else:
             result = await self.db.execute(
-                WalletModel.__table__.update()
+                update(WalletModel)
                 .where(
                     WalletModel.user_id == user_id,
                     WalletModel.bonus_balance >= amount,
@@ -357,7 +357,7 @@ class WalletService:
             updated = result.one_or_none()
             if updated is None:
                 raise ValidationException("Недостаточно бонусных средств на кошельке")
-            wallet = updated
+            wallet = updated[0]
 
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
@@ -404,7 +404,7 @@ class WalletService:
         else:
             # Без явной блокировки
             result = await self.db.execute(
-                WalletModel.__table__.update()
+                update(WalletModel)
                 .where(
                     WalletModel.user_id == user_id,
                     WalletModel.balance_rub >= amount
@@ -416,9 +416,10 @@ class WalletService:
                 )
                 .returning(WalletModel)
             )
-            wallet = result.one_or_none()
-            if wallet is None:
+            updated = result.one_or_none()
+            if updated is None:
                 raise ValidationException("Недостаточно средств на кошельке")
+            wallet = updated[0]
 
         await self.db.commit()
         return WalletResponse.model_validate(wallet)

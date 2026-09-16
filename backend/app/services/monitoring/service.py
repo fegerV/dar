@@ -139,7 +139,7 @@ class MonitoringService:
         except Exception:
             return False
 
-    def get_metrics(self) -> str:
+    def get_metrics(self) -> bytes:
         return generate_latest()
 
     CONTENT_TYPE = CONTENT_TYPE_LATEST

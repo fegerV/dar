@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.exceptions import UnauthorizedException
 from app.core.security import decode_token
 from app.models.user import User
 from app.repositories.users import UserRepository
@@ -33,6 +34,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 async def _get_user_from_token(access_token: str, db: AsyncSession) -> UserResponse:
     payload = decode_token(access_token)
+    if payload is None:
+        raise UnauthorizedException("Invalid or expired token")
     user_id = UUID(payload["sub"])
     repo = UserRepository(db)
     user = await repo.get_by_id(user_id)

@@ -104,6 +104,7 @@ async def yookassa_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
     # YooKassa sits behind proxies; prefer the left-most forwarded address.
     forwarded_for = request.headers.get("X-Forwarded-For")
+    client_ip: str | None
     if forwarded_for:
         client_ip = forwarded_for.split(",")[0].strip()
     else:

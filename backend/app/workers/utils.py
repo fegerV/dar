@@ -5,10 +5,12 @@ from app.models.generation import Generation, GenerationStep
 
 
 def estimate_eta(steps: list[GenerationStep], current_idx: int) -> int | None:
-    completed = [s for s in steps[: current_idx + 1] if s.started_at and s.completed_at]
-    if not completed:
+    durations: list[float] = []
+    for step in steps[: current_idx + 1]:
+        if step.started_at is not None and step.completed_at is not None:
+            durations.append((step.completed_at - step.started_at).total_seconds())
+    if not durations:
         return None
-    durations = [(s.completed_at - s.started_at).total_seconds() for s in completed]
     avg = sum(durations) / len(durations)
     remaining = len(steps) - (current_idx + 1)
     return int(avg * remaining)

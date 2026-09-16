@@ -8,7 +8,7 @@ class AssetUploadRequest(BaseModel):
     type: str = Field(..., pattern="^(photo|image|video|audio|voice|music|thumbnail|subtitle|script|document|source)$")
     filename: str = Field(..., min_length=1, max_length=255)
     mime_type: str | None = None
-    size_bytes: int | None = Field(None, ge=0)
+    size_bytes: int | None = Field(default=None, ge=0)
 
 
 class AssetUploadResponse(BaseModel):

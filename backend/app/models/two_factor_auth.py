@@ -21,8 +21,11 @@ class TwoFactorAuth(Base):
     )
     totp_secret: Mapped[str] = mapped_column(String(64), nullable=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    backup_codes: Mapped[list] = mapped_column(
-        Text, nullable=False, default=list,
+    # Stored as a JSON-encoded string in a Text column: the service writes it with
+    # json.dumps() and reads it back with json.loads(), so the annotation has to be
+    # str and the default a JSON array literal rather than a Python list.
+    backup_codes: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]",
         comment="JSON array of hashed backup codes"
     )
     created_at: Mapped[datetime] = mapped_column(

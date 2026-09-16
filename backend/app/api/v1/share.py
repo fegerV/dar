@@ -33,9 +33,9 @@ async def get_public_share(
 @router.get("/{token}/embed", response_class=HTMLResponse)
 async def get_share_embed(
     token: str,
+    request: Request,
     ref: str | None = Query(default=None),
     password: str | None = Query(default=None),
-    request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
     """HTML page with Open Graph and Twitter Card metadata for social sharing."""
@@ -86,8 +86,8 @@ async def get_share_embed(
 @router.get("/{token}/share-links")
 async def get_share_links(
     token: str,
+    request: Request,
     ref: str | None = Query(default=None),
-    request: Request = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Return pre-built share URLs for social platforms."""

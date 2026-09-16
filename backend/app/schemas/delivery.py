@@ -8,8 +8,8 @@ class DeliveryCreate(BaseModel):
     channel: str = Field(..., pattern="^(telegram|vk|whatsapp|link|download|email|other)$")
     destination: str | None = None
     expires_in_days: int = Field(30, ge=1, le=365)
-    max_views: int | None = Field(None, ge=1)
-    password: str | None = Field(None, min_length=1)
+    max_views: int | None = Field(default=None, ge=1)
+    password: str | None = Field(default=None, min_length=1)
     scheduled_at: datetime | None = None
     timezone: str | None = None
 

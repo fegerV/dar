@@ -13,6 +13,7 @@ from app.repositories.recipients import RecipientRepository
 from app.repositories.recommendations import RecommendationRepository, TemplateRepository
 from app.schemas.recommendation import (
     RecommendationListResponse,
+    RecommendationResponse,
     RecommendationSelectResponse,
 )
 from app.schemas.recommendation_v2 import (
@@ -75,7 +76,9 @@ class RecommendationService:
             recommendations.append(rec)
 
         await self.db.commit()
-        return RecommendationListResponse(items=recommendations)
+        return RecommendationListResponse(
+            items=[RecommendationResponse.model_validate(rec) for rec in recommendations]
+        )
 
     async def generate_v2(self, project_id: UUID, user_id: UUID, top_k: int = 5) -> RecommendationListResponseV2:
         existing = await self.repo.list_by_project(project_id)
@@ -100,12 +103,16 @@ class RecommendationService:
             model_version="ai_rerank_v1",
         )
 
-    async def list(self, project_id: UUID, user_id: UUID) -> RecommendationListResponse:
+    async def list_recommendations(
+        self, project_id: UUID, user_id: UUID
+    ) -> RecommendationListResponse:
         project = await self.project_repo.get_by_id(project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
         items = await self.repo.list_by_project(project_id)
-        return RecommendationListResponse(items=items)
+        return RecommendationListResponse(
+            items=[RecommendationResponse.model_validate(rec) for rec in items]
+        )
 
     async def select(
         self, project_id: UUID, recommendation_id: UUID, user_id: UUID
@@ -154,25 +161,25 @@ class RecommendationService:
             score += 0.20
             reasons.append("Подходит по настроению")
 
-        if recipient and recipient.interests and template.metadata.get("interests"):
-            intersection = set(recipient.interests) & set(template.metadata.get("interests", []))
+        if recipient and recipient.interests and template.metadata_.get("interests"):
+            intersection = set(recipient.interests) & set(template.metadata_.get("interests", []))
             if intersection:
                 score += 0.15
                 reasons.append(f"Совпадение интересов: {', '.join(intersection)}")
 
-        if brief.inside_joke and template.metadata.get("supports_inside_joke"):
+        if brief.inside_joke and template.metadata_.get("supports_inside_joke"):
             score += 0.05
             reasons.append("Поддерживает персональную шутку")
 
-        if brief.hobbies_text and template.metadata.get("supports_hobbies"):
+        if brief.hobbies_text and template.metadata_.get("supports_hobbies"):
             score += 0.05
             reasons.append("Учитывает увлечения")
 
-        if brief.sender_message and template.metadata.get("supports_sender_message"):
+        if brief.sender_message and template.metadata_.get("supports_sender_message"):
             score += 0.05
             reasons.append("Поддерживает сообщение отправителя")
 
-        if brief.memorable_story and template.metadata.get("supports_stories"):
+        if brief.memorable_story and template.metadata_.get("supports_stories"):
             score += 0.05
             reasons.append("Поддерживает истории")
 

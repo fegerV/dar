@@ -1,7 +1,7 @@
 import base64
 import json
 import secrets
-import time
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -90,7 +90,7 @@ class TwoFactorAuthService:
             existing.totp_secret = secret
             existing.is_enabled = True
             existing.backup_codes = json.dumps(hashed_codes)
-            existing.updated_at = time.time()
+            existing.updated_at = datetime.now(UTC)
         else:
             two_fa = TwoFactorAuth(
                 user_id=user_id,
@@ -143,7 +143,7 @@ class TwoFactorAuthService:
         two_fa.is_enabled = False
         two_fa.totp_secret = ""
         two_fa.backup_codes = json.dumps([])
-        two_fa.updated_at = time.time()
+        two_fa.updated_at = datetime.now(UTC)
 
         await self.db.commit()
 
@@ -165,7 +165,7 @@ class TwoFactorAuthService:
 
         # Проверяем TOTP
         if self.verify_totp(two_fa.totp_secret, code):
-            two_fa.last_used_at = time.time()
+            two_fa.last_used_at = datetime.now(UTC)
             await self.db.commit()
             return True
 
@@ -176,7 +176,7 @@ class TwoFactorAuthService:
                 # Удаляем использованный код
                 hashed_codes.remove(hashed_code)
                 two_fa.backup_codes = json.dumps(hashed_codes)
-                two_fa.last_used_at = time.time()
+                two_fa.last_used_at = datetime.now(UTC)
                 await self.db.commit()
                 return True
 
@@ -205,7 +205,7 @@ class TwoFactorAuthService:
         hashed_codes = [hash_password(code) for code in backup_codes]
 
         two_fa.backup_codes = json.dumps(hashed_codes)
-        two_fa.updated_at = time.time()
+        two_fa.updated_at = datetime.now(UTC)
 
         await self.db.commit()
 

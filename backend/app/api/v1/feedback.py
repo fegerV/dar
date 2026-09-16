@@ -39,6 +39,6 @@ async def create_feedback(
         reaction=body.reaction,
         details=body.details,
     )
-    feedback = repo.db.add(feedback)
+    await repo.create(feedback)
     await db.commit()
     return FeedbackResponse.model_validate(feedback)

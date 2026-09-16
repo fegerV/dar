@@ -67,7 +67,7 @@ class BriefUpdate(BaseModel):
     model_config = {"from_attributes": True}
 
     status: str | None = Field(
-        None, pattern="^(draft|in_progress|completed)$"
+        default=None, pattern="^(draft|in_progress|completed)$"
     )
     occasion_text: str | None = None
     sender_role: str | None = None
@@ -75,11 +75,11 @@ class BriefUpdate(BaseModel):
     relationship: str | None = None
     relationship_text: str | None = None
     desired_mood: str | None = None
-    desired_length_sec: int | None = Field(None, ge=3, le=300)
-    humor_level: int | None = Field(None, ge=0, le=100)
-    emotion_level: int | None = Field(None, ge=0, le=100)
-    surprise_level: int | None = Field(None, ge=0, le=100)
-    personalization_level: int | None = Field(None, ge=0, le=100)
+    desired_length_sec: int | None = Field(default=None, ge=3, le=300)
+    humor_level: int | None = Field(default=None, ge=0, le=100)
+    emotion_level: int | None = Field(default=None, ge=0, le=100)
+    surprise_level: int | None = Field(default=None, ge=0, le=100)
+    personalization_level: int | None = Field(default=None, ge=0, le=100)
     inside_joke: str | None = None
     hobbies_text: str | None = None
     character_traits: str | None = None

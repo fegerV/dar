@@ -80,7 +80,7 @@ def permission_allowed(user_permissions: list[str], required: str) -> bool:
 
 @lru_cache(maxsize=1)
 def get_role_permissions(role_code: str) -> list[str]:
-    return SYSTEM_ROLES.get(role_code, {}).get("permissions", [])
+    return list(SYSTEM_ROLES.get(role_code, {}).get("permissions", []))
 
 
 async def get_user_permissions(
@@ -90,11 +90,11 @@ async def get_user_permissions(
     if user.is_admin:
         return ["*"]
 
+    # `Role` carries no active/inactive flag, so every granted role counts.
     result = await db.execute(
         select(Role, UserRole)
         .join(UserRole, Role.id == UserRole.role_id)
         .where(UserRole.user_id == user.id)
-        .where(Role.is_active if hasattr(Role, "is_active") else True)
     )
     permissions: list[str] = []
     for role, _ in result.all():

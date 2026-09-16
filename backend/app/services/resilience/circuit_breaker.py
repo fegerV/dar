@@ -1,9 +1,9 @@
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -78,11 +78,25 @@ def get_circuit_breaker(
     return _circuits[name]
 
 
-def circuit_breaker(name: str, failure_threshold: int = 5, recovery_timeout: float = 30.0):
-    def decorator(func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+def circuit_breaker(
+    name: str,
+    failure_threshold: int = 5,
+    recovery_timeout: float = 30.0,
+) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Coroutine[Any, Any, T | None]]]:
+    """Wrap an async callable so that it short-circuits once the circuit opens.
+
+    When the circuit is open — or when the wrapped call raises the configured
+    exception — the wrapper returns ``None`` instead of the awaited value, so the
+    decorated function is typed as returning ``T | None`` and callers must handle
+    the ``None`` fallback.
+    """
+
+    def decorator(
+        func: Callable[P, Awaitable[T]],
+    ) -> Callable[P, Coroutine[Any, Any, T | None]]:
         cb = get_circuit_breaker(name, failure_threshold, recovery_timeout)
 
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T | None:
             if cb.is_open():
                 logger.warning("Circuit breaker open for %s — returning fallback", name)
                 return None

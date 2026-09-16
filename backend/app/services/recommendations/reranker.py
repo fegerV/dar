@@ -50,12 +50,15 @@ class AIReranker:
             },
             "brief": {
                 "desired_mood": brief.desired_mood if brief else None,
-                "humor_level": brief.humor_level,
-                "emotion_level": brief.emotion_level,
-                "surprise_level": brief.surprise_level,
-                "inside_joke": brief.inside_joke,
-                "hobbies_text": brief.hobbies_text,
-                "sender_message": brief.sender_message,
+                # `brief` is optional (a project may have no brief yet); these were
+                # accessed unguarded, so this raised AttributeError whenever a
+                # project had not filled its brief in.
+                "humor_level": brief.humor_level if brief else None,
+                "emotion_level": brief.emotion_level if brief else None,
+                "surprise_level": brief.surprise_level if brief else None,
+                "inside_joke": brief.inside_joke if brief else None,
+                "hobbies_text": brief.hobbies_text if brief else None,
+                "sender_message": brief.sender_message if brief else None,
             },
             "candidates": [
                 {
