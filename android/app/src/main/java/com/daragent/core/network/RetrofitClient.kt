@@ -1,7 +1,5 @@
 package com.daragent.core.network
 
-import com.daragent.core.network.interceptors.AuthInterceptor
-import com.daragent.core.network.interceptors.LoggingInterceptor
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient

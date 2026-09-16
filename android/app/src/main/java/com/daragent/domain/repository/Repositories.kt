@@ -1,9 +1,11 @@
 package com.daragent.domain.repository
 
+import com.daragent.domain.model.AuthTokens
 import com.daragent.domain.model.Generation
 import com.daragent.domain.model.Payment
 import com.daragent.domain.model.Person
 import com.daragent.domain.model.Template
+import com.daragent.domain.model.UserProfile
 
 interface PeopleRepository {
     suspend fun list(): Result<List<Person>>

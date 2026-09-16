@@ -29,7 +29,7 @@ class PeopleRepositoryImpl(
                 val request = CreatePersonRequest(
                     name = person.name,
                     relationship = person.relationship,
-                    birth_date = person.birthDate,
+                    birthDate = person.birthDate,
                     interests = person.interests,
                     notes = null,
                 )

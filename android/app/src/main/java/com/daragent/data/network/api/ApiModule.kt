@@ -19,9 +19,14 @@ import com.daragent.data.network.dto.PersonResponse
 import com.daragent.data.network.dto.ProjectCreateRequest
 import com.daragent.data.network.dto.ProjectListResponse
 import com.daragent.data.network.dto.ProjectResponseDto
+import com.daragent.data.network.dto.ReactionRequestDto
+import com.daragent.data.network.dto.ReactionStatsResponseDto
 import com.daragent.data.network.dto.RecommendationListResponse
 import com.daragent.data.network.dto.RecommendationSelectResponse
 import com.daragent.data.network.dto.RecipientListResponse
+import com.daragent.data.network.dto.ReferralCodeResponseDto
+import com.daragent.data.network.dto.ReferralResponseDto
+import com.daragent.data.network.dto.ReferralStatsResponseDto
 import com.daragent.data.network.dto.RegisterRequest
 import com.daragent.data.network.dto.StartGenerationRequest
 import com.daragent.data.network.dto.TemplateListResponse

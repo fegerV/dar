@@ -40,8 +40,8 @@ class GenerationRepository @Inject constructor(
         return runCatching {
             val request = CreateGenerationRequest(
                 type = type,
-                brief_id = briefId,
-                photo_url = photoUrl,
+                briefId = briefId,
+                photoUrl = photoUrl,
             )
             val response = generationApi.createGeneration(request)
             if (response.isSuccessful) {

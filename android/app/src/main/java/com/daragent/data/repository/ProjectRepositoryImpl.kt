@@ -1,7 +1,10 @@
 package com.daragent.data.repository
 
+import com.daragent.data.network.api.BriefsApi
 import com.daragent.data.network.api.GenerationsApi
 import com.daragent.data.network.api.HolidaysApi
+import com.daragent.data.network.api.ProjectsApi
+import com.daragent.data.network.api.RecommendationsApi
 import com.daragent.data.network.dto.BriefResponseDto
 import com.daragent.data.network.dto.BriefUpdateRequest
 import com.daragent.data.network.dto.GenerationResponse

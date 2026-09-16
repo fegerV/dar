@@ -1,6 +1,7 @@
 package com.daragent.core.network
 
 import com.daragent.core.network.model.*
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 

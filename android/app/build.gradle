@@ -26,6 +26,11 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "boolean", "BUILD_TYPE_CI", "true"
+        // RetrofitClient reads com.daragent.BuildConfig.API_BASE_URL. The field used to be
+        // declared only in the (now removed) build.gradle.kts, so the Groovy build file that
+        // Gradle actually applies left the reference unresolved. The value matches the base
+        // URL data/network/NetworkModule.kt already uses.
+        buildConfigField "String", "API_BASE_URL", "\"https://api.daragent.ru/api/v1/\""
     }
 
     buildFeatures {

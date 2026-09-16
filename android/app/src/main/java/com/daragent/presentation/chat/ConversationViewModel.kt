@@ -56,12 +56,7 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch {
             getPeopleUseCase().fold(
                 onSuccess = { people ->
-                    _uiState.update {
-                        it.copy(
-                            people = people,
-                            chips = createChipsFromPeople(people),
-                        )
-                    }
+                    _uiState.update { it.copy(people = people) }
                     if (people.isNotEmpty()) {
                         updateWelcomeWithPeople(people)
                     }
@@ -82,10 +77,14 @@ class ConversationViewModel @Inject constructor(
         return people.take(5).map { it.name }
     }
 
-    private fun updateWelcomeWithPeople(people: List<PersonDto>) {
-        val updatedMessages = _uiState.value.messages.toMutableList()
-        if (updatedMessages.isNotEmpty() && updatedMessages[0] is Message.Welcome) {
-            updatedMessages[0] = Message.Welcome(userName = null)
+    private fun updateWelcomeWithPeople(people: List<Person>) {
+        val chips = createChipsFromPeople(people)
+        val updatedMessages = _uiState.value.messages.map { message ->
+            when (message) {
+                is Message.QuickChips -> Message.QuickChips(chips = chips)
+                is Message.Welcome -> Message.Welcome(userName = null)
+                else -> message
+            }
         }
         _uiState.update { it.copy(messages = updatedMessages) }
     }

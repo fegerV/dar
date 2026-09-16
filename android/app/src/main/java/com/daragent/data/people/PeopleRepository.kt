@@ -44,7 +44,7 @@ class PeopleRepository @Inject constructor(
             val request = CreatePersonRequest(
                 name = name,
                 relationship = relationship,
-                birth_date = birthDate,
+                birthDate = birthDate,
                 interests = interests,
                 notes = notes,
             )
@@ -69,7 +69,7 @@ class PeopleRepository @Inject constructor(
             val request = UpdatePersonRequest(
                 name = name,
                 relationship = relationship,
-                birth_date = birthDate,
+                birthDate = birthDate,
                 interests = interests,
                 notes = notes,
             )

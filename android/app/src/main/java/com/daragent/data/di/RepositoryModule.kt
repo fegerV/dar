@@ -4,7 +4,8 @@ import com.daragent.core.network.AuthApi
 import com.daragent.core.network.PeopleApi
 import com.daragent.core.network.api.ChatApi
 import com.daragent.core.network.GenerationApi
-import com.daragent.core.network.PaymentApi
+import com.daragent.data.network.api.ApiModule
+import com.daragent.data.network.api.PaymentsApi
 import com.daragent.data.auth.AuthRepository
 import com.daragent.data.generation.GenerationRepository
 import com.daragent.data.payment.PaymentRepository
@@ -52,9 +53,19 @@ object RepositoryModule {
         return GenerationRepositoryImpl(generationApi)
     }
 
+    // The complete implementation of the domain PaymentRepository interface lives in
+    // data/repository/PaymentRepositoryImpl.kt and is built on the legacy PaymentsApi
+    // (payments/projects/{id}, payments/{id}, payments/wallet, payments/entitlements).
+    // Those paths match the real backend routes, unlike core/network's PaymentApi, and
+    // core/network has no entitlements endpoint at all — so the legacy API is what the
+    // domain interface can actually be satisfied with.
     @Provides
     @Singleton
-    fun providePaymentRepository(paymentApi: PaymentApi): PaymentRepositoryInterface {
-        return PaymentRepositoryImpl(paymentApi)
+    fun providePaymentsApi(): PaymentsApi = ApiModule.paymentsApi
+
+    @Provides
+    @Singleton
+    fun providePaymentRepository(paymentsApi: PaymentsApi): PaymentRepositoryInterface {
+        return PaymentRepositoryImpl(paymentsApi)
     }
 }
