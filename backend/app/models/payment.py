@@ -39,7 +39,7 @@ class PaymentIdempotencyKey(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    
+
     user = relationship("User")
 
 

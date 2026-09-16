@@ -21,17 +21,17 @@ logger = logging.getLogger(__name__)
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
-    
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
+
         # Standard security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-        
+
         # Content Security Policy (CSP)
         # Restrictive CSP for production - adjust based on your needs
         csp_directives = {
@@ -47,13 +47,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action": ["'self'"],
             "frame-ancestors": ["'none'"],
         }
-        
+
         csp_string = "; ".join(
             f"{directive} {' '.join(values)}"
             for directive, values in csp_directives.items()
         )
         response.headers["Content-Security-Policy"] = csp_string
-        
+
         # Permissions Policy (formerly Feature Policy)
         permissions_policy = [
             "accelerometer=()",
@@ -67,13 +67,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "fullscreen=(self)",
         ]
         response.headers["Permissions-Policy"] = ", ".join(permissions_policy)
-        
+
         # Cache control for API responses
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
-        
+
         return response
 
 

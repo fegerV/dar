@@ -16,13 +16,13 @@ from app.main import app
 from app.models.base import Base
 from app.models.user import User
 
-_test_db = settings.DATABASE_URL
-
 # Celery: tests never run a worker, so point the app at kombu's in-memory
 # transport. `apply_async` then enqueues in-process instead of dialling a real
 # Redis/AMQP broker (which is absent in CI), and tasks are not executed inline
 # because these tests assert the persisted records, not task side effects.
 from app.workers.celery_app import celery_app as _celery_app
+
+_test_db = settings.DATABASE_URL
 
 _celery_app.conf.broker_url = "memory://"
 _celery_app.conf.result_backend = "cache+memory://"

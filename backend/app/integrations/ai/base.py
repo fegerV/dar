@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
@@ -124,76 +124,76 @@ class ProviderRegistry:
     ) -> ProviderResult:
         """
         Выполнить операцию с цепочкой fallback.
-        
+
         Args:
             providers: Список провайдеров для попытки выполнения
             execute_func: Имя метода для вызова (например, 'generate_text')
             *args: Позиционные аргументы для метода
             config: Конфигурация fallback цепочки
             **kwargs: Именованные аргументы для метода
-            
+
         Returns:
             ProviderResult с результатом или ошибкой
         """
         import asyncio
         import logging
-        
+
         logger = logging.getLogger(__name__)
         config = config or FallbackChainConfig()
         enabled_providers = self._get_enabled_providers(providers)
-        
+
         if not enabled_providers:
             return ProviderResult(
                 success=False,
                 error="No enabled providers available"
             )
-        
+
         last_error: Exception | None = None
-        
+
         for idx, provider in enumerate(enabled_providers):
             if idx >= config.max_retries:
                 break
-                
+
             try:
                 # Проверяем health перед использованием
                 if not await provider.healthcheck():
                     if config.log_failures:
                         logger.warning(f"Provider {provider.name} healthcheck failed")
                     continue
-                
+
                 # Вызываем метод провайдера
                 method = getattr(provider, execute_func, None)
                 if method is None:
                     raise AttributeError(f"Method {execute_func} not found on {provider.name}")
-                
+
                 result = await asyncio.wait_for(
                     method(*args, **kwargs),
                     timeout=config.timeout_seconds
                 )
-                
+
                 return ProviderResult(
                     success=True,
                     data=result,
                     provider_name=provider.name
                 )
-                
-            except asyncio.TimeoutError as e:
+
+            except TimeoutError as e:
                 last_error = e
                 if config.log_failures:
                     logger.warning(f"Provider {provider.name} timed out after {config.timeout_seconds}s")
-                    
+
             except Exception as e:
                 last_error = e
                 if config.log_failures:
                     logger.exception(f"Provider {provider.name} failed: {e}")
-                
+
                 if config.fail_on_first_error:
                     return ProviderResult(
                         success=False,
                         error=str(e),
                         provider_name=provider.name
                     )
-        
+
         # Все провайдеры исчерпаны
         return ProviderResult(
             success=False,
@@ -201,8 +201,8 @@ class ProviderRegistry:
         )
 
     async def generate_text_with_fallback(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         parameters: dict[str, Any],
         config: FallbackChainConfig | None = None
     ) -> ProviderResult:
@@ -216,8 +216,8 @@ class ProviderRegistry:
         )
 
     async def generate_image_with_fallback(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         parameters: dict[str, Any],
         config: FallbackChainConfig | None = None
     ) -> ProviderResult:
@@ -231,8 +231,8 @@ class ProviderRegistry:
         )
 
     async def generate_video_with_fallback(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         parameters: dict[str, Any],
         config: FallbackChainConfig | None = None
     ) -> ProviderResult:
@@ -246,8 +246,8 @@ class ProviderRegistry:
         )
 
     async def generate_voice_with_fallback(
-        self, 
-        text: str, 
+        self,
+        text: str,
         parameters: dict[str, Any],
         config: FallbackChainConfig | None = None
     ) -> ProviderResult:
@@ -261,8 +261,8 @@ class ProviderRegistry:
         )
 
     async def generate_music_with_fallback(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         parameters: dict[str, Any],
         config: FallbackChainConfig | None = None
     ) -> ProviderResult:

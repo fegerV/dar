@@ -156,7 +156,7 @@ async def initiate_2fa(
 ):
     """Инициировать настройку 2FA (получить секрет и QR URI)."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     return await service.initiate_2fa_setup(current_user.id)
 
@@ -169,7 +169,7 @@ async def enable_2fa(
 ):
     """Включить 2FA после верификации TOTP кода."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     return await service.enable_2fa(current_user.id, body.totp_code)
 
@@ -182,11 +182,11 @@ async def disable_2fa(
 ):
     """Отключить 2FA."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     await service.disable_2fa(
-        current_user.id, 
-        totp_code=body.totp_code, 
+        current_user.id,
+        totp_code=body.totp_code,
         backup_code=body.backup_code
     )
     return None
@@ -199,7 +199,7 @@ async def get_2fa_status(
 ):
     """Получить статус 2FA для текущего пользователя."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     return await service.get_2fa_status(current_user.id)
 
@@ -212,7 +212,7 @@ async def regenerate_backup_codes(
 ):
     """Перегенерировать backup коды."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     return await service.regenerate_backup_codes(current_user.id, body.totp_code)
 
@@ -225,7 +225,7 @@ async def verify_2fa_code(
 ):
     """Верифицировать 2FA код (для тестирования или повторного входа)."""
     from app.services.auth.two_factor_service import TwoFactorAuthService
-    
+
     service = TwoFactorAuthService(db)
     verified = await service.verify_2fa(current_user.id, body.code)
     return {"verified": verified}

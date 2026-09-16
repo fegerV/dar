@@ -1,12 +1,9 @@
+import asyncio
 import hashlib
 import hmac
 import ipaddress
 import logging
-import secrets
-import time
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from uuid import UUID
 
 import httpx
@@ -26,13 +23,13 @@ RETRY_BASE_DELAY = 1.0
 
 class IdempotencyService:
     """Service for handling idempotent payment operations."""
-    
+
     def __init__(self, db: AsyncSession):
         self.db = db
-    
+
     async def get_or_create_idempotency_key(
-        self, 
-        user_id: UUID, 
+        self,
+        user_id: UUID,
         idempotency_key: str
     ) -> PaymentIdempotencyKey | None:
         """Get existing idempotency key or create new one."""
@@ -43,10 +40,10 @@ class IdempotencyService:
             )
         )
         existing = result.scalar_one_or_none()
-        
+
         if existing:
             return existing
-        
+
         new_key = PaymentIdempotencyKey(
             user_id=user_id,
             idempotency_key=idempotency_key,
@@ -55,7 +52,7 @@ class IdempotencyService:
         )
         self.db.add(new_key)
         return new_key
-    
+
     async def check_and_set_idempotency(
         self,
         user_id: UUID,
@@ -66,24 +63,24 @@ class IdempotencyService:
     ) -> tuple[bool, dict | None]:
         """
         Check idempotency and store response if new.
-        
+
         Returns:
             tuple: (is_duplicate, cached_response)
         """
         key_record = await self.get_or_create_idempotency_key(user_id, idempotency_key)
         if not key_record:
             return False, None
-        
+
         # If already processed, return cached response
         if key_record.response_data:
             return True, key_record.response_data
-        
+
         # Store request hash and response for future idempotent requests
         key_record.request_hash = request_hash
         key_record.response_data = response_data
         key_record.status_code = status_code
         key_record.processed_at = datetime.now(UTC)
-        
+
         return False, None
 
 
@@ -228,31 +225,32 @@ class WalletService:
     async def get_wallet_with_lock(self, user_id: UUID, nowait: bool = False) -> Wallet:
         """
         Получить кошелек с row-level блокировкой для предотвращения race conditions.
-        
+
         Args:
             user_id: ID пользователя
             nowait: Если True, выбросить исключение при невозможности получить блокировку
-            
+
         Returns:
             Wallet объект с активной транзакционной блокировкой
         """
         from sqlalchemy import select
+
         from app.models.payment import Wallet as WalletModel
-        
+
         # Используем for_update с опцией nowait для немедленной ошибки при блокировке
         stmt = select(WalletModel).where(
             WalletModel.user_id == user_id
         ).with_for_update(nowait=nowait, skip_locked=False)
-        
+
         result = await self.db.execute(stmt)
         wallet = result.scalar_one_or_none()
-        
+
         if wallet is None:
             # Создаем новый кошелек если не существует
             wallet = Wallet(user_id=user_id, balance_rub=0, bonus_balance=0)
             self.db.add(wallet)
             await self.db.flush()
-            
+
         return wallet
 
     async def credit(self, user_id: UUID, amount: float, bonus: bool = False) -> WalletResponse:
@@ -268,25 +266,26 @@ class WalletService:
     async def debit(self, user_id: UUID, amount: float, use_row_lock: bool = True) -> WalletResponse:
         """
         Списать средства с кошелька с поддержкой row-level locking.
-        
+
         Args:
             user_id: ID пользователя
             amount: Сумма для списания
             use_row_lock: Использовать ли row-level блокировку (рекомендуется True)
         """
-        from app.models.payment import Wallet as WalletModel
         from sqlalchemy import select
-        
+
+        from app.models.payment import Wallet as WalletModel
+
         if use_row_lock:
             # Атомарная операция с row-level блокировкой
             stmt = select(WalletModel).where(
                 WalletModel.user_id == user_id,
                 WalletModel.balance_rub >= amount
             ).with_for_update(nowait=False, skip_locked=False)
-            
+
             result = await self.db.execute(stmt)
             wallet = result.scalar_one_or_none()
-            
+
             if wallet is None:
                 # Проверяем, существует ли вообще кошелек
                 check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
@@ -294,7 +293,7 @@ class WalletService:
                 if check_result.scalar_one_or_none() is None:
                     raise ValidationException("Кошелек не найден")
                 raise ValidationException("Недостаточно средств на кошельке")
-            
+
             wallet.balance_rub = wallet.balance_rub - amount
             wallet.updated_at = datetime.now(UTC)
         else:
@@ -309,38 +308,39 @@ class WalletService:
             if updated is None:
                 raise ValidationException("Недостаточно средств на кошельке")
             wallet = updated
-        
+
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
 
     async def debit_bonus(self, user_id: UUID, amount: float, use_row_lock: bool = True) -> WalletResponse:
         """
         Списать бонусные средства с кошелька с поддержкой row-level locking.
-        
+
         Args:
             user_id: ID пользователя
             amount: Сумма для списания
             use_row_lock: Использовать ли row-level блокировку
         """
-        from app.models.payment import Wallet as WalletModel
         from sqlalchemy import select
-        
+
+        from app.models.payment import Wallet as WalletModel
+
         if use_row_lock:
             stmt = select(WalletModel).where(
                 WalletModel.user_id == user_id,
                 WalletModel.bonus_balance >= amount,
             ).with_for_update(nowait=False, skip_locked=False)
-            
+
             result = await self.db.execute(stmt)
             wallet = result.scalar_one_or_none()
-            
+
             if wallet is None:
                 check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
                 check_result = await self.db.execute(check_stmt)
                 if check_result.scalar_one_or_none() is None:
                     raise ValidationException("Кошелек не найден")
                 raise ValidationException("Недостаточно бонусных средств на кошельке")
-            
+
             wallet.bonus_balance = wallet.bonus_balance - amount
             wallet.updated_at = datetime.now(UTC)
         else:
@@ -358,44 +358,45 @@ class WalletService:
             if updated is None:
                 raise ValidationException("Недостаточно бонусных средств на кошельке")
             wallet = updated
-        
+
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
 
     async def transfer_to_bonus(
-        self, 
-        user_id: UUID, 
+        self,
+        user_id: UUID,
         amount: float,
         use_row_lock: bool = True
     ) -> WalletResponse:
         """
         Перевести средства с основного баланса на бонусный.
-        
+
         Args:
             user_id: ID пользователя
             amount: Сумма для перевода
             use_row_lock: Использовать ли row-level блокировку
         """
-        from app.models.payment import Wallet as WalletModel
         from sqlalchemy import select
-        
+
+        from app.models.payment import Wallet as WalletModel
+
         if use_row_lock:
             # Блокируем кошелек для атомарной операции
             stmt = select(WalletModel).where(
                 WalletModel.user_id == user_id,
                 WalletModel.balance_rub >= amount
             ).with_for_update(nowait=False, skip_locked=False)
-            
+
             result = await self.db.execute(stmt)
             wallet = result.scalar_one_or_none()
-            
+
             if wallet is None:
                 check_stmt = select(WalletModel).where(WalletModel.user_id == user_id)
                 check_result = await self.db.execute(check_stmt)
                 if check_result.scalar_one_or_none() is None:
                     raise ValidationException("Кошелек не найден")
                 raise ValidationException("Недостаточно средств на кошельке")
-            
+
             # Выполняем перевод в рамках одной транзакции
             wallet.balance_rub = wallet.balance_rub - amount
             wallet.bonus_balance = (wallet.bonus_balance or 0) + amount
@@ -418,7 +419,7 @@ class WalletService:
             wallet = result.one_or_none()
             if wallet is None:
                 raise ValidationException("Недостаточно средств на кошельке")
-        
+
         await self.db.commit()
         return WalletResponse.model_validate(wallet)
 
@@ -433,30 +434,30 @@ class PaymentService:
         self.idempotency_service = IdempotencyService(db)
 
     async def create_payment(
-        self, 
-        user_id: UUID, 
-        project_id: UUID, 
-        amount: float, 
+        self,
+        user_id: UUID,
+        project_id: UUID,
+        amount: float,
         method: str = "bank_card",
         idempotency_key: str | None = None
     ) -> PaymentResponse:
         """
         Create payment with idempotency support.
-        
+
         Args:
             user_id: User ID
             project_id: Project ID to pay for
             amount: Payment amount in RUB
             method: Payment method
             idempotency_key: Optional key for idempotent requests
-        
+
         Returns:
             PaymentResponse with payment details and confirmation URL
         """
         # Generate idempotency key if not provided
         if idempotency_key is None:
             idempotency_key = f"{user_id}:{project_id}:{datetime.now(UTC).timestamp()}"
-        
+
         # Prepare request payload for hashing
         request_payload = {
             "user_id": str(user_id),
@@ -465,30 +466,31 @@ class PaymentService:
             "method": method
         }
         request_hash = generate_request_hash(request_payload)
-        
+
         # Check for duplicate request
         is_duplicate, cached_response = await self.idempotency_service.check_and_set_idempotency(
             user_id=user_id,
             idempotency_key=idempotency_key,
             request_hash=request_hash
         )
-        
+
         if is_duplicate and cached_response:
             # Return cached response for duplicate request
             return PaymentResponse(**cached_response)
-        
+
         # Check for existing paid project
         from app.repositories.projects import ProjectRepository
         project_repo = ProjectRepository(self.db)
         project = await project_repo.get_by_id(project_id, user_id)
         if project is None:
             raise NotFoundException("Проект не найден")
-        
+
         if project.paid_rub and project.paid_rub > 0:
             raise ConflictException("Оплата для этого проекта уже существует")
-        
+
         # Check for existing successful payment
         from sqlalchemy import select
+
         from app.models.payment import Payment as PaymentModel
         existing_paid = await self.db.execute(
             select(PaymentModel).where(
@@ -499,7 +501,7 @@ class PaymentService:
         )
         if existing_paid.scalar_one_or_none() is not None:
             raise ConflictException("Оплата для этого проекта уже существует")
-        
+
         # Create new payment record
         payment = PaymentModel(
             user_id=user_id,
@@ -526,7 +528,7 @@ class PaymentService:
         payment.external_payment_id = yookassa_payment.get("id")
         payment.provider_payload = yookassa_payment
         confirmation_url = yookassa_payment.get("confirmation", {}).get("confirmation_url")
-        
+
         # Build response
         response_data = {
             "id": str(payment.id),
@@ -539,7 +541,7 @@ class PaymentService:
         }
         if confirmation_url:
             response_data["confirmation_url"] = confirmation_url
-        
+
         # Store response for idempotency
         await self.idempotency_service.check_and_set_idempotency(
             user_id=user_id,
@@ -548,7 +550,7 @@ class PaymentService:
             response_data=response_data,
             status_code=200
         )
-        
+
         await self.db.commit()
 
         response = PaymentResponse.model_validate(payment)

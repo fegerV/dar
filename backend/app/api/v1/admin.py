@@ -1,6 +1,6 @@
+import logging
 import secrets
 from datetime import UTC, datetime
-import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -22,8 +22,6 @@ from app.models.admin import Role, UserRole, Worker
 from app.models.payment import LedgerTransaction, Payment, PromoCode, Wallet
 from app.models.template import PromptTemplate, PromptTemplateVersion
 from app.models.user import User
-
-logger = logging.getLogger(__name__)
 from app.schemas.admin import (
     AdminDashboardStats,
     AdminGenerationDetailResponse,
@@ -72,6 +70,8 @@ from app.schemas.admin import (
     WorkerStatusUpdate,
 )
 from app.services.admin.service import AdminService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -206,26 +206,29 @@ async def retry_generation(
     from app.workers.pipeline_tasks import execute_pipeline
 
     service = AdminService(db)
-    generation_detail = await service.get_generation_detail(gen_id)
-    
+    # Called for its validation side effect: it raises NotFoundException when the
+    # generation does not exist. The return value is unused because the row is
+    # re-loaded below.
+    await service.get_generation_detail(gen_id)
+
     generation = await db.get(GenerationModel, gen_id)
     if generation is None:
         raise NotFoundException("Generation not found")
-    
+
     if generation.status in ("completed", "failed", "cancelled", "canceled"):
         generation.status = "queued"
         generation.progress = 0
         generation.current_step = None
         generation.started_at = None
         generation.completed_at = None
-        
+
         for step in generation.steps:
             step.status = "queued"
             step.started_at = None
             step.completed_at = None
             step.error_code = None
             step.error_message = None
-        
+
         job_result = await db.execute(
             select(GenerationJob)
             .where(GenerationJob.generation_id == gen_id)
@@ -238,9 +241,9 @@ async def retry_generation(
             job.retry_count = (job.retry_count or 0) + 1
             job.started_at = None
             job.finished_at = None
-        
+
         await db.flush()
-        
+
         try:
             if job:
                 execute_pipeline.apply_async(args=[str(gen_id)], countdown=5)
@@ -257,7 +260,7 @@ async def retry_generation(
                 execute_pipeline.apply_async(args=[str(gen_id)], countdown=5)
         except Exception as e:
             logger.warning("Failed to dispatch retry job for %s: %s", gen_id, e)
-    
+
     audit = AuditService(db)
     await audit.log(
         actor_user_id=current_user.id, action="generation_retry",

@@ -12,8 +12,8 @@ from structlog.types import Processor
 
 
 def add_app_context(
-    logger: logging.Logger, 
-    method_name: str, 
+    logger: logging.Logger,
+    method_name: str,
     event_dict: structlog.types.EventDict
 ) -> structlog.types.EventDict:
     """Добавить контекст приложения к каждому лог-сообщению."""
@@ -24,7 +24,7 @@ def add_app_context(
 def setup_logging(log_level: str = "INFO", json_format: bool = True) -> None:
     """
     Настроить структурированное логирование.
-    
+
     Args:
         log_level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         json_format: Если True, использовать JSON формат, иначе текстовый
@@ -38,35 +38,35 @@ def setup_logging(log_level: str = "INFO", json_format: bool = True) -> None:
         add_app_context,
         structlog.processors.TimeStamper(fmt="iso"),
     ]
-    
+
     if json_format:
         # JSON формат для production
         shared_processors.append(structlog.processors.dict_tracebacks)
         shared_processors.append(structlog.processors.JSONRenderer())
-        
+
         # Настройка стандартного logging для JSON вывода
         logging.basicConfig(
             format="%(message)s",
             stream=sys.stdout,
             level=getattr(logging, log_level.upper()),
         )
-        
+
         # Фильтр для пропуска structlog записей в стандартный formatter
         structlog_handler = logging.StreamHandler(sys.stdout)
         structlog_handler.setFormatter(logging.Formatter("%(message)s"))
-        
+
         root_logger = logging.getLogger()
         root_logger.handlers = [structlog_handler]
     else:
         # Текстовый формат для development
         shared_processors.append(structlog.dev.ConsoleRenderer(colors=True))
-        
+
         logging.basicConfig(
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             stream=sys.stdout,
             level=getattr(logging, log_level.upper()),
         )
-    
+
     # Конфигурация structlog
     structlog.configure(
         processors=shared_processors,
@@ -82,10 +82,10 @@ def setup_logging(log_level: str = "INFO", json_format: bool = True) -> None:
 def get_logger(name: str | None = None) -> structlog.BoundLogger:
     """
     Получить logger instance.
-    
+
     Args:
         name: Имя logger (обычно __name__ модуля)
-        
+
     Returns:
         Bound logger instance
     """
@@ -97,7 +97,7 @@ def get_logger(name: str | None = None) -> structlog.BoundLogger:
 class StructuredLoggingMiddleware:
     """
     Middleware для добавления request context к логам.
-    
+
     Использование в FastAPI:
         @app.middleware("http")
         async def log_request(request, call_next):
@@ -105,19 +105,19 @@ class StructuredLoggingMiddleware:
                 response = await call_next(request)
                 return response
     """
-    
+
     def __init__(self, app):
         self.app = app
-    
+
     async def __call__(self, scope, receive, send):
         from contextvars import ContextVar
-        
+
         request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
-        
+
         if scope["type"] == "http":
             headers = dict(scope.get("headers", []))
             request_id = headers.get(b"x-request-id", b"").decode() or str(id(scope))
-            
+
             token = request_id_var.set(request_id)
             try:
                 structlog.contextvars.clear_contextvars()
@@ -138,7 +138,7 @@ def log_exception(
 ) -> None:
     """
     Логировать исключение с полным stack trace.
-    
+
     Args:
         logger: Logger instance
         message: Сообщение об ошибке
@@ -150,13 +150,13 @@ def log_exception(
 
 # Пример использования в коде:
 # from app.core.logging_config import get_logger, setup_logging
-# 
+#
 # setup_logging(log_level="INFO", json_format=True)
 # logger = get_logger(__name__)
-# 
+#
 # logger.info("Application started", version="1.0.0")
 # logger.debug("Processing request", user_id=user_id, action="login")
-# 
+#
 # try:
 #     risky_operation()
 # except Exception as e:

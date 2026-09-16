@@ -69,6 +69,7 @@ __all__ = [
     "Wallet",
     "Entitlement",
     "Payment",
+    "PaymentIdempotencyKey",
     "PromoCode",
     "LedgerTransaction",
     "ReferralCode",

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Register global exception handlers with the FastAPI app."""
-    
+
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
         """Handle custom application exceptions."""
@@ -34,18 +34,18 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "user_agent": request.headers.get("user-agent"),
             },
         )
-        
+
         http_requests_total.labels(
             method=request.method,
             path=request.url.path,
             status=str(exc.status_code),
         ).inc()
-        
+
         return JSONResponse(
             status_code=exc.status_code,
             content=exc.detail,
         )
-    
+
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
@@ -60,13 +60,13 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "client_ip": get_client_ip(request),
             },
         )
-        
+
         http_requests_total.labels(
             method=request.method,
             path=request.url.path,
             status="422",
         ).inc()
-        
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -77,7 +77,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 }
             },
         )
-    
+
     @app.exception_handler(ValidationError)
     async def pydantic_validation_exception_handler(
         request: Request, exc: ValidationError
@@ -92,7 +92,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "client_ip": get_client_ip(request),
             },
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
@@ -103,7 +103,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 }
             },
         )
-    
+
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(
         request: Request, exc: StarletteHTTPException
@@ -121,13 +121,13 @@ def register_exception_handlers(app: FastAPI) -> None:
                     "client_ip": get_client_ip(request),
                 },
             )
-        
+
         http_requests_total.labels(
             method=request.method,
             path=request.url.path,
             status=str(exc.status_code),
         ).inc()
-        
+
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -137,7 +137,7 @@ def register_exception_handlers(app: FastAPI) -> None:
                 }
             },
         )
-    
+
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_exception_handler(
         request: Request, exc: SQLAlchemyError
@@ -154,13 +154,13 @@ def register_exception_handlers(app: FastAPI) -> None:
             },
             exc_info=True,
         )
-        
+
         http_requests_total.labels(
             method=request.method,
             path=request.url.path,
             status="500",
         ).inc()
-        
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -170,13 +170,13 @@ def register_exception_handlers(app: FastAPI) -> None:
                 }
             },
         )
-    
+
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle all unhandled exceptions."""
         # Get correlation ID if available
         correlation_id = request.headers.get("X-Request-ID", "unknown")
-        
+
         logger.critical(
             "Unhandled exception: %s",
             str(exc),
@@ -191,13 +191,13 @@ def register_exception_handlers(app: FastAPI) -> None:
             },
             exc_info=True,
         )
-        
+
         http_requests_total.labels(
             method=request.method,
             path=request.url.path,
             status="500",
         ).inc()
-        
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -217,29 +217,29 @@ def get_client_ip(request: Request) -> str | None:
     if forwarded_for:
         # Take the first IP in the chain
         return forwarded_for.split(",")[0].strip()
-    
+
     # Check for real IP header
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip
-    
+
     # Fall back to direct client IP
     if request.client:
         return request.client.host
-    
+
     return None
 
 
 class ExceptionContextManager:
     """Context manager for enhanced exception logging with additional context."""
-    
+
     def __init__(self, operation: str, **context: Any):
         self.operation = operation
         self.context = context
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             logger.error(

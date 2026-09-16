@@ -41,14 +41,14 @@ class CircuitBreakerConfig:
     timeout: float = 60.0  # Time in seconds before attempting recovery
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open."""
     pass
 
 
 class CircuitBreaker:
     """Circuit breaker implementation for external service calls."""
-    
+
     def __init__(self, config: CircuitBreakerConfig | None = None):
         self.config = config or CircuitBreakerConfig()
         self.state = CircuitState.CLOSED
@@ -56,7 +56,7 @@ class CircuitBreaker:
         self.success_count = 0
         self.last_failure_time: float | None = None
         self._lock = asyncio.Lock()
-    
+
     async def call(self, func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """Execute function through circuit breaker."""
         async with self._lock:
@@ -66,22 +66,22 @@ class CircuitBreaker:
                     self.success_count = 0
                     logger.info("Circuit breaker transitioning to HALF_OPEN")
                 else:
-                    raise CircuitBreakerOpen("Circuit breaker is open")
-        
+                    raise CircuitBreakerError("Circuit breaker is open")
+
         try:
             result = func(*args, **kwargs)
             await self._record_success()
             return result
-        except Exception as e:
+        except Exception:
             await self._record_failure()
             raise
-    
+
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt reset."""
         if self.last_failure_time is None:
             return True
         return (time.time() - self.last_failure_time) >= self.config.timeout
-    
+
     async def _record_success(self) -> None:
         """Record successful call."""
         async with self._lock:
@@ -94,13 +94,13 @@ class CircuitBreaker:
                     logger.info("Circuit breaker transitioning to CLOSED")
             elif self.state == CircuitState.CLOSED:
                 self.failure_count = 0
-    
+
     async def _record_failure(self) -> None:
         """Record failed call."""
         async with self._lock:
             self.failure_count += 1
             self.last_failure_time = time.time()
-            
+
             if self.state == CircuitState.HALF_OPEN:
                 self.state = CircuitState.OPEN
                 logger.warning("Circuit breaker transitioning to OPEN (failure in half-open)")
@@ -116,23 +116,23 @@ class CircuitBreaker:
 def retry_with_backoff(config: RetryConfig | None = None):
     """
     Decorator for retrying async functions with exponential backoff and jitter.
-    
+
     Usage:
         @retry_with_backoff(RetryConfig(max_retries=3, base_delay=1.0))
         async def my_api_call():
             ...
     """
     retry_config = config or RetryConfig()
-    
+
     def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             last_exception: Exception | None = None
-            
+
             for attempt in range(retry_config.max_retries + 1):
                 try:
                     result = await func(*args, **kwargs)
-                    
+
                     # Check if we should retry based on result
                     if retry_config.retry_on_result and retry_config.retry_on_result(result):
                         if attempt < retry_config.max_retries:
@@ -146,12 +146,12 @@ def retry_with_backoff(config: RetryConfig | None = None):
                             )
                             await asyncio.sleep(delay)
                             continue
-                    
+
                     return result
-                    
+
                 except retry_config.exceptions as e:
                     last_exception = e
-                    
+
                     if attempt < retry_config.max_retries:
                         delay = _calculate_delay(retry_config, attempt)
                         logger.warning(
@@ -170,10 +170,10 @@ def retry_with_backoff(config: RetryConfig | None = None):
                             retry_config.max_retries + 1,
                             e,
                         )
-            
+
             # This should not be reached, but just in case
             raise last_exception or Exception("All retries exhausted")
-        
+
         return wrapper
     return decorator
 
@@ -182,14 +182,14 @@ def _calculate_delay(config: RetryConfig, attempt: int) -> float:
     """Calculate delay with exponential backoff and jitter."""
     # Exponential backoff: base_delay * 2^attempt
     exponential_delay = config.base_delay * (2 ** attempt)
-    
+
     # Cap at max_delay
     capped_delay = min(exponential_delay, config.max_delay)
-    
+
     # Add jitter: random value between -jitter% and +jitter%
     jitter_range = capped_delay * config.jitter
     jittered_delay = capped_delay + random.uniform(-jitter_range, jitter_range)
-    
+
     # Ensure non-negative delay
     return max(0, jittered_delay)
 
@@ -198,13 +198,13 @@ def _calculate_delay(config: RetryConfig, attempt: int) -> float:
 class ResilientClient:
     """
     Client wrapper combining retry and circuit breaker patterns.
-    
+
     Usage:
         client = ResilientClient(
             retry_config=RetryConfig(max_retries=3),
             circuit_breaker_config=CircuitBreakerConfig(failure_threshold=5)
         )
-        
+
         @client.resilient()
         async def call_external_api():
             ...
@@ -212,17 +212,17 @@ class ResilientClient:
     retry_config: RetryConfig = field(default_factory=RetryConfig)
     circuit_breaker_config: CircuitBreakerConfig = field(default_factory=CircuitBreakerConfig)
     circuit_breaker: CircuitBreaker = field(init=False)
-    
+
     def __post_init__(self):
         self.circuit_breaker = CircuitBreaker(self.circuit_breaker_config)
-    
+
     def resilient(
         self,
         retry_config: RetryConfig | None = None,
     ) -> Callable[[Callable[P, Coroutine[Any, Any, R]]], Callable[P, Coroutine[Any, Any, R]]]:
         """Decorator combining retry and circuit breaker."""
         effective_retry_config = retry_config or self.retry_config
-        
+
         def decorator(func: Callable[P, Coroutine[Any, Any, R]]) -> Callable[P, Coroutine[Any, Any, R]]:
             @wraps(func)
             async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -231,8 +231,8 @@ class ResilientClient:
                 async def retryable_call():
                     # Apply circuit breaker
                     return await self.circuit_breaker.call(func, *args, **kwargs)
-                
+
                 return await retryable_call()
-            
+
             return wrapper
         return decorator

@@ -19,7 +19,6 @@ from app.models.audit import AuditLog
 from app.models.email_verification import EmailVerification
 from app.models.payment import Entitlement, Wallet
 from app.models.referral import ReferralCode
-from app.models.two_factor_auth import TwoFactorAuth
 from app.models.user import User, UserAuthIdentity, UserPreferences
 from app.repositories.entitlements import EntitlementRepository
 from app.repositories.refresh_tokens import RefreshTokenRepository
@@ -193,12 +192,12 @@ class AuthService:
     async def login(self, email: str, password: str, totp_code: str | None = None) -> dict:
         """
         Аутентификация пользователя с поддержкой 2FA TOTP.
-        
+
         Args:
             email: Email пользователя
             password: Пароль
             totp_code: Опциональный TOTP код для 2FA
-            
+
         Returns:
             Dict с access и refresh токенами
         """
@@ -217,14 +216,14 @@ class AuthService:
         # Проверяем 2FA если включен
         two_fa_service = TwoFactorAuthService(self.db)
         requires_2fa = await two_fa_service.verify_2fa(user.id, totp_code or "")
-        
+
         if not requires_2fa:
             # Если 2FA включен но код не предоставлен или неверен
             # Проверяем статус 2FA
             two_fa_status = await two_fa_service.get_2fa_status(user.id)
             if two_fa_status.get("is_enabled"):
                 raise UnauthorizedException("2FA code required")
-        
+
         return await self._make_tokens(user.id)
 
     async def oauth_login(self, provider: str, access_token: str, id_token: str | None = None) -> dict:
@@ -367,10 +366,10 @@ class AuthService:
             raise ValidationException(
                 "Password must contain at least one special character"
             )
-        
+
         # Локальная проверка на распространенные пароли (без интеграции с haveibeenpwned)
         common_passwords = {
-            "password", "123456", "12345678", "qwerty", "abc123", 
+            "password", "123456", "12345678", "qwerty", "abc123",
             "monkey", "master", "dragon", "letmein", "login",
             "admin", "welcome", "password1", "password123", "daragent"
         }
@@ -378,7 +377,7 @@ class AuthService:
             raise ValidationException(
                 "This password is too common. Please choose a more secure password."
             )
-        
+
         # Проверка на последовательности символов
         if password.lower() in ["abcdef", "abcdefg", "1234567", "qwertyui"]:
             raise ValidationException(
