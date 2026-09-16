@@ -386,7 +386,7 @@ export function AdminUsers() {
                 placeholder="e.g., Spam violation, Terms of service breach" 
                 aria-describedby="bulk-reason-help"
               />
-              <p id="bulk-reason-help" className="text-xs text-muted-foreground mt-1">Brief description for audit log (e.g., "Spam violation")</p>
+              <p id="bulk-reason-help" className="text-xs text-muted-foreground mt-1">Brief description for audit log (e.g., &quot;Spam violation&quot;)</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => { setBulkAction(null); setBulkReason("") }}>Cancel</Button>
@@ -423,7 +423,7 @@ export function AdminUsers() {
                 placeholder="e.g., Suspicious activity, Brute force attempt" 
                 aria-describedby="ip-reason-help"
               />
-              <p id="ip-reason-help" className="text-xs text-muted-foreground mt-1">Reason for blocking (e.g., "Suspicious activity")</p>
+              <p id="ip-reason-help" className="text-xs text-muted-foreground mt-1">Reason for blocking (e.g., &quot;Suspicious activity&quot;)</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setIpBlockDialog(null)}>Cancel</Button>
