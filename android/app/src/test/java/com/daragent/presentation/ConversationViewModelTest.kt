@@ -1,10 +1,10 @@
 package com.daragent.presentation
 
-import app.cash.turbine.test
-import com.daragent.core.network.model.chat.ChatMessageResponse
 import com.daragent.domain.chat.SendMessageUseCase
 import com.daragent.domain.conversation.GetPeopleUseCase
+import com.daragent.domain.repository.ChatMessage
 import com.daragent.presentation.chat.ConversationViewModel
+import com.daragent.presentation.chat.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
@@ -15,7 +15,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.junit.MockitoJUnitRunner
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 
+/**
+ * Drives ConversationViewModel on a StandardTestDispatcher so the init-time loadPeople()
+ * coroutine is queued (not run eagerly) and every stub is in place before the work executes.
+ * State is read through uiState.value after advancing virtual time, which keeps the assertions
+ * independent of coroutine scheduling.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(MockitoJUnitRunner::class)
 class ConversationViewModelTest {
@@ -26,7 +34,8 @@ class ConversationViewModelTest {
     private lateinit var sendMessageUseCase: SendMessageUseCase
 
     private lateinit var viewModel: ConversationViewModel
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val scheduler = TestCoroutineScheduler()
+    private val testDispatcher = StandardTestDispatcher(scheduler)
 
     @Before
     fun setup() {
@@ -40,91 +49,100 @@ class ConversationViewModelTest {
     }
 
     @Test
-    fun `initial state should have welcome message`() = runTest {
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertTrue(state.messages.isNotEmpty())
-            assertTrue(state.messages.first() is com.daragent.presentation.chat.model.Message.Welcome)
-            cancelAndIgnoreRemainingEvents()
-        }
+    fun `initial state should have welcome message`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.messages.isNotEmpty())
+        assertTrue(state.messages.first() is Message.Welcome)
     }
 
     @Test
-    fun `onChipSelected should add user message`() = runTest {
-        `when`(sendMessageUseCase(any(), any()))
-            .thenReturn(Result.success(mockResponse()))
+    fun `onChipSelected should add user message`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        whenever(sendMessageUseCase(any(), any())).thenReturn(Result.success(agentReply()))
 
         viewModel.onChipSelected("Маму")
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            val userMessages = state.messages.filterIsInstance<com.daragent.presentation.chat.model.Message.Text>().filter { it.isFromUser }
-            assertTrue(userMessages.any { it.text == "Маму" })
-            cancelAndIgnoreRemainingEvents()
-        }
+        val userMessages = viewModel.uiState.value.messages
+            .filterIsInstance<Message.Text>()
+            .filter { it.isFromUser }
+        assertTrue(userMessages.any { it.text == "Маму" })
     }
 
     @Test
-    fun `onSendMessage should clear input text`() = runTest {
-        `when`(sendMessageUseCase(any(), any()))
-            .thenReturn(Result.success(mockResponse()))
+    fun `onSendMessage should clear input text`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        whenever(sendMessageUseCase(any(), any())).thenReturn(Result.success(agentReply()))
 
         viewModel.onInputTextChanged("Привет")
         viewModel.onSendMessage()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals("", state.inputText)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals("", viewModel.uiState.value.inputText)
     }
 
     @Test
-    fun `onSendMessage should not send empty message`() = runTest {
-        viewModel.onInputTextChanged("")
+    fun `onSendMessage should not send empty message`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        advanceUntilIdle()
+
+        val before = viewModel.uiState.value.messages.size
+
+        viewModel.onInputTextChanged("   ")
         viewModel.onSendMessage()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals(1, state.messages.size)
-            cancelAndIgnoreRemainingEvents()
-        }
+        // Only the welcome + quick-chips messages added at init, nothing from the blank input.
+        assertEquals(before, viewModel.uiState.value.messages.size)
     }
 
     @Test
-    fun `onVoiceRecordingEnd with text should send message`() = runTest {
-        `when`(sendMessageUseCase(any(), any()))
-            .thenReturn(Result.success(mockResponse()))
+    fun `onVoiceRecordingEnd with text should send message`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        whenever(sendMessageUseCase(any(), any())).thenReturn(Result.success(agentReply()))
 
         viewModel.onVoiceRecordingEnd("Привет от голоса")
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            val userMessages = state.messages.filterIsInstance<com.daragent.presentation.chat.model.Message.Text>().filter { it.isFromUser }
-            assertTrue(userMessages.any { it.text == "Привет от голоса" })
-            cancelAndIgnoreRemainingEvents()
-        }
+        val userMessages = viewModel.uiState.value.messages
+            .filterIsInstance<Message.Text>()
+            .filter { it.isFromUser }
+        assertTrue(userMessages.any { it.text == "Привет от голоса" })
     }
 
     @Test
-    fun `clearError should reset error state`() = runTest {
-        viewModel.clearError()
+    fun `onVoiceRecordingEnd with blank text should not send message`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertNull(state.error)
-            cancelAndIgnoreRemainingEvents()
-        }
+        val before = viewModel.uiState.value.messages.size
+
+        viewModel.onVoiceRecordingEnd("   ")
+        advanceUntilIdle()
+
+        assertEquals(before, viewModel.uiState.value.messages.size)
+        assertFalse(viewModel.uiState.value.isRecording)
     }
 
-    private fun mockResponse() = ChatMessageResponse(
+    @Test
+    fun `clearError should reset error state`() = runTest(scheduler) {
+        whenever(getPeopleUseCase()).thenReturn(Result.success(emptyList()))
+        advanceUntilIdle()
+
+        viewModel.clearError()
+
+        assertNull(viewModel.uiState.value.error)
+    }
+
+    private fun agentReply() = ChatMessage(
         id = "msg_123",
         projectId = "proj_123",
         text = "Ответ Дарагента",
         sender = "daragent",
         suggestions = listOf("Маму", "Папу"),
-        createdAt = "2026-08-26T00:00:00Z"
+        createdAt = "2026-08-26T00:00:00Z",
     )
-
-    private inline fun <reified T> any(): T = org.mockito.Mockito.any<T>()
 }

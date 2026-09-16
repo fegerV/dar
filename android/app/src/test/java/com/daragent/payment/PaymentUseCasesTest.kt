@@ -1,10 +1,9 @@
 package com.daragent.payment
 
-import com.daragent.data.payment.PaymentRepository
-import com.daragent.data.payment.PaymentCreationResult
+import com.daragent.domain.model.Payment
 import com.daragent.domain.payment.CreatePaymentUseCase
 import com.daragent.domain.payment.GetPaymentStatusUseCase
-import com.daragent.domain.payment.GetPaymentsUseCase
+import com.daragent.domain.repository.PaymentRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -12,59 +11,67 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.junit.MockitoJUnitRunner
+import org.mockito.kotlin.whenever
 
+/**
+ * Covers the domain-level payment use cases against the domain PaymentRepository.
+ *
+ * There is deliberately no list-payments use case: the backend exposes payments only under
+ * /admin/payments (see backend/app/api/v1/payments.py), so no user-facing list endpoint exists
+ * to back one.
+ */
 @RunWith(MockitoJUnitRunner::class)
 class PaymentUseCasesTest {
 
     @Mock
     private lateinit var paymentRepository: PaymentRepository
+
     private lateinit var createPaymentUseCase: CreatePaymentUseCase
     private lateinit var getPaymentStatusUseCase: GetPaymentStatusUseCase
-    private lateinit var getPaymentsUseCase: GetPaymentsUseCase
 
     @Before
     fun setup() {
         createPaymentUseCase = CreatePaymentUseCase(paymentRepository)
         getPaymentStatusUseCase = GetPaymentStatusUseCase(paymentRepository)
-        getPaymentsUseCase = GetPaymentsUseCase(paymentRepository)
     }
 
     @Test
-    fun `CreatePaymentUseCase should call repository with correct parameters`() = runTest {
-        val mockResult = PaymentCreationResult(
-            id = "pay_123",
-            confirmationUrl = "https://yookassa.ru/pay/123"
-        )
-        `when`(paymentRepository.createPayment(499.0, "RUB"))
-            .thenReturn(Result.success(mockResult))
+    fun `CreatePaymentUseCase should forward projectId and default method`() = runTest {
+        whenever(paymentRepository.createPayment("proj_1", "yookassa"))
+            .thenReturn(Result.success(Payment(id = "pay_123", projectId = "proj_1")))
 
-        val result = createPaymentUseCase(499.0, "RUB")
+        val result = createPaymentUseCase(projectId = "proj_1")
 
         assertTrue(result.isSuccess)
         assertEquals("pay_123", result.getOrNull()?.id)
+        assertEquals("proj_1", result.getOrNull()?.projectId)
+    }
+
+    @Test
+    fun `CreatePaymentUseCase should forward an explicit method`() = runTest {
+        whenever(paymentRepository.createPayment("proj_1", "sbp"))
+            .thenReturn(Result.success(Payment(id = "pay_456", projectId = "proj_1", method = "sbp")))
+
+        val result = createPaymentUseCase(projectId = "proj_1", method = "sbp")
+
+        assertTrue(result.isSuccess)
+        assertEquals("sbp", result.getOrNull()?.method)
     }
 
     @Test
     fun `CreatePaymentUseCase should propagate failure`() = runTest {
-        val exception = RuntimeException("Network error")
-        `when`(paymentRepository.createPayment(499.0, "RUB"))
-            .thenReturn(Result.failure(exception))
+        whenever(paymentRepository.createPayment("proj_1", "yookassa"))
+            .thenReturn(Result.failure(RuntimeException("Network error")))
 
-        val result = createPaymentUseCase(499.0, "RUB")
+        val result = createPaymentUseCase(projectId = "proj_1")
 
         assertTrue(result.isFailure)
     }
 
     @Test
     fun `GetPaymentStatusUseCase should return payment when found`() = runTest {
-        val mockPayment = com.daragent.core.network.model.PaymentDto(
-            id = "pay_123",
-            amount = 499.0,
-            status = "succeeded",
-            createdAt = "2026-08-26T00:00:00Z"
-        )
-        `when`(paymentRepository.getPayment("pay_123"))
-            .thenReturn(Result.success(mockPayment))
+        whenever(paymentRepository.getPaymentStatus("pay_123"))
+            .thenReturn(Result.success(Payment(id = "pay_123", status = "succeeded")))
 
         val result = getPaymentStatusUseCase("pay_123")
 
@@ -73,37 +80,11 @@ class PaymentUseCasesTest {
     }
 
     @Test
-    fun `GetPaymentsUseCase should return list of payments`() = runTest {
-        val mockPayments = listOf(
-            com.daragent.core.network.model.PaymentDto(
-                id = "pay_123",
-                amount = 499.0,
-                status = "succeeded",
-                createdAt = "2026-08-26T00:00:00Z"
-            ),
-            com.daragent.core.network.model.PaymentDto(
-                id = "pay_456",
-                amount = 999.0,
-                status = "pending",
-                createdAt = "2026-08-25T00:00:00Z"
-            )
-        )
-        `when`(paymentRepository.getPayments())
-            .thenReturn(Result.success(mockPayments))
+    fun `GetPaymentStatusUseCase should propagate failure`() = runTest {
+        whenever(paymentRepository.getPaymentStatus("missing"))
+            .thenReturn(Result.failure(RuntimeException("Not found")))
 
-        val result = getPaymentsUseCase()
-
-        assertTrue(result.isSuccess)
-        assertEquals(2, result.getOrNull()?.size)
-    }
-
-    @Test
-    fun `GetPaymentsUseCase should propagate failure`() = runTest {
-        val exception = RuntimeException("Network error")
-        `when`(paymentRepository.getPayments())
-            .thenReturn(Result.failure(exception))
-
-        val result = getPaymentsUseCase()
+        val result = getPaymentStatusUseCase("missing")
 
         assertTrue(result.isFailure)
     }

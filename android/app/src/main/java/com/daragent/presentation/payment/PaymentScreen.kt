@@ -75,7 +75,7 @@ fun PaymentScreen(
                             Text(uiState.error ?: "")
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { viewModel.createPayment() },
+                                onClick = { viewModel.createPayment(projectId) },
                                 modifier = Modifier.testTag("btn_retry_payment"),
                             ) {
                                 Text("Попробовать снова")
@@ -120,7 +120,7 @@ fun PaymentScreen(
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(
-                        onClick = { viewModel.createPayment() },
+                        onClick = { viewModel.createPayment(projectId) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("btn_pay"),

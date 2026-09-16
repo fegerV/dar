@@ -31,7 +31,11 @@ class ChatRepositoryImpl(
         withContext(Dispatchers.IO) {
             runCatching {
                 val response = chatApi.createProject(
-                    ProjectCreateRequest(recipientName, occasion, mood)
+                    ProjectCreateRequest(
+                        recipientName = recipientName,
+                        occasion = occasion,
+                        mood = mood,
+                    )
                 )
                 if (response.isSuccessful) {
                     response.body()!!.toDomain()
@@ -59,16 +63,16 @@ class ChatRepositoryImpl(
         text = text,
         sender = sender,
         suggestions = suggestions,
-        createdAt = created_at
+        createdAt = createdAt
     )
 
     private fun com.daragent.core.network.model.chat.ProjectResponse.toDomain() = ChatProject(
         id = id,
         status = status,
-        recipientName = recipient_name,
+        recipientName = recipientName,
         occasion = occasion,
         mood = mood,
-        createdAt = created_at
+        createdAt = createdAt
     )
 }
 
@@ -80,6 +84,14 @@ class GenerationRepositoryImpl(
         withContext(Dispatchers.IO) {
             runCatching {
                 val response = generationApi.createGeneration(
+                    // NOTE: core/network's GenerationApi posts to /api/v1/generations, but the
+                    // backend only exposes POST /api/v1/generations/projects/{project_id}
+                    // (backend/app/api/v1/generations.py::start_generation) and expects
+                    // GenerationStartRequest(force_regenerate, variables). The request DTO here
+                    // (type, brief_id, photo_url) therefore does not match the server contract.
+                    // Aligning this is part of the pending network-stack consolidation; it does
+                    // not affect compilation. See data/network/api/ApiModule.kt::GenerationsApi
+                    // for the legacy, server-correct variant.
                     com.daragent.core.network.model.CreateGenerationRequest(projectId, templateVersionId)
                 )
                 if (response.isSuccessful) {
@@ -116,10 +128,14 @@ class GenerationRepositoryImpl(
 
     private fun com.daragent.core.network.model.GenerationDto.toDomain() = Generation(
         id = id,
-        projectId = project_id,
+        projectId = projectId ?: "",
         status = status,
         progress = progress,
-        currentStep = current_step,
-        estimatedSeconds = estimated_seconds
+        currentStep = currentStep,
+        estimatedSeconds = estimatedSeconds,
+        // backend GenerationResponse exposes video_url; output_url is the legacy field name
+        // and is kept as a fallback.
+        outputUrl = videoUrl ?: outputUrl,
+        errorMessage = errorMessage
     )
 }

@@ -4,6 +4,7 @@ import com.daragent.data.auth.AuthRepository
 import com.daragent.domain.auth.IsLoggedInUseCase
 import com.daragent.domain.auth.LogoutUseCase
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith

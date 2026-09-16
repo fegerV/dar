@@ -23,7 +23,11 @@ data class Generation(
     val status: String,
     val progress: Int,
     val currentStep: String?,
-    val estimatedSeconds: Int?
+    val estimatedSeconds: Int?,
+    // Populated from the backend GenerationResponse (video_url / error_message).
+    // GenerationViewModel reads both to drive the progress and failure states.
+    val outputUrl: String? = null,
+    val errorMessage: String? = null
 )
 
 data class Wallet(

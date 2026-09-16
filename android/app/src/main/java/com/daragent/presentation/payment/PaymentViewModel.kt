@@ -29,11 +29,11 @@ class PaymentViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PaymentUiState())
     val uiState: StateFlow<PaymentUiState> = _uiState.asStateFlow()
 
-    fun createPayment() {
+    fun createPayment(projectId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            createPaymentUseCase(amount = 499.0, currency = "RUB").fold(
+            createPaymentUseCase(projectId = projectId).fold(
                 onSuccess = { payment ->
                     _uiState.update {
                         it.copy(

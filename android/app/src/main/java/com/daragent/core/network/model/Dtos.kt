@@ -135,11 +135,19 @@ data class GenerationDto(
     @Json(name = "id") val id: String,
     @Json(name = "type") val type: String,
     @Json(name = "status") val status: String,
-    @Json(name = "progress") val progress: Int?,
+    @Json(name = "progress") val progress: Int = 0,
     @Json(name = "output_url") val outputUrl: String?,
+    @Json(name = "video_url") val videoUrl: String? = null,
     @Json(name = "cost") val cost: Double?,
     @Json(name = "error_message") val errorMessage: String?,
     @Json(name = "created_at") val createdAt: String,
+    // Mirrors backend/app/schemas/generation.py::GenerationResponse. The domain
+    // model (domain/model/Models.kt::Generation) requires projectId/currentStep/
+    // estimatedSeconds, and the backend does return them, so they are declared here
+    // with defaults to stay tolerant of older payloads.
+    @Json(name = "project_id") val projectId: String? = null,
+    @Json(name = "current_step") val currentStep: String? = null,
+    @Json(name = "estimated_seconds") val estimatedSeconds: Int? = null,
 )
 
 @JsonClass(generateAdapter = true)

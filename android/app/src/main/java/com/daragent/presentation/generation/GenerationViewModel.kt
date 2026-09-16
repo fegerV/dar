@@ -2,9 +2,7 @@ package com.daragent.presentation.generation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daragent.core.network.model.GenerationDto
-import com.daragent.domain.generation.CreateGenerationUseCase
-import com.daragent.domain.generation.GetGenerationUseCase
+import com.daragent.data.generation.GenerationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,8 +33,11 @@ data class GenerationUiState(
 
 @HiltViewModel
 class GenerationViewModel @Inject constructor(
-    private val createGenerationUseCase: CreateGenerationUseCase,
-    private val getGenerationUseCase: GetGenerationUseCase,
+    // Uses the concrete data-layer repository: its createGeneration(type, briefId, photoUrl)
+    // signature is what this screen exposes, and it returns the network GenerationDto that
+    // the progress UI renders. The domain-level CreateGenerationUseCase/GetGenerationUseCase
+    // take (projectId, templateVersionId) instead and are used by the create-greeting flow.
+    private val generationRepository: GenerationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GenerationUiState())
@@ -59,7 +60,7 @@ class GenerationViewModel @Inject constructor(
                 )
             }
 
-            createGenerationUseCase(
+            generationRepository.createGeneration(
                 type = type,
                 briefId = briefId,
                 photoUrl = photoUrl,
@@ -96,7 +97,7 @@ class GenerationViewModel @Inject constructor(
                 delay(2000)
                 pollCount++
 
-                getGenerationUseCase(generationId).fold(
+                generationRepository.getGeneration(generationId).fold(
                     onSuccess = { generation ->
                         when (generation.status) {
                             "completed" -> {

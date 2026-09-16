@@ -58,6 +58,9 @@ interface PeopleApi {
 
     @POST("recipients")
     suspend fun create(@Body request: CreatePersonRequest): Response<PersonResponse>
+
+    @GET("recipients/{id}")
+    suspend fun get(@Path("id") id: String): Response<PersonResponse>
 }
 
 interface TemplatesApi {

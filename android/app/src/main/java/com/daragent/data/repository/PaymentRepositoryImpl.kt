@@ -21,7 +21,7 @@ class PaymentRepositoryImpl(private val api: PaymentsApi) : PaymentRepository {
             }
         }
 
-    override suspend fun getPayment(paymentId: String): Result<Payment> =
+    override suspend fun getPaymentStatus(paymentId: String): Result<Payment> =
         withContext(Dispatchers.IO) {
             runCatching { api.get(paymentId).body()!!.toDomain() }
         }

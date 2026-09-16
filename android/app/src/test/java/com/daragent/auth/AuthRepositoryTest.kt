@@ -15,12 +15,14 @@ import org.mockito.junit.MockitoJUnitRunner
 class AuthRepositoryTest {
 
     @Mock
+    private lateinit var authApi: com.daragent.core.network.AuthApi
+    @Mock
     private lateinit var tokenManager: TokenManager
     private lateinit var authRepository: AuthRepository
 
     @Before
     fun setup() {
-        authRepository = AuthRepository(tokenManager)
+        authRepository = AuthRepository(authApi, tokenManager)
     }
 
     @Test

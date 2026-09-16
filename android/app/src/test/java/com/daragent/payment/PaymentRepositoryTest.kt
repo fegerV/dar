@@ -11,6 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
+import org.mockito.Mockito.*
 import org.mockito.junit.MockitoJUnitRunner
 import retrofit2.Response
 
@@ -89,5 +90,3 @@ class PaymentRepositoryTest {
         assertEquals(1, result.getOrNull()?.size)
     }
 }
-
-private fun <T> any(): T = org.mockito.Mockito.any<T>()

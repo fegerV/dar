@@ -32,12 +32,6 @@ interface ChatRepository {
     suspend fun getProject(projectId: String): Result<ChatProject>
 }
 
-interface PaymentRepository {
-    suspend fun createPayment(projectId: String, method: String = "yookassa"): Result<Payment>
-    suspend fun getPaymentStatus(paymentId: String): Result<Payment>
-    suspend fun listPayments(): Result<List<Payment>>
-}
-
 interface GenerationRepository {
     suspend fun createGeneration(projectId: String, templateVersionId: String? = null): Result<Generation>
     suspend fun getGeneration(generationId: String): Result<Generation>

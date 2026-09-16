@@ -17,7 +17,12 @@ class ReferralRepositoryImpl(
     override suspend fun getMyCode(): Result<ReferralCode> = withContext(Dispatchers.IO) {
         runCatching {
             val resp = api.getMyCode()
-            val dto = resp.body() ?: return@runCatching ReferralCode("", "", 0, null, true)
+            val dto = resp.body() ?: return@runCatching ReferralCode(
+                code = "",
+                uses = 0,
+                maxUses = null,
+                isActive = true,
+            )
             dto.toDomain()
         }
     }
@@ -82,11 +87,14 @@ class FeedbackRepositoryImpl(
         comment: String?,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            api.addReaction(projectId, com.daragent.data.network.dto.ReactionRequestDto(
+            val response = api.addReaction(projectId, com.daragent.data.network.dto.ReactionRequestDto(
                 emoji = emoji,
                 rating = rating,
                 comment = comment,
             ))
+            if (!response.isSuccessful) {
+                throw Exception("Failed to add reaction: ${response.code()}")
+            }
         }
     }
 

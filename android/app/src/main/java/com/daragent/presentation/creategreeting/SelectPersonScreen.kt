@@ -22,7 +22,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun SelectPersonScreen(
     viewModel: CreateGreetingViewModel = viewModel(),
-    onNext: () -> Unit = {}
+    onNext: () -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -45,6 +46,9 @@ fun SelectPersonScreen(
                     Text(text = person.name, modifier = Modifier.padding(16.dp))
                 }
             }
+        }
+        Button(onClick = onBack, modifier = Modifier.padding(16.dp)) {
+            Text("Назад")
         }
     }
 }

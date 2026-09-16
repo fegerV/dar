@@ -4,7 +4,7 @@ import com.daragent.data.local.AuthTokenManager
 import com.daragent.data.local.DarAgentDatabase
 import com.daragent.data.repository.AuthRepositoryImpl
 import com.daragent.data.repository.DeliveryRepositoryImpl
-import com.daragent.data.repository.PeopleRepositoryImpl
+import com.daragent.data.repository.LegacyPeopleRepositoryImpl
 import com.daragent.data.repository.PaymentRepositoryImpl
 import com.daragent.data.repository.ProjectRepositoryImpl
 import com.daragent.data.repository.ReferralRepositoryImpl
@@ -20,6 +20,8 @@ import com.daragent.domain.repository.PaymentRepository
 import com.daragent.domain.repository.ProjectRepository
 import com.daragent.domain.repository.ReferralRepository
 import com.daragent.domain.repository.TemplateRepository
+import com.daragent.domain.payment.CreatePaymentUseCase
+import com.daragent.domain.payment.GetPaymentStatusUseCase
 import com.daragent.presentation.creategreeting.CreateGreetingViewModel
 import com.daragent.presentation.history.HistoryViewModel
 import com.daragent.presentation.home.HomeViewModel
@@ -29,7 +31,7 @@ import com.daragent.presentation.profile.ProfileViewModel
 
 object ServiceLocator {
     val database: DarAgentDatabase by lazy { com.daragent.DarAgentApp.database }
-    val peopleRepository: PeopleRepository by lazy { PeopleRepositoryImpl(ApiModule.peopleApi) }
+    val peopleRepository: PeopleRepository by lazy { LegacyPeopleRepositoryImpl(ApiModule.peopleApi) }
     val templateRepository: TemplateRepository by lazy { TemplateRepositoryImpl(ApiModule.templatesApi) }
     val projectRepository: ProjectRepository by lazy { ProjectRepositoryImpl(ApiModule.projectsApi, ApiModule.briefsApi, ApiModule.recommendationsApi, ApiModule.holidaysApi, ApiModule.generationsApi) }
     val paymentRepository: PaymentRepository by lazy { PaymentRepositoryImpl(ApiModule.paymentsApi) }
@@ -49,7 +51,10 @@ object ServiceLocator {
     }
 
     fun providePaymentViewModel(): PaymentViewModel {
-        return PaymentViewModel(paymentRepository)
+        return PaymentViewModel(
+            CreatePaymentUseCase(paymentRepository),
+            GetPaymentStatusUseCase(paymentRepository),
+        )
     }
 
     fun provideProfileViewModel(): ProfileViewModel {

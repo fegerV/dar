@@ -109,10 +109,4 @@ object UseCaseModule {
     fun provideGetPaymentStatusUseCase(paymentRepository: PaymentRepository): GetPaymentStatusUseCase {
         return GetPaymentStatusUseCase(paymentRepository)
     }
-
-    @Provides
-    @Singleton
-    fun provideGetPaymentsUseCase(paymentRepository: PaymentRepository): GetPaymentsUseCase {
-        return GetPaymentsUseCase(paymentRepository)
-    }
 }

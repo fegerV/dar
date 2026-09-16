@@ -1,9 +1,7 @@
 package com.daragent.presentation
 
-import app.cash.turbine.test
 import com.daragent.core.network.model.GenerationDto
-import com.daragent.domain.generation.CreateGenerationUseCase
-import com.daragent.domain.generation.GetGenerationUseCase
+import com.daragent.data.generation.GenerationRepository
 import com.daragent.presentation.generation.GenerationStatus
 import com.daragent.presentation.generation.GenerationViewModel
 import kotlinx.coroutines.Dispatchers
@@ -16,23 +14,29 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.junit.MockitoJUnitRunner
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 
+/**
+ * Drives GenerationViewModel on a StandardTestDispatcher so polling (delay(2000) x60) advances
+ * on virtual time. runCurrent() is used where only the start call should execute, and
+ * advanceUntilIdle() where the poll loop must run to a terminal state.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(MockitoJUnitRunner::class)
 class GenerationViewModelTest {
 
     @Mock
-    private lateinit var createGenerationUseCase: CreateGenerationUseCase
-    @Mock
-    private lateinit var getGenerationUseCase: GetGenerationUseCase
+    private lateinit var generationRepository: GenerationRepository
 
     private lateinit var viewModel: GenerationViewModel
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val scheduler = TestCoroutineScheduler()
+    private val testDispatcher = StandardTestDispatcher(scheduler)
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = GenerationViewModel(createGenerationUseCase, getGenerationUseCase)
+        viewModel = GenerationViewModel(generationRepository)
     }
 
     @After
@@ -41,141 +45,115 @@ class GenerationViewModelTest {
     }
 
     @Test
-    fun `initial state should be IDLE`() = runTest {
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals(GenerationStatus.IDLE, state.status)
-            assertEquals(0, state.progress)
-            cancelAndIgnoreRemainingEvents()
-        }
+    fun `initial state should be IDLE`() {
+        assertEquals(GenerationStatus.IDLE, viewModel.uiState.value.status)
+        assertEquals(0, viewModel.uiState.value.progress)
     }
 
     @Test
-    fun `startGeneration should set QUEUED status`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
-            .thenReturn(Result.success(mockGeneration("queued")))
+    fun `startGeneration should move to PROCESSING while polling`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
 
         viewModel.startGeneration()
+        runCurrent()
 
-        viewModel.uiState.test {
-            var state = awaitItem()
-            while (state.status == GenerationStatus.IDLE) {
-                state = awaitItem()
-            }
-            assertTrue(
-                state.status == GenerationStatus.QUEUED ||
-                state.status == GenerationStatus.PROCESSING
-            )
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.PROCESSING, viewModel.uiState.value.status)
     }
 
     @Test
-    fun `startGeneration failure should set FAILED status`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
+    fun `startGeneration failure should set FAILED status`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
             .thenReturn(Result.failure(RuntimeException("Network error")))
 
         viewModel.startGeneration()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            var state = awaitItem()
-            while (state.status != GenerationStatus.FAILED && state.status != GenerationStatus.IDLE) {
-                state = awaitItem()
-            }
-            assertEquals(GenerationStatus.FAILED, state.status)
-            assertNotNull(state.errorMessage)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.FAILED, viewModel.uiState.value.status)
+        assertNotNull(viewModel.uiState.value.errorMessage)
     }
 
     @Test
-    fun `completed generation should set COMPLETED status`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
-            .thenReturn(Result.success(mockGeneration("processing")))
-        `when`(getGenerationUseCase(any()))
-            .thenReturn(Result.success(mockGeneration("completed", "https://video.url")))
+    fun `completed generation should set COMPLETED with output url`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
+        whenever(generationRepository.getGeneration(any()))
+            .thenReturn(Result.success(generation("completed", outputUrl = "https://video.url")))
 
         viewModel.startGeneration()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            var state = awaitItem()
-            while (state.status != GenerationStatus.COMPLETED && state.errorMessage == null) {
-                state = awaitItem()
-            }
-            if (state.status == GenerationStatus.COMPLETED) {
-                assertEquals(100, state.progress)
-                assertEquals("https://video.url", state.outputUrl)
-            }
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.COMPLETED, viewModel.uiState.value.status)
+        assertEquals(100, viewModel.uiState.value.progress)
+        assertEquals("https://video.url", viewModel.uiState.value.outputUrl)
     }
 
     @Test
-    fun `cancelGeneration should set CANCELLED status`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
-            .thenReturn(Result.success(mockGeneration("processing")))
+    fun `failed generation should surface the server error`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
+        whenever(generationRepository.getGeneration(any()))
+            .thenReturn(Result.success(generation("failed", errorMessage = "boom")))
 
         viewModel.startGeneration()
+        advanceUntilIdle()
+
+        assertEquals(GenerationStatus.FAILED, viewModel.uiState.value.status)
+        assertEquals("boom", viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `cancelGeneration should set CANCELLED status`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
+
+        viewModel.startGeneration()
+        runCurrent()
         viewModel.cancelGeneration()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals(GenerationStatus.CANCELLED, state.status)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.CANCELLED, viewModel.uiState.value.status)
     }
 
     @Test
-    fun `reset should return to IDLE state`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
-            .thenReturn(Result.success(mockGeneration("processing")))
+    fun `reset should return to IDLE state`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
 
         viewModel.startGeneration()
-        viewModel.cancelGeneration()
+        runCurrent()
         viewModel.reset()
 
-        viewModel.uiState.test {
-            val state = awaitItem()
-            assertEquals(GenerationStatus.IDLE, state.status)
-            assertEquals(0, state.progress)
-            assertNull(state.outputUrl)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.IDLE, viewModel.uiState.value.status)
+        assertEquals(0, viewModel.uiState.value.progress)
+        assertNull(viewModel.uiState.value.outputUrl)
     }
 
     @Test
-    fun `progress should increase over time during processing`() = runTest {
-        `when`(createGenerationUseCase(any(), any(), any()))
-            .thenReturn(Result.success(mockGeneration("processing")))
+    fun `progress should increase while processing`() = runTest(scheduler) {
+        whenever(generationRepository.createGeneration(any(), any(), any()))
+            .thenReturn(Result.success(generation("processing")))
+        whenever(generationRepository.getGeneration(any()))
+            .thenReturn(Result.success(generation("processing")))
 
         viewModel.startGeneration()
+        advanceTimeBy(10_000)
 
-        viewModel.uiState.test {
-            var state = awaitItem()
-            var previousProgress = 0
-            var hasIncreased = false
-
-            while (state.status == GenerationStatus.PROCESSING || state.status == GenerationStatus.QUEUED) {
-                if (state.progress > previousProgress) {
-                    hasIncreased = true
-                }
-                previousProgress = state.progress
-                state = awaitItem()
-                if (state.status == GenerationStatus.COMPLETED || state.status == GenerationStatus.FAILED) break
-            }
-            assertTrue(hasIncreased || state.progress > 0)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(GenerationStatus.PROCESSING, viewModel.uiState.value.status)
+        assertTrue(viewModel.uiState.value.progress > 0)
     }
 
-    private fun mockGeneration(status: String, outputUrl: String? = null) = GenerationDto(
+    private fun generation(
+        status: String,
+        outputUrl: String? = null,
+        errorMessage: String? = null,
+    ) = GenerationDto(
         id = "gen_123",
         type = "video_lite",
         status = status,
         progress = if (status == "completed") 100 else 50,
         outputUrl = outputUrl,
-        createdAt = "2026-08-26T00:00:00Z"
+        cost = null,
+        errorMessage = errorMessage,
+        createdAt = "2026-08-26T00:00:00Z",
     )
-
-    private inline fun <reified T> any(): T = org.mockito.Mockito.any<T>()
 }

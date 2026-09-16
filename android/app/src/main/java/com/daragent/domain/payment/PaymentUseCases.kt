@@ -19,11 +19,3 @@ class GetPaymentStatusUseCase @Inject constructor(
         return paymentRepository.getPaymentStatus(paymentId)
     }
 }
-
-class GetPaymentsUseCase @Inject constructor(
-    private val paymentRepository: PaymentRepository,
-) {
-    suspend operator fun invoke(): Result<List<Payment>> {
-        return paymentRepository.listPayments()
-    }
-}
