@@ -95,20 +95,29 @@ export function AdminGenerations() {
               {gen.error_message && (
                 <p className="mt-2 text-sm text-red-600">{gen.error_message}</p>
               )}
-               <div className="mt-4 flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`View generation ${gen.id}`}
-                  onClick={() => router.push(`/admin/generations/${gen.id}`)}
-                >
-                  View
-                </Button>
-                <Button size="sm" variant="outline" aria-label={`Play video for generation ${gen.id}`} onClick={() => toast({ title: t("notification.info") || "Info", description: "Video playback not implemented", variant: "default" })}>
-                  <Play className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Play Video
-                </Button>
-              </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={`View generation ${gen.id}`}
+              onClick={() => router.push(`/admin/generations/${gen.id}`)}
+            >
+              View Details
+            </Button>
+            {gen.video_url ? (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                aria-label={`Play video for generation ${gen.id}`} 
+                onClick={() => window.open(gen.video_url, '_blank')}
+              >
+                <Play className="h-4 w-4 mr-2" aria-hidden="true" />
+                Watch Video
+              </Button>
+            ) : gen.status === 'SUCCESS' ? (
+              <span className="text-xs text-muted-foreground">Video will be available soon</span>
+            ) : null}
+          </div>
             </CardContent>
           </Card>
         ))}

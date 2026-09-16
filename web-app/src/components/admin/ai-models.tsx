@@ -656,8 +656,10 @@ function ProviderForm({
             type="password"
             value={form.api_key}
             onChange={(e) => setForm({ ...form, api_key: e.target.value })}
-            placeholder="YOUR_API_KEY"
+            placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            aria-describedby="api-key-help"
           />
+          <p id="api-key-help" className="text-xs text-muted-foreground mt-1">Secret key from provider (e.g., sk-... for OpenAI)</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>

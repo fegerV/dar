@@ -247,19 +247,21 @@ export function AdminPrompts() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Code</Label><Input value={draft.code || ""} onChange={e => setDraft({ ...draft, code: e.target.value })} aria-label="Code" /></div>
-              <div><Label>Name</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} aria-label="Name" /></div>
+              <div><Label>Code</Label><Input value={draft.code || ""} onChange={e => setDraft({ ...draft, code: e.target.value })} aria-label="Prompt code" placeholder="e.g., birthday_greeting" /><p className="text-xs text-muted-foreground mt-1">Unique identifier for the prompt</p></div>
+              <div><Label>Name</Label><Input value={draft.name || ""} onChange={e => setDraft({ ...draft, name: e.target.value })} aria-label="Prompt name" placeholder="e.g., Birthday Greeting Prompt" /><p className="text-xs text-muted-foreground mt-1">Display name shown in admin panel</p></div>
             </div>
-            <div><Label>Description</Label><Textarea value={draft.description || ""} onChange={e => setDraft({ ...draft, description: e.target.value })} aria-label="Description" /></div>
-            <div><Label>Category</Label><Input value={draft.category || ""} onChange={e => setDraft({ ...draft, category: e.target.value })} aria-label="Category" /></div>
-            <div><Label>Text (use {'{'}variable{'}'} placeholders)</Label><Textarea value={draft.text || ""} onChange={e => setDraft({ ...draft, text: e.target.value })} rows={6} aria-label="Prompt text" /></div>
+            <div><Label>Description</Label><Textarea value={draft.description || ""} onChange={e => setDraft({ ...draft, description: e.target.value })} aria-label="Prompt description" placeholder="Brief description of what this prompt does" /></div>
+            <div><Label>Category</Label><Input value={draft.category || ""} onChange={e => setDraft({ ...draft, category: e.target.value })} aria-label="Prompt category" placeholder="e.g., birthday, greeting" /></div>
+            <div><Label>Text (use {'{'}variable{'}'} placeholders)</Label><Textarea value={draft.text || ""} onChange={e => setDraft({ ...draft, text: e.target.value })} rows={6} aria-label="Prompt text" placeholder="Hello {'{'}name{'}'}, happy {'{'}age{'}'} birthday!" /><p className="text-xs text-muted-foreground mt-1">Use {'{'}variable_name{'}'} syntax for dynamic values</p></div>
             <div>
               <Label>Variables (comma-separated)</Label>
               <Input
                 value={(draft.variables || []).join(", ")}
                 onChange={e => setDraft({ ...draft, variables: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
                 aria-label="Variables"
+                placeholder="e.g., name, age, occasion"
               />
+              <p className="text-xs text-muted-foreground mt-1">List variable names used in the text (e.g., name, age)</p>
             </div>
             <div>
               <Label>Compatible Models (comma-separated)</Label>
@@ -267,7 +269,9 @@ export function AdminPrompts() {
                 value={(draft.compatible_models || []).join(", ")}
                 onChange={e => setDraft({ ...draft, compatible_models: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
                 aria-label="Compatible models"
+                placeholder="e.g., gpt-4, claude-3"
               />
+              <p className="text-xs text-muted-foreground mt-1">AI model IDs that can execute this prompt</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={savePrompt} disabled={saving}>{saving ? "Saving..." : <><Save className="h-4 w-4 mr-2" aria-hidden="true" />Save</>}</Button>

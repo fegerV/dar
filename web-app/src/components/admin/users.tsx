@@ -378,12 +378,19 @@ export function AdminUsers() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Reason (optional)</label>
-              <Input value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Brief description" />
+              <label className="text-sm font-medium" htmlFor="bulk-reason">Reason (optional)</label>
+              <Input 
+                id="bulk-reason"
+                value={bulkReason} 
+                onChange={(e) => setBulkReason(e.target.value)} 
+                placeholder="e.g., Spam violation, Terms of service breach" 
+                aria-describedby="bulk-reason-help"
+              />
+              <p id="bulk-reason-help" className="text-xs text-muted-foreground mt-1">Brief description for audit log (e.g., "Spam violation")</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => { setBulkAction(null); setBulkReason("") }}>Cancel</Button>
-              <Button onClick={executeBulkAction} variant={bulkAction === "delete" ? "destructive" : "default"}>Confirm</Button>
+              <Button onClick={executeBulkAction} variant={bulkAction === "delete" ? "destructive" : "default"}>Confirm {bulkAction}</Button>
             </div>
           </div>
         </DialogContent>
@@ -397,16 +404,30 @@ export function AdminUsers() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">IP Address</label>
-              <Input value={ipToBlock} onChange={(e) => setIpToBlock(e.target.value)} placeholder="192.168.1.1" />
+              <label className="text-sm font-medium" htmlFor="ip-address">IP Address</label>
+              <Input 
+                id="ip-address"
+                value={ipToBlock} 
+                onChange={(e) => setIpToBlock(e.target.value)} 
+                placeholder="192.168.1.1" 
+                aria-describedby="ip-help"
+              />
+              <p id="ip-help" className="text-xs text-muted-foreground mt-1">IPv4 address to block (e.g., 192.168.1.1)</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Reason (optional)</label>
-              <Input value={ipBlockReason} onChange={(e) => setIpBlockReason(e.target.value)} placeholder="Suspicious activity" />
+              <label className="text-sm font-medium" htmlFor="ip-reason">Reason (optional)</label>
+              <Input 
+                id="ip-reason"
+                value={ipBlockReason} 
+                onChange={(e) => setIpBlockReason(e.target.value)} 
+                placeholder="e.g., Suspicious activity, Brute force attempt" 
+                aria-describedby="ip-reason-help"
+              />
+              <p id="ip-reason-help" className="text-xs text-muted-foreground mt-1">Reason for blocking (e.g., "Suspicious activity")</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setIpBlockDialog(null)}>Cancel</Button>
-              <Button onClick={blockUserIp} variant="destructive">Block IP</Button>
+              <Button onClick={blockUserIp} variant="destructive" disabled={!ipToBlock}>Block IP</Button>
             </div>
           </div>
         </DialogContent>

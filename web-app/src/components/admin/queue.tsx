@@ -25,6 +25,7 @@ export function AdminQueue() {
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
   const [workers, setWorkers] = useState<AdminWorker[]>([])
   const [queuePaused, setQueuePaused] = useState(false)
+  const [jobDetail, setJobDetail] = useState<AdminQueueJob | null>(null)
   const router = useRouter()
   const { user, loading: authLoading } = useAdminAuth()
 
@@ -121,6 +122,17 @@ export function AdminQueue() {
             <option key={w.id} value={w.id}>{w.name}</option>
           ))}
         </Select>
+        {(statusFilter || workerFilter) && (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => { setStatusFilter(null); setWorkerFilter(null); }}
+            aria-label="Clear all filters"
+          >
+            <X className="h-4 w-4 mr-1" aria-hidden="true" />
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
