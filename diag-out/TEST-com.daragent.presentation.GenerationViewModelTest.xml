@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.daragent.presentation.GenerationViewModelTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-16T21:23:10" hostname="runnervmlun5p" time="0.041">
+  <properties/>
+  <testcase name="reset should return to IDLE state" classname="com.daragent.presentation.GenerationViewModelTest" time="0.006"/>
+  <testcase name="startGeneration failure should set FAILED status" classname="com.daragent.presentation.GenerationViewModelTest" time="0.003"/>
+  <testcase name="completed generation should set COMPLETED with output url" classname="com.daragent.presentation.GenerationViewModelTest" time="0.002"/>
+  <testcase name="progress should increase while processing" classname="com.daragent.presentation.GenerationViewModelTest" time="0.014"/>
+  <testcase name="initial state should be IDLE" classname="com.daragent.presentation.GenerationViewModelTest" time="0.0"/>
+  <testcase name="startGeneration should move to PROCESSING while polling" classname="com.daragent.presentation.GenerationViewModelTest" time="0.012"/>
+  <testcase name="failed generation should surface the server error" classname="com.daragent.presentation.GenerationViewModelTest" time="0.002"/>
+  <testcase name="cancelGeneration should set CANCELLED status" classname="com.daragent.presentation.GenerationViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

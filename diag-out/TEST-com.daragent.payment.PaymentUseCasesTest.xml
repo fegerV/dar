@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.daragent.payment.PaymentUseCasesTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-16T21:23:09" hostname="runnervmlun5p" time="0.055">
+  <properties/>
+  <testcase name="CreatePaymentUseCase should forward an explicit method" classname="com.daragent.payment.PaymentUseCasesTest" time="0.039"/>
+  <testcase name="CreatePaymentUseCase should forward projectId and default method" classname="com.daragent.payment.PaymentUseCasesTest" time="0.003"/>
+  <testcase name="GetPaymentStatusUseCase should propagate failure" classname="com.daragent.payment.PaymentUseCasesTest" time="0.003"/>
+  <testcase name="GetPaymentStatusUseCase should return payment when found" classname="com.daragent.payment.PaymentUseCasesTest" time="0.006"/>
+  <testcase name="CreatePaymentUseCase should propagate failure" classname="com.daragent.payment.PaymentUseCasesTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

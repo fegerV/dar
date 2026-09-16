@@ -1,0 +1,2 @@
+w: file://android/app/src/main/java/com/daragent/data/network/stream/SseClient.kt:60:78 Type mismatch: inferred type is Nothing? but String was expected
+w: file://android/app/src/main/java/com/daragent/data/network/stream/SseClient.kt:62:73 Type mismatch: inferred type is Nothing? but String was expected

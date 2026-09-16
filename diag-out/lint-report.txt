@@ -1,0 +1,545 @@
+/home/runner/work/dar/dar/android/app/build.gradle:24: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk 34
+        ~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application runs on a version of Android that is more recent than
+   your targetSdkVersion specifies that it has been tested with, various
+   compatibility modes kick in. This ensures that your application continues
+   to work, but it may look out of place. For example, if the targetSdkVersion
+   is less than 14, your app may get an option button in the UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+/home/runner/work/dar/dar/android/app/src/main/AndroidManifest.xml:31: Warning: Redundant label can be removed [RedundantLabel]
+            android:label="@string/app_name"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "RedundantLabel":
+   When an activity does not have a label attribute, it will use the one from
+   the application tag. Since the application has already specified the same
+   label, the label on this activity can be omitted.
+
+/home/runner/work/dar/dar/android/app/build.gradle:84: Warning: A newer version of androidx.hilt:hilt-navigation-compose than 1.1.0 is available: 1.4.0 [GradleDependency]
+    implementation 'androidx.hilt:hilt-navigation-compose:1.1.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:86: Warning: A newer version of androidx.security:security-crypto than 1.1.0-alpha06 is available: 1.1.0 [GradleDependency]
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:89: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.6.2 is available: 2.11.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:94: Warning: A newer version of com.google.android.material:material than 1.11.0 is available: 1.14.0 [GradleDependency]
+    implementation 'com.google.android.material:material:1.11.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:95: Warning: A newer version of androidx.core:core-ktx than 1.12.0 is available: 1.19.0 [GradleDependency]
+    implementation 'androidx.core:core-ktx:1.12.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:96: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.6.2 is available: 2.11.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:97: Warning: A newer version of androidx.activity:activity-compose than 1.8.1 is available: 1.13.0 [GradleDependency]
+    implementation 'androidx.activity:activity-compose:1.8.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:98: Warning: A newer version of androidx.core:core-splashscreen than 1.0.1 is available: 1.2.0 [GradleDependency]
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:99: Warning: A newer version of androidx.compose:compose-bom than 2023.10.01 is available: 2026.09.00 [GradleDependency]
+    implementation platform('androidx.compose:compose-bom:2023.10.01')
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:103: Warning: A newer version of androidx.compose.material3:material3 than 1.1.2 is available: 1.4.0 [GradleDependency]
+    implementation 'androidx.compose.material3:material3:1.1.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:104: Warning: A newer version of androidx.navigation:navigation-compose than 2.7.5 is available: 2.10.1 [GradleDependency]
+    implementation 'androidx.navigation:navigation-compose:2.7.5'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:105: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5 [GradleDependency]
+    implementation 'androidx.room:room-ktx:2.6.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:106: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5 [GradleDependency]
+    kapt 'androidx.room:room-compiler:2.6.1'
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:113: Warning: A newer version of com.google.firebase:firebase-messaging than 23.4.1 is available: 25.1.3 [GradleDependency]
+    implementation 'com.google.firebase:firebase-messaging:23.4.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:114: Warning: A newer version of androidx.work:work-runtime-ktx than 2.9.0 is available: 2.11.2 [GradleDependency]
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:115: Warning: A newer version of androidx.browser:browser than 1.8.0 is available: 1.10.0 [GradleDependency]
+    implementation 'androidx.browser:browser:1.8.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:128: Warning: A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:129: Warning: A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:130: Warning: A newer version of androidx.test:runner than 1.5.2 is available: 1.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:131: Warning: A newer version of androidx.test:rules than 1.5.0 is available: 1.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:142: Warning: A newer version of androidx.compose:compose-bom than 2023.10.01 is available: 2026.09.00 [GradleDependency]
+    androidTestImplementation platform('androidx.compose:compose-bom:2023.10.01')
+                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/chat/ConversationScreen.kt:30: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+    modifier: Modifier = Modifier,
+    ~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/chat/components/MessageBubble.kt:30: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+    modifier: Modifier = Modifier,
+    ~~~~~~~~
+
+   Explanation for issues of type "ModifierParameter":
+   The first (or only) Modifier parameter in a Composable function should
+   follow the following rules:
+   - Be named modifier
+   - Have a type of Modifier
+   - Either have no default value, or have a default value of Modifier
+   - If optional, be the first optional parameter in the parameter list
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.ui
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/YooKassaCheckoutActivity.kt:65: Warning: Using setJavaScriptEnabled can introduce XSS vulnerabilities into your application, review carefully [SetJavaScriptEnabled]
+                settings.javaScriptEnabled = true
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetJavaScriptEnabled":
+   Your code should not invoke setJavaScriptEnabled if you are not sure that
+   your app really requires JavaScript support.
+
+   https://goo.gle/SetJavaScriptEnabled
+   https://developer.android.com/training/articles/security-tips
+
+/home/runner/work/dar/dar/android/app/src/main/AndroidManifest.xml:18: Warning: The attribute android:allowBackup is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute android:dataExtractionRules specifying an @xml resource which configures cloud backups and device transfers on Android 12 and higher. [DataExtractionRules]
+        android:allowBackup="false"
+                             ~~~~~
+
+   Explanation for issues of type "DataExtractionRules":
+   Before Android 12, the attributes android:allowBackup and
+   android:fullBackupContent were used to configure all forms of backup,
+   including cloud backups, device-to-device transfers and adb backup.
+
+   In Android 12 and higher, these attributes have been deprecated and will
+   only apply to cloud backups. You should instead use the attribute
+   android:dataExtractionRules, specifying an @xml resource that configures
+   which files to back up, for cloud backups and for device-to-device
+   transfers, separately. If your minSdkVersion supports older versions,
+   you'll still want to specify an android:fullBackupContent resource if the
+   default behavior is not right for your app.
+
+   https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   https://goo.gle/DataExtractionRules
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/notification/NotificationHelper.kt:18: Warning: Unnecessary; SDK_INT is always >= 26 [ObsoleteSdkInt]
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+/home/runner/work/dar/dar/android/app/build.gradle:106: Warning: This library supports using KSP instead of kapt, which greatly improves performance. Learn more: https://developer.android.com/studio/build/migrate-to-ksp [KaptUsageInsteadOfKsp]
+    kapt 'androidx.room:room-compiler:2.6.1'
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "KaptUsageInsteadOfKsp":
+   KSP is a more efficient replacement for kapt. For libraries that support
+   both, KSP should be used to improve build times.
+
+   https://developer.android.com/studio/build/migrate-to-ksp
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/creategreeting/BriefScreen.kt:41: Information: Prefer mutableFloatStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var humor by remember { mutableStateOf(state.brief?.humorLevel?.toFloat() ?: 50f) }
+                            ~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/creategreeting/BriefScreen.kt:42: Information: Prefer mutableFloatStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var emotion by remember { mutableStateOf(state.brief?.emotionLevel?.toFloat() ?: 50f) }
+                              ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:10: Warning: The resource R.color.surface_light appears to be unused [UnusedResources]
+    <color name="surface_light">#FFFFFFFF</color>
+           ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:11: Warning: The resource R.color.surface_dark appears to be unused [UnusedResources]
+    <color name="surface_dark">#FF1E293B</color>
+           ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:12: Warning: The resource R.color.on_background_light appears to be unused [UnusedResources]
+    <color name="on_background_light">#FF1E293B</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:13: Warning: The resource R.color.on_background_dark appears to be unused [UnusedResources]
+    <color name="on_background_dark">#FFF1F5F9</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:14: Warning: The resource R.color.black appears to be unused [UnusedResources]
+    <color name="black">#FF000000</color>
+           ~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:15: Warning: The resource R.color.white appears to be unused [UnusedResources]
+    <color name="white">#FFFFFFFF</color>
+           ~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:4: Warning: The resource R.string.welcome_title appears to be unused [UnusedResources]
+    <string name="welcome_title">Привет! Я Дарагент</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:5: Warning: The resource R.string.welcome_subtitle appears to be unused [UnusedResources]
+    <string name="welcome_subtitle">Твой личный агент по поздравлениям</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:6: Warning: The resource R.string.button_start appears to be unused [UnusedResources]
+    <string name="button_start">Начать</string>
+            ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:7: Warning: The resource R.string.button_continue appears to be unused [UnusedResources]
+    <string name="button_continue">Продолжить</string>
+            ~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:8: Warning: The resource R.string.button_create_greeting appears to be unused [UnusedResources]
+    <string name="button_create_greeting">Создать поздравление</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:9: Warning: The resource R.string.button_people appears to be unused [UnusedResources]
+    <string name="button_people">Мои люди</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:10: Warning: The resource R.string.button_profile appears to be unused [UnusedResources]
+    <string name="button_profile">Профиль</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:11: Warning: The resource R.string.prompt_whom appears to be unused [UnusedResources]
+    <string name="prompt_whom">Кого сегодня порадуем?</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:12: Warning: The resource R.string.prompt_name appears to be unused [UnusedResources]
+    <string name="prompt_name">Как тебя зовут?</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:13: Warning: The resource R.string.prompt_nice_to_meet appears to be unused [UnusedResources]
+    <string name="prompt_nice_to_meet">Очень приятно, %s!</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:14: Warning: The resource R.string.prompt_first_greeting appears to be unused [UnusedResources]
+    <string name="prompt_first_greeting">Давай сделаем первое поздравление</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:15: Warning: The resource R.string.label_name appears to be unused [UnusedResources]
+    <string name="label_name">Имя</string>
+            ~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:16: Warning: The resource R.string.label_email appears to be unused [UnusedResources]
+    <string name="label_email">Email</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:17: Warning: The resource R.string.label_password appears to be unused [UnusedResources]
+    <string name="label_password">Пароль</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests =true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests =true.
+   ,
+
+0 errors, 49 warnings
+No issues found.
+/home/runner/work/dar/dar/android/app/build.gradle:24: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk 34
+        ~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application runs on a version of Android that is more recent than
+   your targetSdkVersion specifies that it has been tested with, various
+   compatibility modes kick in. This ensures that your application continues
+   to work, but it may look out of place. For example, if the targetSdkVersion
+   is less than 14, your app may get an option button in the UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+/home/runner/work/dar/dar/android/app/src/main/AndroidManifest.xml:31: Warning: Redundant label can be removed [RedundantLabel]
+            android:label="@string/app_name"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "RedundantLabel":
+   When an activity does not have a label attribute, it will use the one from
+   the application tag. Since the application has already specified the same
+   label, the label on this activity can be omitted.
+
+/home/runner/work/dar/dar/android/app/build.gradle:84: Warning: A newer version of androidx.hilt:hilt-navigation-compose than 1.1.0 is available: 1.4.0 [GradleDependency]
+    implementation 'androidx.hilt:hilt-navigation-compose:1.1.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:86: Warning: A newer version of androidx.security:security-crypto than 1.1.0-alpha06 is available: 1.1.0 [GradleDependency]
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:89: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.6.2 is available: 2.11.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:94: Warning: A newer version of com.google.android.material:material than 1.11.0 is available: 1.14.0 [GradleDependency]
+    implementation 'com.google.android.material:material:1.11.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:95: Warning: A newer version of androidx.core:core-ktx than 1.12.0 is available: 1.19.0 [GradleDependency]
+    implementation 'androidx.core:core-ktx:1.12.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:96: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.6.2 is available: 2.11.0 [GradleDependency]
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:97: Warning: A newer version of androidx.activity:activity-compose than 1.8.1 is available: 1.13.0 [GradleDependency]
+    implementation 'androidx.activity:activity-compose:1.8.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:98: Warning: A newer version of androidx.core:core-splashscreen than 1.0.1 is available: 1.2.0 [GradleDependency]
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:99: Warning: A newer version of androidx.compose:compose-bom than 2023.10.01 is available: 2026.09.00 [GradleDependency]
+    implementation platform('androidx.compose:compose-bom:2023.10.01')
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:103: Warning: A newer version of androidx.compose.material3:material3 than 1.1.2 is available: 1.4.0 [GradleDependency]
+    implementation 'androidx.compose.material3:material3:1.1.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:104: Warning: A newer version of androidx.navigation:navigation-compose than 2.7.5 is available: 2.10.1 [GradleDependency]
+    implementation 'androidx.navigation:navigation-compose:2.7.5'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:105: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5 [GradleDependency]
+    implementation 'androidx.room:room-ktx:2.6.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:106: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5 [GradleDependency]
+    kapt 'androidx.room:room-compiler:2.6.1'
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:113: Warning: A newer version of com.google.firebase:firebase-messaging than 23.4.1 is available: 25.1.3 [GradleDependency]
+    implementation 'com.google.firebase:firebase-messaging:23.4.1'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:114: Warning: A newer version of androidx.work:work-runtime-ktx than 2.9.0 is available: 2.11.2 [GradleDependency]
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:115: Warning: A newer version of androidx.browser:browser than 1.8.0 is available: 1.10.0 [GradleDependency]
+    implementation 'androidx.browser:browser:1.8.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:128: Warning: A newer version of androidx.test.ext:junit than 1.1.5 is available: 1.3.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:129: Warning: A newer version of androidx.test.espresso:espresso-core than 3.5.1 is available: 3.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:130: Warning: A newer version of androidx.test:runner than 1.5.2 is available: 1.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:131: Warning: A newer version of androidx.test:rules than 1.5.0 is available: 1.7.0 [GradleDependency]
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/build.gradle:142: Warning: A newer version of androidx.compose:compose-bom than 2023.10.01 is available: 2026.09.00 [GradleDependency]
+    androidTestImplementation platform('androidx.compose:compose-bom:2023.10.01')
+                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/chat/ConversationScreen.kt:30: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+    modifier: Modifier = Modifier,
+    ~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/chat/components/MessageBubble.kt:30: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+    modifier: Modifier = Modifier,
+    ~~~~~~~~
+
+   Explanation for issues of type "ModifierParameter":
+   The first (or only) Modifier parameter in a Composable function should
+   follow the following rules:
+   - Be named modifier
+   - Have a type of Modifier
+   - Either have no default value, or have a default value of Modifier
+   - If optional, be the first optional parameter in the parameter list
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.ui
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/YooKassaCheckoutActivity.kt:65: Warning: Using setJavaScriptEnabled can introduce XSS vulnerabilities into your application, review carefully [SetJavaScriptEnabled]
+                settings.javaScriptEnabled = true
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetJavaScriptEnabled":
+   Your code should not invoke setJavaScriptEnabled if you are not sure that
+   your app really requires JavaScript support.
+
+   https://goo.gle/SetJavaScriptEnabled
+   https://developer.android.com/training/articles/security-tips
+
+/home/runner/work/dar/dar/android/app/src/main/AndroidManifest.xml:18: Warning: The attribute android:allowBackup is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute android:dataExtractionRules specifying an @xml resource which configures cloud backups and device transfers on Android 12 and higher. [DataExtractionRules]
+        android:allowBackup="false"
+                             ~~~~~
+
+   Explanation for issues of type "DataExtractionRules":
+   Before Android 12, the attributes android:allowBackup and
+   android:fullBackupContent were used to configure all forms of backup,
+   including cloud backups, device-to-device transfers and adb backup.
+
+   In Android 12 and higher, these attributes have been deprecated and will
+   only apply to cloud backups. You should instead use the attribute
+   android:dataExtractionRules, specifying an @xml resource that configures
+   which files to back up, for cloud backups and for device-to-device
+   transfers, separately. If your minSdkVersion supports older versions,
+   you'll still want to specify an android:fullBackupContent resource if the
+   default behavior is not right for your app.
+
+   https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   https://goo.gle/DataExtractionRules
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/notification/NotificationHelper.kt:18: Warning: Unnecessary; SDK_INT is always >= 26 [ObsoleteSdkInt]
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+/home/runner/work/dar/dar/android/app/build.gradle:106: Warning: This library supports using KSP instead of kapt, which greatly improves performance. Learn more: https://developer.android.com/studio/build/migrate-to-ksp [KaptUsageInsteadOfKsp]
+    kapt 'androidx.room:room-compiler:2.6.1'
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "KaptUsageInsteadOfKsp":
+   KSP is a more efficient replacement for kapt. For libraries that support
+   both, KSP should be used to improve build times.
+
+   https://developer.android.com/studio/build/migrate-to-ksp
+
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/creategreeting/BriefScreen.kt:41: Information: Prefer mutableFloatStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var humor by remember { mutableStateOf(state.brief?.humorLevel?.toFloat() ?: 50f) }
+                            ~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/java/com/daragent/presentation/creategreeting/BriefScreen.kt:42: Information: Prefer mutableFloatStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var emotion by remember { mutableStateOf(state.brief?.emotionLevel?.toFloat() ?: 50f) }
+                              ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:10: Warning: The resource R.color.surface_light appears to be unused [UnusedResources]
+    <color name="surface_light">#FFFFFFFF</color>
+           ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:11: Warning: The resource R.color.surface_dark appears to be unused [UnusedResources]
+    <color name="surface_dark">#FF1E293B</color>
+           ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:12: Warning: The resource R.color.on_background_light appears to be unused [UnusedResources]
+    <color name="on_background_light">#FF1E293B</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:13: Warning: The resource R.color.on_background_dark appears to be unused [UnusedResources]
+    <color name="on_background_dark">#FFF1F5F9</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:14: Warning: The resource R.color.black appears to be unused [UnusedResources]
+    <color name="black">#FF000000</color>
+           ~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/colors.xml:15: Warning: The resource R.color.white appears to be unused [UnusedResources]
+    <color name="white">#FFFFFFFF</color>
+           ~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:4: Warning: The resource R.string.welcome_title appears to be unused [UnusedResources]
+    <string name="welcome_title">Привет! Я Дарагент</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:5: Warning: The resource R.string.welcome_subtitle appears to be unused [UnusedResources]
+    <string name="welcome_subtitle">Твой личный агент по поздравлениям</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:6: Warning: The resource R.string.button_start appears to be unused [UnusedResources]
+    <string name="button_start">Начать</string>
+            ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:7: Warning: The resource R.string.button_continue appears to be unused [UnusedResources]
+    <string name="button_continue">Продолжить</string>
+            ~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:8: Warning: The resource R.string.button_create_greeting appears to be unused [UnusedResources]
+    <string name="button_create_greeting">Создать поздравление</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:9: Warning: The resource R.string.button_people appears to be unused [UnusedResources]
+    <string name="button_people">Мои люди</string>
+            ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:10: Warning: The resource R.string.button_profile appears to be unused [UnusedResources]
+    <string name="button_profile">Профиль</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:11: Warning: The resource R.string.prompt_whom appears to be unused [UnusedResources]
+    <string name="prompt_whom">Кого сегодня порадуем?</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:12: Warning: The resource R.string.prompt_name appears to be unused [UnusedResources]
+    <string name="prompt_name">Как тебя зовут?</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:13: Warning: The resource R.string.prompt_nice_to_meet appears to be unused [UnusedResources]
+    <string name="prompt_nice_to_meet">Очень приятно, %s!</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:14: Warning: The resource R.string.prompt_first_greeting appears to be unused [UnusedResources]
+    <string name="prompt_first_greeting">Давай сделаем первое поздравление</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:15: Warning: The resource R.string.label_name appears to be unused [UnusedResources]
+    <string name="label_name">Имя</string>
+            ~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:16: Warning: The resource R.string.label_email appears to be unused [UnusedResources]
+    <string name="label_email">Email</string>
+            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/dar/dar/android/app/src/main/res/values/strings.xml:17: Warning: The resource R.string.label_password appears to be unused [UnusedResources]
+    <string name="label_password">Пароль</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests =true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests =true.
+   ,
+
+0 errors, 49 warnings

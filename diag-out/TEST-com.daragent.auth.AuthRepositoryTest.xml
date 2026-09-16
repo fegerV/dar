@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.daragent.auth.AuthRepositoryTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-16T21:23:09" hostname="runnervmlun5p" time="0.505">
+  <properties/>
+  <testcase name="isLoggedIn should return false when tokenManager has no token" classname="com.daragent.auth.AuthRepositoryTest" time="0.427"/>
+  <testcase name="clearAuth should clear tokens from tokenManager" classname="com.daragent.auth.AuthRepositoryTest" time="0.009"/>
+  <testcase name="saveAuth should save tokens to tokenManager" classname="com.daragent.auth.AuthRepositoryTest" time="0.054"/>
+  <testcase name="getAccessToken should return token from tokenManager" classname="com.daragent.auth.AuthRepositoryTest" time="0.005"/>
+  <testcase name="isLoggedIn should return true when tokenManager has token" classname="com.daragent.auth.AuthRepositoryTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

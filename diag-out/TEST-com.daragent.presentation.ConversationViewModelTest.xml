@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.daragent.presentation.ConversationViewModelTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-16T21:23:09" hostname="runnervmlun5p" time="0.035">
+  <properties/>
+  <testcase name="onSendMessage should clear input text" classname="com.daragent.presentation.ConversationViewModelTest" time="0.017"/>
+  <testcase name="onSendMessage should not send empty message" classname="com.daragent.presentation.ConversationViewModelTest" time="0.001"/>
+  <testcase name="onVoiceRecordingEnd with text should send message" classname="com.daragent.presentation.ConversationViewModelTest" time="0.003"/>
+  <testcase name="onVoiceRecordingEnd with blank text should not send message" classname="com.daragent.presentation.ConversationViewModelTest" time="0.002"/>
+  <testcase name="clearError should reset error state" classname="com.daragent.presentation.ConversationViewModelTest" time="0.004"/>
+  <testcase name="initial state should have welcome message" classname="com.daragent.presentation.ConversationViewModelTest" time="0.003"/>
+  <testcase name="onChipSelected should add user message" classname="com.daragent.presentation.ConversationViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

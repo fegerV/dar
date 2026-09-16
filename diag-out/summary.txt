@@ -1,0 +1,4 @@
+assembleDebug SUCCEEDED
+lintDebug SUCCEEDED
+test SUCCEEDED
+assembleRelease SUCCEEDED
