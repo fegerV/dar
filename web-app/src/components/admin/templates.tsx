@@ -176,7 +176,9 @@ export function AdminTemplates() {
                   value={form.code || ""}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
                   aria-label="Template code"
+                  placeholder="e.g., birthday_classic"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Unique identifier using lowercase letters and underscores</p>
               </div>
               <div>
                 <Label htmlFor="title">Title</Label>
@@ -185,7 +187,9 @@ export function AdminTemplates() {
                   value={form.title || ""}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   aria-label="Template title"
+                  placeholder="e.g., Classic Birthday Celebration"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Display name shown to users</p>
               </div>
             </div>
             <div>
@@ -195,6 +199,7 @@ export function AdminTemplates() {
                 value={form.description || ""}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 aria-label="Template description"
+                placeholder="Brief description of what this template creates"
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -205,8 +210,9 @@ export function AdminTemplates() {
                   type="number"
                   value={form.base_price_rub || 590}
                   onChange={(e) => setForm({ ...form, base_price_rub: parseInt(e.target.value) })}
-                  aria-label="Base price"
+                  aria-label="Base price in rubles"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Price charged to customers</p>
               </div>
               <div>
                 <Label htmlFor="cost_price_rub">{t("admin.templates.cost_price")} (RUB)</Label>
@@ -215,8 +221,9 @@ export function AdminTemplates() {
                   type="number"
                   value={form.cost_price_rub || 177}
                   onChange={(e) => setForm({ ...form, cost_price_rub: parseInt(e.target.value) })}
-                  aria-label="Cost price"
+                  aria-label="Cost price in rubles"
                 />
+                <p className="text-xs text-muted-foreground mt-1">Your actual cost per generation</p>
               </div>
               <div>
                 <Label htmlFor="category">{t("admin.templates.category")}</Label>
@@ -234,7 +241,7 @@ export function AdminTemplates() {
               </div>
             </div>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
-            <Button onClick={handleCreate} className="w-full">{t("admin.templates.create_template")}</Button>
+            <Button onClick={handleCreate} className="w-full" disabled={!form.code || !form.title}>{t("admin.templates.create_template")}</Button>
           </CardContent>
         </Card>
       )}

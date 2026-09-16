@@ -119,7 +119,14 @@ export function AdminModeration() {
                     </td>
                     <td className="py-2 text-right text-xs">{new Date(item.created_at).toLocaleDateString()}</td>
                     <td className="py-2 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => openItem(item)}>Review</Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => openItem(item)}
+                        aria-label={`Review ${item.type} item ${item.id.slice(0, 8)}`}
+                      >
+                        Review Details
+                      </Button>
                     </td>
                   </tr>
                 ))}

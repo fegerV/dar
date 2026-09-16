@@ -154,14 +154,27 @@ export function AdminUserDetail() {
               </div>
             )}
             <div className="flex gap-2">
-              <Input type="number" placeholder="Amount" id="adjust_AMOUNT" aria-label="Amount" />
+              <Input 
+                type="number" 
+                placeholder="Amount (₽)" 
+                id="adjust_AMOUNT" 
+                aria-label="Amount in rubles"
+                aria-describedby="amount-help"
+              />
+              <p id="amount-help" className="sr-only">Enter amount in rubles to adjust</p>
               <select id="adjust_TYPE" aria-label="Transaction type" className="border rounded px-2">
                 <option value="adjustment">Adjustment</option>
                 <option value="bonus">Bonus</option>
                 <option value="refund">Refund</option>
                 <option value="penalty">Penalty</option>
               </select>
-              <Input placeholder="Reason (min 5 chars)" id="adjust_REASON" aria-label="Reason" />
+              <Input 
+                placeholder="Reason (min 5 chars, e.g., Manual refund for order #123)" 
+                id="adjust_REASON" 
+                aria-label="Reason for adjustment"
+                aria-describedby="reason-help"
+              />
+              <p id="reason-help" className="sr-only">Enter reason with at least 5 characters</p>
             </div>
             <Button onClick={() => {
               const amount = parseFloat((document.getElementById("adjust_AMOUNT") as HTMLInputElement)?.value || "0")
