@@ -34,6 +34,6 @@ class ValidationException(AppException):
         super().__init__(
             "VALIDATION_ERROR",
             message,
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             details,
         )
