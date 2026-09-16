@@ -2,40 +2,38 @@ package com.daragent.payment
 
 import com.daragent.core.network.PaymentApi
 import com.daragent.core.network.model.CreatePaymentRequest
+import com.daragent.core.network.model.PaymentDto
 import com.daragent.core.network.model.PaymentResponse
 import com.daragent.data.payment.PaymentRepository
-import com.daragent.data.payment.PaymentCreationResult
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
+import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.Mockito.*
-import org.mockito.junit.MockitoJUnitRunner
 import retrofit2.Response
 
-@RunWith(MockitoJUnitRunner::class)
+/**
+ * Uses the real [PaymentRepository] over a fake [PaymentApi] instead of a Mockito mock.
+ *
+ * Mockito cannot reliably stub Kotlin suspend functions: `when(mock.suspendFun(any()))`
+ * fails with InvalidUseOfMatchersException / "any(...) must not be null", because the
+ * recorded invocation carries a hidden Continuation parameter and the argument matchers
+ * get out of step. Stubbing a plain fake removes that failure mode entirely.
+ */
 class PaymentRepositoryTest {
 
-    @Mock
-    private lateinit var paymentApi: PaymentApi
+    private lateinit var api: FakePaymentApi
     private lateinit var paymentRepository: PaymentRepository
 
     @Before
     fun setup() {
-        paymentRepository = PaymentRepository(paymentApi)
+        api = FakePaymentApi()
+        paymentRepository = PaymentRepository(api)
     }
 
     @Test
     fun `createPayment should return success when API call succeeds`() = runTest {
-        val mockResponse = PaymentResponse(
-            paymentId = "pay_123",
-            confirmationUrl = "https://yookassa.ru/pay/123"
-        )
-        `when`(paymentApi.createPayment(any()))
-            .thenReturn(Response.success(mockResponse))
-
         val result = paymentRepository.createPayment(499.0, "RUB")
 
         assertTrue(result.isSuccess)
@@ -45,8 +43,7 @@ class PaymentRepositoryTest {
 
     @Test
     fun `createPayment should return failure when API call fails`() = runTest {
-        `when`(paymentApi.createPayment(any()))
-            .thenReturn(Response.error(500, okhttp3.ResponseBody.create(null, "Error")))
+        api.createResponse = Response.error(500, "Error".toResponseBody(null))
 
         val result = paymentRepository.createPayment(499.0, "RUB")
 
@@ -55,14 +52,12 @@ class PaymentRepositoryTest {
 
     @Test
     fun `getPayment should return payment when API call succeeds`() = runTest {
-        val mockPayment = com.daragent.core.network.model.PaymentDto(
+        api.payment = PaymentDto(
             id = "pay_123",
             amount = 499.0,
             status = "succeeded",
-            createdAt = "2026-08-26T00:00:00Z"
+            createdAt = "2026-08-26T00:00:00Z",
         )
-        `when`(paymentApi.getPayment("pay_123"))
-            .thenReturn(Response.success(mockPayment))
 
         val result = paymentRepository.getPayment("pay_123")
 
@@ -73,20 +68,40 @@ class PaymentRepositoryTest {
 
     @Test
     fun `getPayments should return list when API call succeeds`() = runTest {
-        val mockPayments = listOf(
-            com.daragent.core.network.model.PaymentDto(
+        api.payments = listOf(
+            PaymentDto(
                 id = "pay_123",
                 amount = 499.0,
                 status = "succeeded",
-                createdAt = "2026-08-26T00:00:00Z"
+                createdAt = "2026-08-26T00:00:00Z",
             )
         )
-        `when`(paymentApi.getPayments())
-            .thenReturn(Response.success(mockPayments))
 
         val result = paymentRepository.getPayments()
 
         assertTrue(result.isSuccess)
         assertEquals(1, result.getOrNull()?.size)
     }
+}
+
+private class FakePaymentApi : PaymentApi {
+    var createResponse: Response<PaymentResponse> =
+        Response.success(
+            PaymentResponse(
+                paymentId = "pay_123",
+                confirmationUrl = "https://yookassa.ru/pay/123",
+            )
+        )
+
+    var payments: List<PaymentDto> = emptyList()
+    var payment: PaymentDto? = null
+
+    override suspend fun createPayment(request: CreatePaymentRequest): Response<PaymentResponse> =
+        createResponse
+
+    override suspend fun getPayments(): Response<List<PaymentDto>> = Response.success(payments)
+
+    override suspend fun getPayment(id: String): Response<PaymentDto> =
+        payment?.let { Response.success(it) }
+            ?: Response.error(404, "not found".toResponseBody(null))
 }

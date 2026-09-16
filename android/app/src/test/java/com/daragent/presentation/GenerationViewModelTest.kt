@@ -1,42 +1,56 @@
 package com.daragent.presentation
 
+import com.daragent.core.network.GenerationApi
+import com.daragent.core.network.model.CreateGenerationRequest
 import com.daragent.core.network.model.GenerationDto
 import com.daragent.data.generation.GenerationRepository
 import com.daragent.presentation.generation.GenerationStatus
 import com.daragent.presentation.generation.GenerationViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.junit.MockitoJUnitRunner
-import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
+import retrofit2.Response
 
 /**
  * Drives GenerationViewModel on a StandardTestDispatcher so polling (delay(2000) x60) advances
  * on virtual time. runCurrent() is used where only the start call should execute, and
  * advanceUntilIdle() where the poll loop must run to a terminal state.
+ *
+ * The repository is the real [GenerationRepository] backed by a fake [GenerationApi] rather
+ * than a Mockito mock. Mockito reports stubs for Kotlin suspend functions as "Unused" (the
+ * hidden Continuation parameter breaks invocation matching), then returns its null default;
+ * because kotlin.Result is a value class that null unboxes to Result.success(null), the
+ * ViewModel saw `generation = null` and threw inside `.id`. A fake API keeps the real
+ * repository logic under test and makes the responses fully deterministic.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(MockitoJUnitRunner::class)
 class GenerationViewModelTest {
 
-    @Mock
-    private lateinit var generationRepository: GenerationRepository
-
-    private lateinit var viewModel: GenerationViewModel
     private val scheduler = TestCoroutineScheduler()
     private val testDispatcher = StandardTestDispatcher(scheduler)
+    private lateinit var api: FakeGenerationApi
+    private lateinit var viewModel: GenerationViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = GenerationViewModel(generationRepository)
+        api = FakeGenerationApi()
+        viewModel = GenerationViewModel(GenerationRepository(api))
     }
 
     @After
@@ -52,9 +66,6 @@ class GenerationViewModelTest {
 
     @Test
     fun `startGeneration should move to PROCESSING while polling`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-
         viewModel.startGeneration()
         runCurrent()
 
@@ -63,8 +74,7 @@ class GenerationViewModelTest {
 
     @Test
     fun `startGeneration failure should set FAILED status`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.failure(RuntimeException("Network error")))
+        api.createResponse = { Response.error(500, "boom".toResponseBody(null)) }
 
         viewModel.startGeneration()
         advanceUntilIdle()
@@ -75,10 +85,7 @@ class GenerationViewModelTest {
 
     @Test
     fun `completed generation should set COMPLETED with output url`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-        whenever(generationRepository.getGeneration(any()))
-            .thenReturn(Result.success(generation("completed", outputUrl = "https://video.url")))
+        api.pollResponse = { Response.success(dto("completed", outputUrl = "https://video.url")) }
 
         viewModel.startGeneration()
         advanceUntilIdle()
@@ -90,10 +97,7 @@ class GenerationViewModelTest {
 
     @Test
     fun `failed generation should surface the server error`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-        whenever(generationRepository.getGeneration(any()))
-            .thenReturn(Result.success(generation("failed", errorMessage = "boom")))
+        api.pollResponse = { Response.success(dto("failed", errorMessage = "boom")) }
 
         viewModel.startGeneration()
         advanceUntilIdle()
@@ -104,9 +108,6 @@ class GenerationViewModelTest {
 
     @Test
     fun `cancelGeneration should set CANCELLED status`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-
         viewModel.startGeneration()
         runCurrent()
         viewModel.cancelGeneration()
@@ -116,9 +117,6 @@ class GenerationViewModelTest {
 
     @Test
     fun `reset should return to IDLE state`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-
         viewModel.startGeneration()
         runCurrent()
         viewModel.reset()
@@ -130,30 +128,41 @@ class GenerationViewModelTest {
 
     @Test
     fun `progress should increase while processing`() = runTest(scheduler) {
-        whenever(generationRepository.createGeneration(any(), any(), any()))
-            .thenReturn(Result.success(generation("processing")))
-        whenever(generationRepository.getGeneration(any()))
-            .thenReturn(Result.success(generation("processing")))
-
         viewModel.startGeneration()
         advanceTimeBy(10_000)
 
         assertEquals(GenerationStatus.PROCESSING, viewModel.uiState.value.status)
         assertTrue(viewModel.uiState.value.progress > 0)
     }
+}
 
-    private fun generation(
-        status: String,
-        outputUrl: String? = null,
-        errorMessage: String? = null,
-    ) = GenerationDto(
-        id = "gen_123",
-        type = "video_lite",
-        status = status,
-        progress = if (status == "completed") 100 else 50,
-        outputUrl = outputUrl,
-        cost = null,
-        errorMessage = errorMessage,
-        createdAt = "2026-08-26T00:00:00Z",
-    )
+private fun dto(
+    status: String,
+    outputUrl: String? = null,
+    errorMessage: String? = null,
+) = GenerationDto(
+    id = "gen_123",
+    type = "video_lite",
+    status = status,
+    progress = if (status == "completed") 100 else 50,
+    outputUrl = outputUrl,
+    cost = null,
+    errorMessage = errorMessage,
+    createdAt = "2026-08-26T00:00:00Z",
+)
+
+private class FakeGenerationApi : GenerationApi {
+    /** Response returned by createGeneration; defaults to a freshly accepted job. */
+    var createResponse: () -> Response<GenerationDto> = { Response.success(dto("processing")) }
+
+    /** Response returned by every getGeneration poll. */
+    var pollResponse: () -> Response<GenerationDto> = { Response.success(dto("processing")) }
+
+    override suspend fun createGeneration(request: CreateGenerationRequest): Response<GenerationDto> =
+        createResponse()
+
+    override suspend fun getGeneration(id: String): Response<GenerationDto> = pollResponse()
+
+    override suspend fun getGenerations(status: String?): Response<List<GenerationDto>> =
+        Response.success(emptyList())
 }

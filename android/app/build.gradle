@@ -132,6 +132,14 @@ dependencies {
     androidTestImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
     // androidTest sources build Retrofit with GsonConverterFactory (main sources use Moshi).
     androidTestImplementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    // The Compose BOM above is declared on `implementation`, and that does NOT
+    // constrain androidTestImplementation. Without this line ui-test-junit4 has no
+    // version at all, and the build dies with
+    //   Could not find androidx.compose.ui:ui-test-junit4:.
+    // It surfaced as `lintDebug` failing on generateDebugLintReportModel, because
+    // lint resolves the debugAndroidTest classpath even though it does not report
+    // issues from test sources.
+    androidTestImplementation platform('androidx.compose:compose-bom:2023.10.01')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
 }
 
