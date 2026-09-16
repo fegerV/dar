@@ -51,6 +51,7 @@ data class PersonDto(
     @Json(name = "relationship") val relationship: String?,
     @Json(name = "birth_date") val birthDate: String?,
     @Json(name = "interests") val interests: List<String>?,
+    @Json(name = "traits") val traits: List<String>? = null,
     @Json(name = "notes") val notes: String?,
     @Json(name = "photo_url") val photoUrl: String?,
     @Json(name = "created_at") val createdAt: String,

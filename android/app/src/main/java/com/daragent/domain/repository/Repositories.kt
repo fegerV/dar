@@ -10,6 +10,7 @@ import com.daragent.domain.model.UserProfile
 interface PeopleRepository {
     suspend fun list(): Result<List<Person>>
     suspend fun create(person: Person): Result<Person>
+    suspend fun get(id: String): Result<Person>
 }
 
 interface TemplateRepository {

@@ -58,7 +58,7 @@ class PeopleRepositoryImpl(
         id = id,
         name = name,
         relationship = relationship,
-        birthDate = birth_date,
+        birthDate = birthDate,
         interests = interests.orEmpty(),
         traits = traits.orEmpty()
     )
