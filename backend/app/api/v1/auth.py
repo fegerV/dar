@@ -217,7 +217,7 @@ async def regenerate_backup_codes(
     return await service.regenerate_backup_codes(current_user.id, body.totp_code)
 
 
-@router.post("/2fa/verify", response_model={"verified": bool})
+@router.post("/2fa/verify", response_model=dict[str, bool])
 async def verify_2fa_code(
     body: TwoFactorVerifyRequest,
     current_user: User = Depends(get_current_user),
