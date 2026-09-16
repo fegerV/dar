@@ -67,7 +67,7 @@ fun GenerationProgressScreen(
         if (state.generation?.status == "completed") {
             Button(
                 onClick = {
-                    navController?.navigate("feedback/${viewModel.projectId ?: ""}")
+                    navController?.navigate("feedback/${state.generation?.projectId ?: ""}")
                 },
                 modifier = Modifier.padding(16.dp),
             ) {

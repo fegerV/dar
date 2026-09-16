@@ -60,6 +60,7 @@ class PeopleRepositoryImpl(
         relationship = relationship,
         birthDate = birthDate,
         interests = interests.orEmpty(),
-        traits = traits.orEmpty()
+        traits = traits.orEmpty(),
+        photoUrl = photoUrl
     )
 }

@@ -6,7 +6,8 @@ data class Person(
     val relationship: String?,
     val birthDate: String?,
     val interests: List<String>,
-    val traits: List<String>
+    val traits: List<String>,
+    val photoUrl: String? = null
 )
 
 data class Template(

@@ -2,7 +2,7 @@ package com.daragent.presentation.people
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daragent.core.network.model.PersonDto
+import com.daragent.domain.model.Person
 import com.daragent.domain.conversation.CreatePersonUseCase
 import com.daragent.domain.conversation.GetPeopleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class PeopleUiState(
-    val people: List<PersonDto> = emptyList(),
+    val people: List<Person> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val showCreateDialog: Boolean = false,

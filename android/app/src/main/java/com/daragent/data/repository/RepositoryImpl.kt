@@ -62,7 +62,9 @@ private fun com.daragent.data.network.dto.PersonResponse.toDomain() = Person(
     relationship = relationship,
     birthDate = birthDate,
     interests = interests,
-    traits = traits
+    traits = traits,
+    // The legacy recipients payload carries no photo_url, unlike core.network's PersonDto.
+    photoUrl = null
 )
 
 private fun TemplateResponse.toDomain() = Template(

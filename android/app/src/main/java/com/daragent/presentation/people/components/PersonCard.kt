@@ -20,11 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.daragent.core.network.model.PersonDto
+import com.daragent.domain.model.Person
 
 @Composable
 fun PersonCard(
-    person: PersonDto,
+    person: Person,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

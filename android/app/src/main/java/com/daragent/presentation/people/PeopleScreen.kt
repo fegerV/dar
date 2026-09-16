@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.daragent.core.network.model.PersonDto
+import com.daragent.domain.model.Person
 import com.daragent.presentation.people.components.EmptyPeopleState
 import com.daragent.presentation.people.components.PersonCard
 

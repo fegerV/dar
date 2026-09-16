@@ -76,14 +76,17 @@ fun PhotoPickerScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (uiState.selectedUri == null) {
+            // uiState is a delegated property (by collectAsState()), so its members cannot be
+            // smart-cast; copy them into plain locals first.
+            val selectedUri = uiState.selectedUri
+            if (selectedUri == null) {
                 EmptyPhotoState(
                     onCameraClick = { showSourceDialog = true },
                     onGalleryClick = { galleryLauncher.launch("image/*") },
                 )
             } else {
                 SelectedPhotoCard(
-                    uri = uiState.selectedUri,
+                    uri = selectedUri,
                     isUploading = uiState.isUploading,
                     uploadProgress = uiState.uploadProgress,
                 )
@@ -101,10 +104,11 @@ fun PhotoPickerScreen(
                     }
                 }
 
-                if (uiState.qualityScore != null) {
+                val qualityScore = uiState.qualityScore
+                if (qualityScore != null) {
                     Spacer(modifier = Modifier.height(16.dp))
                     QualityCheckCard(
-                        score = uiState.qualityScore,
+                        score = qualityScore,
                         issues = uiState.qualityIssues,
                     )
                 }
