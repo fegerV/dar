@@ -11,7 +11,6 @@ import { useAdminAuth } from "@/contexts/admin-auth-context"
 import { useTranslation } from "react-i18next"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
-import { useToast } from "@/components/ui/toast"
 
 const statusColors: Record<string, string> = {
   SUCCESS: "bg-green-100 text-green-800",

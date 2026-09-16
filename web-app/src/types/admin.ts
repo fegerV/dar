@@ -83,8 +83,7 @@ export interface AdminOrder {
   output_json?: Record<string, unknown> | null
 }
 
-export interface AdminOrderDetailResponse extends AdminOrder {
-}
+export type AdminOrderDetailResponse = AdminOrder
 
 export interface AdminWorker {
   id: string
@@ -101,8 +100,7 @@ export interface AdminWorker {
   created_at: string
 }
 
-export interface AdminWorkerDetailResponse extends AdminWorker {
-}
+export type AdminWorkerDetailResponse = AdminWorker
 
 export interface AdminQueueJob {
   id: string
@@ -130,8 +128,7 @@ export interface AdminPayment {
   paid_at: string | null
 }
 
-export interface AdminPaymentDetailResponse extends AdminPayment {
-}
+export type AdminPaymentDetailResponse = AdminPayment
 
 export interface AdminLedgerTransaction {
   id: string

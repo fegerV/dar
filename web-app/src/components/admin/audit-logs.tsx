@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import type { AuditLog } from "@/types/admin"
 import { useRouter } from "next/navigation"
 import { useAdminAuth } from "@/contexts/admin-auth-context"
-import { useTranslation } from "react-i18next"
 import { useAdminList } from "@/hooks/use-admin-list"
 import { Pagination } from "@/components/admin/pagination"
 

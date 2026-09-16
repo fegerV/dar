@@ -4,7 +4,6 @@ import * as React from "react"
 import * as ToastPrimitive from "@radix-ui/react-toast"
 import { X } from "lucide-react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { useTranslation } from "react-i18next"
 
 import { cn } from "@/lib/utils"
 
@@ -140,7 +139,6 @@ function useToast() {
 }
 
 function ToastProviderInner({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation()
   const [toasts, setToasts] = React.useState<ToastData[]>([])
   const [openMap, setOpenMap] = React.useState<Record<string, boolean>>({})
 
