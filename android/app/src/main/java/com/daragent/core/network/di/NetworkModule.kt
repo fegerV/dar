@@ -1,6 +1,7 @@
 package com.daragent.core.network.di
 
 import com.daragent.core.network.*
+import com.daragent.core.network.api.ChatApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
