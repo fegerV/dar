@@ -1,0 +1,125 @@
+name: Android Diag
+
+# TEMPORARY diagnostic workflow, only on the throwaway ci-diag branch.
+#
+# Why this exists: GitHub truncates each check-run annotation at 4096 characters
+# and keeps only ~10 per run, and job logs are not readable without a token. So
+# error lists were always partial, and the unauthenticated REST API caps out at
+# 60 requests/hour (the poller kept dying mid-run).
+#
+# v10 drops the annotation approach entirely: the full logs, the lint text report
+# and the JUnit XML results are committed to the throwaway `diag-results` branch.
+# They can then be read with a plain `git fetch` — no API, no truncation.
+#
+# The trigger is restricted to ci-diag, and results go to a different branch, so
+# the publish push can never re-trigger this workflow.
+
+on:
+  push:
+    branches: [ci-diag]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build and test
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          set +e
+          for t in assembleDebug lintDebug test assembleRelease; do
+            bash ./gradlew "$t" --no-daemon --stacktrace > "/tmp/$t.log" 2>&1
+            echo "$t exit=$?"
+          done
+          exit 0
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/out
+          for t in assembleDebug lintDebug test assembleRelease; do
+            if grep -qa "BUILD SUCCESSFUL" "/tmp/$t.log"; then
+              echo "$t SUCCEEDED" >> /tmp/out/summary.txt
+            else
+              echo "$t FAILED" >> /tmp/out/summary.txt
+            fi
+            cp "/tmp/$t.log" /tmp/out/ 2>/dev/null || true
+          done
+
+          # Condensed error list (same idea as v9, kept for a quick read).
+          {
+            grep -ahE "^e: |^w: .*Unresolved|Execution failed for task|Could not resolve|Could not find|Caused by:|What went wrong|Cannot find a parameter|Type mismatch|No value passed|Too many arguments|None of the following|overload resolution|Redeclaration" \
+              /tmp/assembleDebug.log /tmp/lintDebug.log /tmp/test.log /tmp/assembleRelease.log 2>/dev/null
+            grep -ahE ": (Error|Warning): |Lint found [0-9]+ error|^ *[0-9]+ errors?, [0-9]+ warnings?" \
+              /tmp/lintDebug.log 2>/dev/null
+            grep -ahE "Missing class|R8: |> Task .*FAILED" /tmp/assembleRelease.log 2>/dev/null
+          } | sed 's|/home/runner/work/dar/dar/||g; s/\r//g' | sort -u > /tmp/out/errors.txt
+
+          # Full lint text report (path moves between AGP versions).
+          find android/app/build -name "lint-results*.txt" -exec cat {} \; > /tmp/out/lint-report.txt 2>/dev/null || true
+          # JUnit XML: exact assertion failures / stack traces.
+          find android/app/build/test-results -name "*.xml" -exec cp {} /tmp/out/ \; 2>/dev/null || true
+          # Test HTML report is a single self-contained file; copy the XML only,
+          # the console log already carries the summary.
+          echo "--- errors.txt ---"; wc -l < /tmp/out/errors.txt || true
+          ls -la /tmp/out | head -40
+
+      - name: Annotate (fallback if the branch publish fails)
+        if: always()
+        run: |
+          for t in assembleDebug lintDebug test assembleRelease; do
+            if grep -qa "BUILD SUCCESSFUL" "/tmp/$t.log"; then
+              echo "::notice::$t SUCCEEDED"
+            else
+              echo "::notice::$t FAILED"
+            fi
+          done
+          split -l 22 -d -a 2 /tmp/out/errors.txt /tmp/chunk. 2>/dev/null || true
+          i=0
+          for c in /tmp/chunk.*; do
+            [ -e "$c" ] || continue
+            MSG=$(awk '{printf "%s%%0A", $0}' "$c")
+            echo "::error title=errors-part-$i::$MSG"
+            i=$((i+1))
+            if [ "$i" -ge 9 ]; then break; fi
+          done
+          MSG=$(grep -aE "FAILED$|There were failing tests|tests completed, [0-9]+ failed" /tmp/test.log \
+                | head -20 | sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}')
+          if [ -n "$MSG" ]; then echo "::error title=test-results::$MSG"; fi
+          exit 0
+
+      - name: Publish diagnostics to diag-results
+        if: always()
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "diag-bot"
+          git config user.email "diag-bot@local"
+          # Keep only the freshly produced files, on an orphan branch.
+          rm -rf diag-out
+          mkdir -p diag-out
+          cp -r /tmp/out/. diag-out/ 2>/dev/null || true
+          echo "$GITHUB_SHA" > diag-out/commit.txt
+          git checkout --orphan diag-results-tmp 2>/dev/null || git checkout -B diag-results-tmp
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          rm -rf android backend web-app .github 2>/dev/null || true
+          git add -A diag-out
+          git commit -m "diag results for ${GITHUB_SHA}" >/dev/null 2>&1 || echo "nothing to commit"
+          git push -f origin HEAD:diag-results
+          exit 0
