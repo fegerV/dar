@@ -50,12 +50,46 @@ interface AIModel {
 }
 
 const MODEL_TYPES = [
-  { value: "chat", label: "Chat (Text)" },
+  { value: "chat", label: "Chat (Text/LLM)" },
   { value: "image", label: "Image Generation" },
   { value: "video_lite", label: "Video (Lite)" },
   { value: "video_premium", label: "Video (Premium)" },
   { value: "voice", label: "Voice / TTS" },
   { value: "music", label: "Music Generation" },
+]
+
+const POLZA_VIDEO_MODELS = [
+  { model_id: "bytedance/seedance-2", display_name: "Seedance 2", tier: "video_premium" },
+  { model_id: "bytedance/seedance-2-fast", display_name: "Seedance 2 Fast", tier: "video_lite" },
+  { model_id: "bytedance/seedance-2-mini", display_name: "Seedance 2 Mini", tier: "video_lite" },
+]
+
+const POLZA_IMAGE_MODELS = [
+  { model_id: "bytedance/seedream-5-lite", display_name: "Seedream 5.0 Lite" },
+  { model_id: "bytedance/seedream-4-5", display_name: "Seedream 4.5" },
+  { model_id: "bytedance/seedream-4", display_name: "Seedream 4" },
+  { model_id: "bytedance/seedream-3", display_name: "Seedream 3.0" },
+  { model_id: "openai/gpt-image-1-5", display_name: "GPT Image 1.5" },
+  { model_id: "openai/gpt-image-2", display_name: "GPT Image 2" },
+  { model_id: "xai/grok-imagine", display_name: "Grok Imagine" },
+  { model_id: "alibaba/qwen-image", display_name: "Qwen Image" },
+  { model_id: "black-forest-labs/flux-2-pro", display_name: "Flux-2 Pro" },
+  { model_id: "black-forest-labs/flux-2-flex", display_name: "Flux-2 Flex" },
+  { model_id: "nanobanana/nano-banana", display_name: "Nano Banana" },
+  { model_id: "nanobanana/nano-banana-pro", display_name: "Nano Banana Pro" },
+  { model_id: "nanobanana/nano-banana-2", display_name: "Nano Banana 2" },
+]
+
+const POLZA_LLM_MODELS = [
+  { model_id: "anthropic/claude-opus-4", display_name: "Claude Opus 4" },
+  { model_id: "anthropic/claude-sonnet-4", display_name: "Claude Sonnet 4" },
+  { model_id: "anthropic/claude-haiku-3-5", display_name: "Claude Haiku 3.5" },
+  { model_id: "openai/gpt-5", display_name: "GPT-5" },
+  { model_id: "openai/gpt-5-mini", display_name: "GPT-5 Mini" },
+  { model_id: "google/gemini-2-5-pro", display_name: "Gemini 2.5 Pro" },
+  { model_id: "google/gemini-2-5-flash", display_name: "Gemini 2.5 Flash" },
+  { model_id: "deepseek/deepseek-v3", display_name: "DeepSeek V3" },
+  { model_id: "alibaba/qwen-3-max", display_name: "Qwen 3 Max" },
 ]
 
 export function AdminAIModels() {
@@ -307,6 +341,163 @@ export function AdminAIModels() {
               </Button>
             </div>
           </div>
+
+          {selectedProvider && providers.find((p) => p.id === selectedProvider)?.provider_type === "polza" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Quick Add Polza.ai Models</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-xs font-semibold mb-2">Video Models (Seedance 2)</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {POLZA_VIDEO_MODELS.map((m) => (
+                      <Button
+                        key={m.model_id}
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await apiFetch("/admin/ai/models", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                provider_id: selectedProvider,
+                                name: m.model_id.split("/")[1],
+                                display_name: m.display_name,
+                                model_type: m.tier,
+                                model_id: m.model_id,
+                                max_prompt_length: 20000,
+                                supports_images: true,
+                                supports_video: true,
+                                supports_audio: true,
+                                cost_per_unit: 0.5,
+                                unit_type: "second",
+                                enabled: true,
+                                is_default: false,
+                              }),
+                            })
+                            toast({
+                              title: t("notification.success") || "Success",
+                              description: `${m.display_name} added`,
+                              variant: "success",
+                            })
+                            refetchModels()
+                          } catch {
+                            toast({
+                              title: t("notification.error") || "Error",
+                              description: `Failed to add ${m.display_name}`,
+                              variant: "error",
+                            })
+                          }
+                        }}
+                      >
+                        + {m.display_name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold mb-2">Image Models</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {POLZA_IMAGE_MODELS.map((m) => (
+                      <Button
+                        key={m.model_id}
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await apiFetch("/admin/ai/models", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                provider_id: selectedProvider,
+                                name: m.model_id.split("/")[1].replace(/-/g, "_"),
+                                display_name: m.display_name,
+                                model_type: "image",
+                                model_id: m.model_id,
+                                max_prompt_length: 5000,
+                                supports_images: false,
+                                supports_video: false,
+                                supports_audio: false,
+                                cost_per_unit: 0.1,
+                                unit_type: "image",
+                                enabled: true,
+                                is_default: false,
+                              }),
+                            })
+                            toast({
+                              title: t("notification.success") || "Success",
+                              description: `${m.display_name} added`,
+                              variant: "success",
+                            })
+                            refetchModels()
+                          } catch {
+                            toast({
+                              title: t("notification.error") || "Error",
+                              description: `Failed to add ${m.display_name}`,
+                              variant: "error",
+                            })
+                          }
+                        }}
+                      >
+                        + {m.display_name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-semibold mb-2">LLM Models</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {POLZA_LLM_MODELS.map((m) => (
+                      <Button
+                        key={m.model_id}
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await apiFetch("/admin/ai/models", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                provider_id: selectedProvider,
+                                name: m.model_id.split("/")[1].replace(/\./g, "_").replace(/-/g, "_"),
+                                display_name: m.display_name,
+                                model_type: "chat",
+                                model_id: m.model_id,
+                                max_prompt_length: 200000,
+                                supports_images: true,
+                                supports_video: false,
+                                supports_audio: false,
+                                cost_per_unit: 0.000001,
+                                unit_type: "token",
+                                enabled: true,
+                                is_default: false,
+                              }),
+                            })
+                            toast({
+                              title: t("notification.success") || "Success",
+                              description: `${m.display_name} added`,
+                              variant: "success",
+                            })
+                            refetchModels()
+                          } catch {
+                            toast({
+                              title: t("notification.error") || "Error",
+                              description: `Failed to add ${m.display_name}`,
+                              variant: "error",
+                            })
+                          }
+                        }}
+                      >
+                        + {m.display_name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {creatingModel && (
             <ModelForm
