@@ -179,3 +179,36 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 
 export type { Tokens }
 export { API_BASE_URL, getClientAccessToken }
+
+/**
+ * Setup the first admin user (bootstrap endpoint).
+ * This endpoint does NOT require authentication but requires a bootstrap token.
+ */
+export async function setupAdmin(
+  email: string,
+  password: string,
+  displayName?: string,
+  firstName?: string,
+  lastName?: string,
+): Promise<{ status: string; user_id: string; admin_id: string }> {
+  const bootstrapToken = process.env.NEXT_PUBLIC_ADMIN_BOOTSTRAP_TOKEN || "dev-bootstrap-token-12345"
+  const res = await fetch(`${API_BASE_URL}/admin/setup`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "X-Bootstrap-Token": bootstrapToken,
+    },
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      display_name: displayName,
+      first_name: firstName,
+      last_name: lastName,
+    }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || "Failed to create admin")
+  }
+  return res.json()
+}
