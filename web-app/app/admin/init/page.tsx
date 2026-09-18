@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { setupAdmin } from "@/lib/api"
 
 export default function AdminInitPage() {
   const router = useRouter()
@@ -24,15 +25,13 @@ export default function AdminInitPage() {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch("/api/v1/admin/setup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || "Failed to create admin")
-      }
+      await setupAdmin(
+        formData.email,
+        formData.password,
+        formData.display_name || undefined,
+        formData.first_name || undefined,
+        formData.last_name || undefined,
+      )
       router.push("/admin/login")
     } catch (e: unknown) {
       setError((e as Error)?.message)
