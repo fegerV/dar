@@ -46,14 +46,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
                 async with async_session_factory() as session:
                     stmt = insert(AuditLog).values(
-                        actor_user_id=actor_id,
-                        action=f"{method}:{path}",
-                        target_type=target_type,
-                        target_id=target_id,
-                        ip_address=ip,
-                        user_agent=ua,
-                        metadata={},
-                    )
+                                            actor_user_id=actor_id,
+                                            action=f"{method}:{path}",
+                                            target_type=target_type,
+                                            target_id=target_id,
+                                            ip_address=ip,
+                                            user_agent=ua,
+                                        )
                     await session.execute(stmt)
                     await session.commit()
         except Exception as exc:
