@@ -38,6 +38,7 @@ CRITICAL_ENDPOINTS = {
     "/api/v1/generations": RateLimitConfig(window_seconds=60, max_requests=10, description="Generation endpoint"),
     "/api/v1/payments": RateLimitConfig(window_seconds=60, max_requests=20, description="Payment endpoint"),
     "/api/v1/auth/login": RateLimitConfig(window_seconds=300, max_requests=10, description="Login endpoint"),
+    "/api/v1/admin/setup": RateLimitConfig(window_seconds=600, max_requests=5, description="Admin bootstrap"),
 }
 
 # Prefix for Redis keys

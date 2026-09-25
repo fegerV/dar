@@ -17,7 +17,7 @@ depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column("templates", sa.Column("tags", sa.ARRAY(sa.String), nullable=False, server_default="[]"))
+    op.add_column("templates", sa.Column("tags", sa.ARRAY(sa.String), nullable=False, server_default="{}"))
     op.add_column("templates", sa.Column("cost_price_rub", sa.Numeric(12, 2), nullable=False, server_default="0"))
     op.add_column("templates", sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"))
     op.add_column("templates", sa.Column("success_rate", sa.Float, nullable=True))

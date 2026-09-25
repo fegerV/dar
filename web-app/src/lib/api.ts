@@ -21,13 +21,15 @@ function getCookie(name: string): string | null {
 function setCookie(name: string, value: string, maxAgeSec: number): void {
   if (typeof window === "undefined") return
   const isSecure = typeof location !== "undefined" && location.protocol === "https:"
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSec}; SameSite=Lax; Secure=${isSecure}`
+  const secureFlag = isSecure ? "; Secure" : ""
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSec}; SameSite=Lax${secureFlag}`
 }
 
 function clearCookie(name: string): void {
   if (typeof window === "undefined") return
   const isSecure = typeof location !== "undefined" && location.protocol === "https:"
-  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax; Secure=${isSecure}`
+  const secureFlag = isSecure ? "; Secure" : ""
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secureFlag}`
 }
 
 function getAccessToken(): string | null {

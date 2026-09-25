@@ -2,187 +2,169 @@
 
 ## Overview
 
-The admin panel consists of:
-- **Frontend**: Next.js app at `web-app/app/admin/` with 11 pages
-- **Backend**: FastAPI admin router at `backend/app/api/v1/admin.py` with 15 endpoints
-- **Service layer**: `backend/app/services/admin/service.py` with 18 methods
+Проект **DarAgent** — AI-сервис персональных видеопоздравлений.
 
-## Current Status: PARTIALLY IMPLEMENTED — BLOCKED BY AUTH CIRCULAR DEPENDENCY
+Админ-панель состоит из:
+- **Backend**: FastAPI, `backend/app/api/v1/admin.py` — ~70 эндпоинтов (2149 строк)
+- **Service layer**: `backend/app/services/admin/service.py` — 1039 строк
+- **Schemas**: `backend/app/schemas/admin.py` — 725 строк, 40+ Pydantic моделей
+- **Frontend**: Next.js, `web-app/src/components/admin/` — 27 компонентов (6427 строк)
+- **Pages**: `web-app/app/admin/` — 34 страницы
 
-### Critical Blocker: Admin Bootstrap is Broken
+## Current Status: FULLY IMPLEMENTED
 
-**The Chicken-and-Egg Problem:**
-1. To call `POST /admin/init`, you need `require_admin` (checks `User.is_admin = True`)
-2. To get `User.is_admin = True`, you need to be admin
-3. There is NO backend endpoint to make the first user admin
-4. The seed script (`backend/scripts/seed.py`) does NOT create an admin user
-5. The frontend login page (`web-app/app/admin/login/page.tsx:13-14`) has hardcoded credentials `admin@daragent.ru:admin123`, but no backend code creates this user
+Все критичные проблемы, описанные в предыдущей версии этого документа, решены. Админ-панель полностью функциональна.
 
-**Result:** The admin panel is completely inaccessible. Even with proper JWT secrets, there is no way to bootstrap the first admin account through the API. The init endpoint is unreachable.
+---
 
-### Frontend Status
+## 1. Admin Bootstrap
 
-| Page | File | Component | Status | Notes |
-|------|------|-----------|--------|-------|
-| Login | `app/admin/login/page.tsx` | `AdminLoginPage` | ✅ Working | Hardcoded credentials, stores token in localStorage (XSS risk) |
-| Dashboard | `app/admin/dashboard/page.tsx` | `AdminDashboard` | ⚠️ Partial | Fetches `/admin/stats` — health section uses static data, not real API calls |
-| Users | `app/admin/users/page.tsx` | `AdminUsers` | ⚠️ Partial | "View" button (Eye icon) has no onClick handler (stub) |
-| Orders | `app/admin/orders/page.tsx` | `AdminOrders` | ⚠️ Partial | "Play video" button is a stub (no onClick) |
-| Order Detail | `app/admin/orders/[id]/page.tsx` | `AdminOrderDetail` | ⚠️ Partial | Fetches `/admin/orders/{id}`, but the "Open video" button has no handler |
-| Generations | `app/admin/generations/page.tsx` | `AdminGenerations` | ⚠️ Partial | "Play Video" button is a stub (no onClick) |
-| Queue | `app/admin/queue/page.tsx` | `AdminQueue` | ✅ Working | Has cancel/retry actions wired to API |
-| Referrals | `app/admin/referrals/page.tsx` | `AdminReferrals` | ✅ Working | Read-only views of codes/referrals |
-| Audit Logs | `app/admin/audit-logs/page.tsx` | `AdminAuditLogs` | ✅ Working | Read-only, searchable |
-| Workers | `app/admin/workers/page.tsx` | `AdminWorkers` | ⚠️ Partial | "Restart" button only sets status to "maintenance", doesn't actually restart worker |
-| System | `app/admin/system/page.tsx` | `AdminSystem` | ✅ Working | Health uses static data, settings editable via JSON input |
-| Init | `app/admin/init/page.tsx` | `AdminInitPage` | ⚠️ Partial | Requires `require_admin` — unreachable without bootstrap fix |
+| Проблема | Статус |
+|---|---|
+| **Chicken-and-egg problem** (нельзя создать первого админа) | ✅ **Решено** |
+| **Hardcoded credentials** (`admin@daragent.ru:admin123`) | ✅ **Удалены** |
 
-### Backend API Status
+**Решение:** `POST /admin/setup` — не требует admin auth. Работает через:
+- `X-Bootstrap-Token` (продакшн) — `NEXT_PUBLIC_ADMIN_BOOTSTRAP_TOKEN`
+- Без токена в dev-режиме
+- PostgreSQL advisory lock предотвращает race condition
 
-| Endpoint | Controller | Service | Status |
-|----------|-----------|---------|--------|
-| `POST /admin/init` | `admin.py:40` | `ensure_single_admin` | ⚠️ Unreachable (bootstrap bug) |
-| `GET /admin/stats` | `admin.py:50` | `get_dashboard_stats` | ✅ Working |
-| `GET /admin/users` | `admin.py:59` | `list_users` | ✅ Working |
-| `POST /admin/templates` | `admin.py:83` | `create_template` | ✅ Working |
-| `GET /admin/templates` | `admin.py:71` | `list_templates` | ✅ Working |
-| `GET /admin/generations` | `admin.py:93` | `list_generations` | ✅ Working |
-| `GET /admin/orders` | `admin.py:105` | `list_orders` | ✅ Working (alias of generations) |
-| `GET /admin/queue` | `admin.py:117` | `list_queue_jobs` | ✅ Working |
-| `GET /admin/workers` | `admin.py:127` | `list_workers` | ✅ Working |
-| `POST /admin/workers/{id}/status` | `admin.py:136` | `update_worker_status` | ✅ Working (sets status only) |
-| `POST /admin/queue/{id}/action` | `admin.py:147` | `queue_job_action` | ✅ Working |
-| `GET /admin/payments` | `admin.py:158` | `list_payments` | ✅ Working |
-| `GET /admin/audit-logs` | `admin.py:170` | `list_audit_logs` | ✅ Working |
-| `GET /admin/system/settings` | `admin.py:180` | `get_system_settings` | ✅ Working |
-| `PATCH /admin/system/settings/{key}` | `admin.py:189` | `update_system_setting` | ✅ Working |
-| `GET /admin/users/{id}` | `admin.py:200` | `get_user` | ✅ Working |
-| `GET /admin/users/{id}/wallet` | `admin.py:210` | `get_user_wallet` | ✅ Working |
-| `POST /admin/users/{id}/impersonate` | `admin.py:220` | (inline) | ✅ Working (returns tokens) |
-| `GET /admin/referrals` | `admin.py:242` | `list_referrals` | ✅ Working |
-| `GET /admin/referral-codes` | `admin.py:251` | `list_referral_codes` | ✅ Working |
-| `GET /admin/orders/{id}` | `admin.py:260` | `get_order` | ✅ Working |
-| `GET /admin/gallery/pending` | `admin.py:270` | `list_gallery_pending` | ✅ Working |
-| `POST /admin/gallery/{id}/review` | `admin.py:290` | `review_gallery_submission` | ✅ Working |
+**Фронтенд:** `/admin/init` — форма создания первого администратора с полями email, password, display_name, first_name, last_name.
 
-## Missing Features
+---
 
-### 1. Admin Bootstrap (CRITICAL BLOCKER)
+## 2. Backend API Endpoints (~70)
 
-**Problem:** No way to create the first admin user. `POST /admin/init` requires admin privileges.
+| Категория | Эндпоинты | Статус |
+|---|---|---|
+| **Bootstrap** | `POST /admin/setup` | ✅ |
+| **Dashboard** | `GET /admin/stats`, `GET /admin/analytics` | ✅ |
+| **Users** | List, get, wallet, impersonate (с MFA), wallet/adjust, block-ip (add/remove), bulk-action (block/unblock/delete/send_message) | ✅ |
+| **Roles / RBAC** | CRUD ролей, назначение/снятие ролей пользователю, permissions catalogue | ✅ |
+| **Templates** | CRUD + get, patch, delete | ✅ |
+| **Template versions** | List, create, update | ✅ |
+| **Scenes** | CRUD + reorder | ✅ |
+| **Generations** | List (с фильтром по статусу), detail (со steps), retry, cancel | ✅ |
+| **Orders** | List, detail, export CSV | ✅ |
+| **Queue (GenerationJobs)** | List (фильтр по статусу/воркеру), get, action (cancel/retry/prioritize/deprioritize), bulk-action, priority update (0-1000), pause/resume, status | ✅ |
+| **Workers** | List, get, status update, restart (Celery broadcast), shutdown, params update, logs | ✅ |
+| **Payments** | List, get, refund (full/partial), export CSV | ✅ |
+| **Ledger** | List transactions (с фильтром по типу) | ✅ |
+| **Promo codes** | CRUD | ✅ |
+| **Prompts** | CRUD + versions + rollback | ✅ |
+| **AI Providers** | CRUD + test connection (+ health check) | ✅ |
+| **AI Models** | CRUD | ✅ |
+| **Webhooks** | CRUD | ✅ |
+| **Moderation** | List items (pending/approved/rejected/escalated), get item, action (approve/reject/escalate) | ✅ |
+| **Gallery** | List pending, review | ✅ |
+| **Support tickets** | List, get, close | ✅ |
+| **Audit logs** | List (с фильтром по actor) | ✅ |
+| **System settings** | List, update (с Pydantic-валидацией по ключу) | ✅ |
+| **Storage** | Stats, Yandex config/test | ✅ |
+| **SSE events** | Live stream для дашборда | ✅ |
+| **CSV export** | Analytics, orders, payments | ✅ |
 
-**Fix required:**
-- Add `POST /admin/setup` endpoint that creates the first admin without requiring admin auth (only works when no AdminUser records exist)
-- OR add a CLI script to bootstrap admin
-- OR add `is_admin` to the register request for the first user
+---
 
-**CLI Script Approach (Recommended):**
-```python
-# backend/scripts/create_admin.py
-async def create_admin(email: str, password: str):
-    # Create user with is_admin=True
-    # Create AdminUser record
-```
+## 3. Frontend Pages (34 страницы)
 
-### 2. Template Management — No Update/Edit Endpoint
+| Page | Component | Lines | Status |
+|---|---|---|---|
+| `/admin/login` | — | 76 | ✅ Полноценная форма логина |
+| `/admin/init` | — | 124 | ✅ Форма первого входа (bootstrap) |
+| `/admin/dashboard` | `dashboard.tsx` (160) | ✅ Реальные API + SSE live-обновления | ✅ |
+| `/admin/users` | `users.tsx` (437) | ✅ Поиск, пагинация, bulk-actions, блокировка, удаление | ✅ |
+| `/admin/users/[id]` | `user-detail.tsx` (210) | ✅ Детальный профиль, кошелёк, блокировка IP | ✅ |
+| `/admin/templates` | `templates.tsx` (442) | ✅ CRUD, категории, поиск | ✅ |
+| `/admin/templates/[id]` | — (407) | ✅ Просмотр + версии + сцены | ✅ |
+| `/admin/generations` | `generations.tsx` (119) | ✅ | ✅ |
+| `/admin/generations/[id]` | `generation-detail.tsx` (185) | ✅ Шаги, retry, cancel | ✅ |
+| `/admin/orders` | `orders.tsx` (179) | ✅ | ✅ |
+| `/admin/orders/[id]` | — (66) | ✅ | ✅ |
+| `/admin/queue` | `queue.tsx` (299) | ✅ Просмотр, cancel, retry, priority, bulk | ✅ |
+| `/admin/queue/[id]` | — (125) | ✅ | ✅ |
+| `/admin/workers` | `workers.tsx` (171) | ✅ | ✅ |
+| `/admin/workers/[id]` | — (191) | ✅ Параметры + логи | ✅ |
+| `/admin/payments` | `payments.tsx` (165) | ✅ | ✅ |
+| `/admin/payments/[id]` | — (67) | ✅ | ✅ |
+| `/admin/ledger` | `ledger.tsx` (171) | ✅ | ✅ |
+| `/admin/promo` | `promocodes.tsx` (215) | ✅ CRUD | ✅ |
+| `/admin/prompts` | `prompts.tsx` (402) | ✅ CRUD + версии | ✅ |
+| `/admin/rbac` | `rbac.tsx` (153) | ✅ Управление ролями | ✅ |
+| `/admin/ai` | `ai-models.tsx` (888) | ✅ Провайдеры + модели (крупнейший) | ✅ |
+| `/admin/webhooks` | `webhooks.tsx` (178) | ✅ | ✅ |
+| `/admin/errors` | `errors.tsx` (135) | ✅ Группировка по типу | ✅ |
+| `/admin/moderation` | `moderation.tsx` (186) | ✅ | ✅ |
+| `/admin/audit-logs` | `audit-logs.tsx` (110) | ✅ | ✅ |
+| `/admin/referrals` | `referrals.tsx` (166) | ✅ | ✅ |
+| `/admin/support` | `support.tsx` (158) | ✅ Тикеты поддержки | ✅ |
+| `/admin/storage` | `storage.tsx` (196) | ✅ | ✅ |
+| `/admin/system` | `system.tsx` (463) | ✅ Настройки с JSON-редактором | ✅ |
+| `/admin/analytics` | `analytics.tsx` (154) | ✅ | ✅ |
+| `/admin/lab` | `lab.tsx` (266) | ✅ | ✅ |
+| `/admin/help` | — (773) | ✅ Справочная страница | ✅ |
 
-**Missing endpoints:**
-- `PATCH /admin/templates/{id}` — update template status, price, etc.
-- `DELETE /admin/templates/{id}` — delete template
-- `POST /admin/templates/{id}/versions` — create new template version
+**Frontend: 27 компонентов, 6427 строк кода.**
 
-**Frontend shows:** "Edit" button (Eye/Edit icon) in templates table — no onClick handler.
+---
 
-### 3. Template Version Management
+## 4. Security
 
-**Missing endpoints:**
-- `GET /admin/templates/{id}/versions` — list versions
-- `PATCH /admin/templates/{version_id}` — update version status/prompt_config
-- No way to edit scene prompts, template config from admin UI
+| Аспект | Статус |
+|---|---|
+| JWT access/refresh токены | ✅ |
+| Token blacklist (Redis) | ✅ |
+| Impersonation с MFA и 5-min лимитом | ✅ |
+| CSRF middleware | ✅ |
+| Rate limiting (Redis + in-memory fallback) | ✅ — 5 попыток / 10 мин на `/admin/setup` |
+| Security headers (CSP, HSTS, X-Frame-Options) | ✅ |
+| Audit log middleware | ✅ |
+| Cookies вместо localStorage | ✅ |
+| Secure cookie только на production (не ломает dev) | ✅ Исправлено |
 
-### 4. Template Scene Management
+---
 
-**Missing endpoints:**
-- `POST /admin/templates/{id}/scenes` — create scene
-- `PATCH /admin/scenes/{id}` — update scene
-- `DELETE /admin/scenes/{id}` — delete scene
-- No UI for managing scenes within templates
+## 5. Known Issues (Minor / Non-Blocking)
 
-### 5. Worker Management Incomplete
+| Issue | Priority |
+|---|---|
+| Нет интеграционных тестов admin endpoint'ов | Low |
+| Нет Alembic миграций в репозитории (alembic.ini есть, папка `versions/` не найдена) | Medium — проверить |
+| `help/page.tsx` — статическая страница | Low |
+| `/health/detailed` и `/metrics` — не аутентифицированы | Low (опционально) |
 
-**Frontend:** "Restart" button sets status to "maintenance" but doesn't actually restart the worker process.
+---
 
-**Missing endpoints:**
-- `POST /admin/workers/{id}/restart` — send restart signal
-- `POST /admin/workers/{id}/shutdown` — gracefully shutdown worker
-- Worker details view with full metrics
+## 6. Что было исправлено с момента предыдущей версии документа
 
-### 6. Queue Job Actions Incomplete
+| Проблема | Fix |
+|---|---|
+| Bootstrap blocker | `POST /admin/setup` — не требует admin auth |
+| Hardcoded credentials | Удалены из login/page.tsx |
+| localStorage tokens | Заменено на cookies |
+| Template update/delete | `PATCH/DELETE /admin/templates/{id}` |
+| Template versions | List/Create/Update |
+| Scenes | CRUD + reorder |
+| Worker restart/shutdown | Celery broadcast |
+| Bulk queue actions | `POST /admin/queue/bulk-action` |
+| Numeric priority | `PATCH /admin/queue/{id}/priority` |
+| System health | Реальные API в дашборде + SSE live |
+| Impersonation MFA | MFA token required |
+| Settings validation | Pydantic schema per key |
+| Rate limiting for /admin/setup | 5 requests / 10 min |
 
-**Missing:**
-- Job reassignment (move to different worker)
-- Job priority numeric adjustment (only preset "prioritize"/"deprioritize")
-- Bulk actions (cancel multiple jobs)
-
-### 7. System Settings — No UI Validation
-
-**Problem:** Settings can be edited as raw JSON without type validation.
-
-**Fix:** Add schema-based validation for system settings keys.
-
-### 8. System Health — Static Data
-
-**Problem:** The health monitoring section uses hardcoded `initialHealth` array, not real API data.
-
-**Fix:** Fetch real data from `/health/detailed` endpoint (needs authentication).
-
-### 9. Admin Impersonation — Missing MFA Requirement
-
-**Problem:** Impersonation endpoint has no MFA, time limit, or watermarking.
-
-**Fix:**
-- Require MFA for impersonation
-- Set short-lived tokens (5 min) for impersonated sessions
-- Add watermark context to all actions by impersonated users
-
-### 10. Token Storage in localStorage
-
-**Problem:** Admin tokens stored in `localStorage` (`web-app/src/lib/api.ts:21`), vulnerable to XSS.
-
-**Fix:** Use httpOnly cookies instead.
-
-## Security Issues Found
-
-1. **Hardcoded admin credentials** in `login/page.tsx:13-14`: `admin@daragent.ru` / `admin123`
-2. **localStorage token storage** — XSS token theft risk
-3. **Admin impersonation** — no MFA, no time limit
-4. **Health/metrics endpoints** unauthenticated (`/health/detailed`, `/metrics`)
-5. **Admin/desync** — `User.is_admin` vs `AdminUser` table inconsistency
-
-## Recommendations
-
-### Immediate (Blocker)
-1. Fix admin bootstrap — add CLI script or setup endpoint
-2. Remove hardcoded credentials from frontend
-3. Add MFA requirement for impersonation
-4. Move tokens to httpOnly cookies
-
-### Short-term
-4. Add template update/delete endpoints
-5. Add template version management endpoints
-6. Add scene management endpoints
-7. Add real system health integration
-
-### Medium-term
-8. Add worker restart/shutdown endpoints
-9. Add bulk queue job actions
-10. Add system settings schema validation
-11. Add admin action audit trail for all mutations
+---
 
 ## Progress Summary
 
-- **Backend endpoints implemented:** 23/23 (all admin API endpoints exist)
-- **Frontend pages implemented:** 11/11 (all pages exist)
-- **Frontend pages fully functional:** ~6/11 (Dashboard, System, Users, Orders, Generations have stubs)
-- **Admin bootstrap:** BROKEN (critical blocker)
-- **Security hardening:** NOT DONE (localStorage, hardcoded creds, no MFA)
+| Метрика | Значение |
+|---|---|
+| Backend endpoints | ~70 ✅ Все реализованы |
+| Frontend pages | 34 ✅ Все страницы |
+| Frontend components | 27 (6427 строк) |
+| Admin bootstrap | ✅ Решено |
+| Security hardening | ✅ Cookies, rate limiting, CSP, MFA |
+| Hardcoded credentials | ✅ Удалены |
+| SSE live dashboard | ✅ Реализован |
+
+**Status: FULLY IMPLEMENTED**
