@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -138,11 +138,14 @@ async def logout(
 
 @router.post("/logout-all", status_code=204)
 async def logout_all(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     service = AuthService(db)
-    await service.logout_all(current_user.id)
+    auth = request.headers.get("authorization")
+    access_token = auth.split(" ", 1)[1] if auth and auth.lower().startswith("bearer ") else None
+    await service.logout_all(current_user.id, access_token=access_token)
     return None
 
 

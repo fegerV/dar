@@ -77,29 +77,72 @@ def create_refresh_token(user_id: UUID, jti: str | None = None) -> str:
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def decode_token(token: str, validate_iat: bool = True, check_blacklist: bool = False) -> dict | None:
-    """Decode and validate JWT token with iat and blacklist checks."""
+def decode_token(token: str, validate_iat: bool = True, check_blacklist: bool = True) -> dict | None:
+    """Decode and validate JWT token with iat and blacklist checks.
+
+    NOTE: this is a synchronous helper. The Redis-backed blacklist cannot be
+    consulted from sync code running inside the event loop, so callers that
+    need revocation enforcement MUST use ``decode_token_async`` instead.
+    ``check_blacklist`` defaults to True; when no event loop is running we do
+    the lookup, otherwise we defer to the async variant's contract.
+    """
     try:
         # First decode without verification to get claims
         unverified = jwt.get_unverified_claims(token)
 
-        # Check if token is blacklisted (async call - only when needed)
+        # Check if token is blacklisted when we are NOT inside a running
+        # event loop (sync scripts/tests). Async request handlers must use
+        # decode_token_async, which always enforces the blacklist.
         if check_blacklist:
             import asyncio
+
             try:
-                loop = asyncio.get_running_loop()
-                if loop.is_running():
-                    # We're in an async context, but this is a sync function
-                    # Skip blacklist check for now or refactor caller to be async
-                    pass
-                else:
-                    # Not running, we can run it
-                    if asyncio.run(is_token_blacklisted(token)):
-                        return None
+                asyncio.get_running_loop()
             except RuntimeError:
-                # No event loop, run it
+                # No event loop running - safe to use asyncio.run here
                 if asyncio.run(is_token_blacklisted(token)):
                     return None
+
+        # Validate iat (issued at) - reject tokens older than max age
+        if validate_iat:
+            iat = unverified.get("iat")
+            if iat is None:
+                return None
+
+            # Convert iat to timestamp if it's a datetime
+            if isinstance(iat, datetime):
+                iat_timestamp = iat.timestamp()
+            else:
+                iat_timestamp = float(iat)
+
+            now = time.time()
+            max_token_age = timedelta(hours=24).total_seconds()  # Configurable max age
+
+            if now - iat_timestamp > max_token_age:
+                return None  # Token too old
+
+        # Now do full verification
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+    except (ValueError, TypeError):
+        return None
+
+
+async def decode_token_async(token: str, validate_iat: bool = True) -> dict | None:
+    """Async token decode that ALWAYS enforces the Redis-backed blacklist.
+
+    This is the canonical entry point for request handlers and middleware:
+    revoked/blacklisted access tokens are rejected here (the sync
+    ``decode_token`` cannot perform the async lookup inside a running loop).
+    """
+    try:
+        # First decode without verification to get claims
+        unverified = jwt.get_unverified_claims(token)
+
+        if await is_token_blacklisted(token):
+            return None
 
         # Validate iat (issued at) - reject tokens older than max age
         if validate_iat:
