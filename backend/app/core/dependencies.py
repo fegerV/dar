@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import ForbiddenException, UnauthorizedException
-from app.core.security import decode_token
+from app.core.security import decode_token_async
 from app.repositories.users import UserRepository
 
 bearer_scheme = HTTPBearer()
@@ -25,7 +25,9 @@ def get_client_ip(request: Request) -> str | None:
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> UUID:
-    payload = decode_token(credentials.credentials)
+    payload = await decode_token_async(credentials.credentials)
+    # Only end-user access tokens are accepted here; impersonation/refresh
+    # tokens must never authenticate regular API routes.
     if payload is None or payload.get("type") != "access":
         raise UnauthorizedException("Invalid or expired token")
     user_id = payload.get("sub")
@@ -58,7 +60,7 @@ async def get_current_user_optional(request: Request) -> object | None:
     if not auth or not auth.lower().startswith("bearer "):
         return None
     token = auth.split(" ", 1)[1]
-    payload = decode_token(token)
+    payload = await decode_token_async(token)
     if payload is None or payload.get("type") != "access":
         return None
     user_id = payload.get("sub")

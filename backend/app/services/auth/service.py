@@ -336,10 +336,34 @@ class AuthService:
         jti = payload.get("jti")
         if jti:
             await self.token_repo.revoke_by_jti(jti)
+
+        # Blacklist the accompanying access token so it stops working
+        # immediately (previously revoked tokens stayed valid until exp).
+        try:
+            from app.core.security import blacklist_token
+
+            exp = payload.get("exp")
+            now_ts = datetime.now(UTC).timestamp()
+            max_age_seconds = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            await blacklist_token(refresh_token, float(exp) if exp else now_ts + max_age_seconds)
+        except Exception:
+            pass
         await self.db.commit()
 
-    async def logout_all(self, user_id: UUID) -> None:
+    async def logout_all(self, user_id: UUID, access_token: str | None = None) -> None:
         await self.token_repo.revoke_all_for_user(user_id)
+        if access_token:
+            try:
+                from app.core.security import blacklist_token
+
+                payload = decode_token(access_token)
+                exp = (payload or {}).get("exp")
+                await blacklist_token(
+                    access_token,
+                    float(exp) if exp else datetime.now(UTC).timestamp() + 3600,
+                )
+            except Exception:
+                pass
         await self.db.commit()
 
     async def _validate_password(self, password: str) -> None:
